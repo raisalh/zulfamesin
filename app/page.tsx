@@ -216,12 +216,10 @@ export default function ZulfaMesinLanding() {
               <div key={index} className="relative flex">
                 <Card className="border-2 border-gray-300 bg-white hover:shadow-xl transition-shadow rounded-2xl h-full w-full">
                   <CardBody className="text-center p-8 relative flex flex-col">
-                    {/* Nomor di pojok kanan atas */}
                     <div className="absolute top-4 right-4 w-8 h-8 bg-[#111827] rounded-full flex items-center justify-center">
                       <span className="text-white text-sm font-bold">{step.number}</span>
                     </div>
                     
-                    {/* Icon di tengah */}
                     <div className="w-20 h-20 flex items-center justify-center mx-auto mb-6 mt-2">
                       <svg className="w-16 h-16 text-[#111827]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                         {index === 0 && (
@@ -242,7 +240,6 @@ export default function ZulfaMesinLanding() {
                       </svg>
                     </div>
                     
-                    {/* Title dan Description */}
                     <h4 className="font-bold mb-3 text-base text-gray-800">{step.title}</h4>
                     <p className="text-sm text-gray-600 leading-relaxed">{step.description}</p>
                   </CardBody>
