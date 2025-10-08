@@ -18,7 +18,7 @@ export default withAuth(
         if (publicRoutes.includes(pathname)) {
           return true;
         }
-               
+        
         if (pathname.startsWith('/api/auth')) {
           return true;
         }
