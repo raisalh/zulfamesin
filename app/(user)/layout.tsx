@@ -9,10 +9,10 @@ import {
     IconChartPie2,
     IconLogout,
     IconMenu2,
-    IconX,
 } from "@tabler/icons-react";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
 interface User {
     id_user: number;
@@ -28,6 +28,7 @@ export default function UserLayout({
     const pathname = usePathname();
     const [user, setUser] = useState<User | null>(null);
     const [isExpanded, setIsExpanded] = useState(true);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         const fetchUserData = async () => {
@@ -44,6 +45,10 @@ export default function UserLayout({
 
         fetchUserData();
     }, []);
+
+    useEffect(() => {
+        setIsMobileMenuOpen(false);
+    }, [pathname]);
 
     const menuItems = [
         {
@@ -73,17 +78,29 @@ export default function UserLayout({
 
     return (
         <div className="flex h-screen bg-gray-50">
+            {isMobileMenuOpen && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
+
             <aside
                 className={`${
                     isExpanded ? "w-64" : "w-20"
-                } bg-slate-800 text-white flex flex-col transition-all duration-300`}
+                } bg-slate-800 text-white flex flex-col transition-all duration-300 
+                fixed lg:relative h-full z-50
+                ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+                lg:transition-all`}
             >
                 <div className="p-6">
                     <div className={`flex items-center gap-3 ${!isExpanded && 'justify-center'}`}>
-                        <img
+                        <Image
                             src="/assets/Logo.svg"
                             alt="Zulfa Mesin Logo"
-                            className="w-10 h-10 flex-shrink-0 object-contain"
+                            width={40}
+                            height={40}
+                            className="flex-shrink-0 object-contain"
                         />
                         {isExpanded && (
                             <div className="overflow-hidden">
@@ -168,19 +185,25 @@ export default function UserLayout({
                 </div>
             </aside>
 
-            <main className="flex-1 overflow-auto">
-                <div className="bg-white border-b border-gray-200 px-8 py-4 flex items-center gap-4">
+            <main className="flex-1 overflow-auto w-full lg:w-auto">
+                <div className="bg-white border-b border-gray-200 px-4 lg:px-8 py-4 flex items-center gap-4">
                     <Button
                         isIconOnly
-                        onClick={() => setIsExpanded(!isExpanded)}
+                        onClick={() => {
+                            if (window.innerWidth < 1024) {
+                                setIsMobileMenuOpen(!isMobileMenuOpen);
+                            } else {
+                                setIsExpanded(!isExpanded);
+                            }
+                        }}
                         className="bg-gray-100 hover:bg-gray-200 text-gray-700"
                     >
                         <IconMenu2 size={20} />
                     </Button>
-                    <h2 className="text-xl font-bold text-gray-800">{pageTitle}</h2>
+                    <h2 className="text-lg lg:text-xl font-bold text-gray-800">{pageTitle}</h2>
                 </div>
 
-                <div className="p-8">{children}</div>
+                <div className="p-4 lg:p-8">{children}</div>
             </main>
         </div>
     );

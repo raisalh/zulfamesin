@@ -55,19 +55,19 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f1d2e] relative overflow-hidden flex items-center justify-center">
-      <div className="absolute top-0 left-0 w-96 h-96 bg-[#4a9b9b] rounded-full -translate-x-1/2 -translate-y-1/2 opacity-20 blur-3xl" />
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#4a9b9b] rounded-full translate-x-1/2 translate-y-1/2 opacity-20 blur-3xl" />
+    <div className="min-h-screen bg-[#0f1d2e] relative overflow-hidden flex items-center justify-center p-4 sm:p-6">
+      <div className="absolute top-0 left-0 w-64 h-64 sm:w-96 sm:h-96 bg-[#4a9b9b] rounded-full -translate-x-1/2 -translate-y-1/2 opacity-20 blur-3xl" />
+      <div className="absolute bottom-0 right-0 w-64 h-64 sm:w-96 sm:h-96 bg-[#4a9b9b] rounded-full translate-x-1/2 translate-y-1/2 opacity-20 blur-3xl" />
 
-      <Card className="relative z-10 w-full max-w-md mx-4 shadow-2xl">
-        <CardBody className="p-8">
-          <h1 className="text-2xl font-bold text-center mb-8 text-gray-800">
+      <Card className="relative z-10 w-full max-w-md shadow-2xl">
+        <CardBody className="p-6 sm:p-8">
+          <h1 className="text-xl sm:text-2xl font-bold text-center mb-6 sm:mb-8 text-gray-800">
             LOGIN
           </h1>
 
           <form onSubmit={handleLogin} className="space-y-4">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+              <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg text-xs sm:text-sm">
                 {error}
               </div>
             )}
@@ -79,12 +79,17 @@ export default function LoginPage() {
               value={formData.username}
               onChange={handleChange('username')}
               startContent={
-                <IconUser size={20} className="text-gray-400" stroke={1.5} />
+                <IconUser 
+                  size={18} 
+                  className="text-gray-400 sm:w-5 sm:h-5" 
+                  stroke={1.5} 
+                />
               }
               variant="bordered"
               classNames={{
-                input: 'text-gray-800',
-                inputWrapper: 'border-2 border-gray-300 hover:border-[#4a9b9b] focus-within:border-[#4a9b9b]',
+                input: 'text-gray-800 text-sm sm:text-base',
+                inputWrapper: 'border-2 border-gray-300 hover:border-[#4a9b9b] focus-within:border-[#4a9b9b] h-12 sm:h-14',
+                label: 'text-sm sm:text-base',
               }}
               isRequired
             />
@@ -95,33 +100,47 @@ export default function LoginPage() {
               value={formData.password}
               onChange={handleChange('password')}
               startContent={
-                <IconLock size={20} className="text-gray-400" stroke={1.5} />
+                <IconLock 
+                  size={18} 
+                  className="text-gray-400 sm:w-5 sm:h-5" 
+                  stroke={1.5} 
+                />
               }
               endContent={
                 <button
-                  className="focus:outline-none"
+                  className="focus:outline-none touch-manipulation"
                   type="button"
                   onClick={toggleVisibility}
+                  aria-label={isVisible ? 'Hide password' : 'Show password'}
                 >
                   {isVisible ? (
-                    <IconEyeOff size={20} className="text-gray-400" stroke={1.5} />
+                    <IconEyeOff 
+                      size={18} 
+                      className="text-gray-400 sm:w-5 sm:h-5" 
+                      stroke={1.5} 
+                    />
                   ) : (
-                    <IconEye size={20} className="text-gray-400" stroke={1.5} />
+                    <IconEye 
+                      size={18} 
+                      className="text-gray-400 sm:w-5 sm:h-5" 
+                      stroke={1.5} 
+                    />
                   )}
                 </button>
               }
               type={isVisible ? 'text' : 'password'}
               variant="bordered"
               classNames={{
-                input: 'text-gray-800',
-                inputWrapper: 'border-2 border-gray-300 hover:border-[#4a9b9b] focus-within:border-[#4a9b9b]',
+                input: 'text-gray-800 text-sm sm:text-base',
+                inputWrapper: 'border-2 border-gray-300 hover:border-[#4a9b9b] focus-within:border-[#4a9b9b] h-12 sm:h-14',
+                label: 'text-sm sm:text-base',
               }}
               isRequired
             />
 
             <Button
               type="submit"
-              className="w-full bg-[#4a9b9b] hover:bg-[#3d8585] text-white font-semibold shadow-md"
+              className="w-full bg-[#4a9b9b] hover:bg-[#3d8585] text-white font-semibold shadow-md text-sm sm:text-base touch-manipulation"
               size="lg"
               isLoading={isLoading}
               isDisabled={!formData.username || !formData.password}
@@ -129,6 +148,12 @@ export default function LoginPage() {
               {isLoading ? 'Memproses...' : 'Login'}
             </Button>
           </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-xs sm:text-sm text-gray-500">
+              © 2025 Zulfa Mesin. All rights reserved.
+            </p>
+          </div>
         </CardBody>
       </Card>
     </div>
