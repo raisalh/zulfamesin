@@ -7,7 +7,6 @@ import bcrypt from 'bcrypt';
 import pool from './db';
 import { RowDataPacket } from 'mysql2/promise';
 
-// Validation schema
 const loginSchema = z.object({
   username: z.string().min(1, 'Username tidak boleh kosong'),
   password: z.string().min(1, 'Password tidak boleh kosong'),
@@ -30,10 +29,8 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         try {
-          // Validate input
           const validatedData = loginSchema.parse(credentials);
 
-          // Sanitize input
           const username = DOMPurify.sanitize(
             validator.trim(validatedData.username)
           );
@@ -43,9 +40,8 @@ export const authOptions: NextAuthOptions = {
             throw new Error('Username dan password harus diisi');
           }
 
-          // Query user from database
           const [rows] = await pool.execute<UserRow[]>(
-            'SELECT id_user, nama, password, no_telp FROM user WHERE nama = ? LIMIT 1',
+            'SELECT id_user, nama, password, email FROM user WHERE nama = ? LIMIT 1',
             [username]
           );
 
@@ -55,18 +51,16 @@ export const authOptions: NextAuthOptions = {
             throw new Error('Username atau password salah');
           }
 
-          // Verify password
           const isPasswordValid = await bcrypt.compare(password, user.password);
 
           if (!isPasswordValid) {
             throw new Error('Username atau password salah');
           }
 
-          // Return user object
           return {
             id: user.id_user.toString(),
             name: user.nama,
-            email: user.no_telp || user.nama, // Using no_telp or nama as fallback
+            email: user.email || user.nama, 
           };
         } catch (error) {
           console.error('Auth error:', error);
@@ -77,7 +71,7 @@ export const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 30 * 24 * 60 * 60, 
   },
   pages: {
     signIn: '/login',

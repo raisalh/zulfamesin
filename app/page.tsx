@@ -63,7 +63,7 @@ export default function ZulfaMesinLanding() {
               <a href="#proses" className="text-white hover:text-[#4D918F] transition">Proses Produksi</a>
               <a href="#galeri" className="text-white hover:text-[#4D918F] transition">Galeri</a>
               <a href="#kontak" className="text-white hover:text-[#4D918F] transition">Kontak</a>
-              <Button variant="bordered" radius="md" size="md" className='text-white hover:text-[#4D918F] transition'>
+              <Button as="a" href="/login" variant="bordered" radius="md" size="md" className='text-white hover:text-[#4D918F] transition'>
                 <IconUserFilled />
                 Login
               </Button>
