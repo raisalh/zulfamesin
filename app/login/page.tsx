@@ -1,55 +1,57 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { Input, Button, Card, CardBody } from '@heroui/react';
-import { IconUser, IconLock, IconEye, IconEyeOff } from '@tabler/icons-react';
+import { useState } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { Input, Button, Card, CardBody } from "@heroui/react";
+import { IconUser, IconLock, IconEye, IconEyeOff } from "@tabler/icons-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    username: '',
-    password: '',
+    username: "",
+    password: "",
   });
   const [isVisible, setIsVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const toggleVisibility = () => setIsVisible(!isVisible);
 
-  const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: e.target.value,
-    }));
-    setError(''); 
-  };
+  const handleChange =
+    (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      setFormData((prev) => ({
+        ...prev,
+        [field]: e.target.value,
+      }));
+      setError("");
+    };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setIsLoading(true);
 
     try {
-      const result = await signIn('credentials', {
+      const result = await signIn("credentials", {
         username: formData.username,
         password: formData.password,
         redirect: false,
       });
 
       if (result?.error) {
-        setError('Username atau password salah');
+        setError("Username atau password salah");
         setIsLoading(false);
+
         return;
       }
 
       if (result?.ok) {
-        router.push('/dashboard');
+        router.push("/dashboard");
         router.refresh();
       }
     } catch (err) {
-      setError('Terjadi kesalahan. Silakan coba lagi.');
+      setError("Terjadi kesalahan. Silakan coba lagi.");
       setIsLoading(false);
     }
   };
@@ -65,7 +67,7 @@ export default function LoginPage() {
             LOGIN
           </h1>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form className="space-y-4" onSubmit={handleLogin}>
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2.5 sm:px-4 sm:py-3 rounded-lg text-xs sm:text-sm">
                 {error}
@@ -73,79 +75,81 @@ export default function LoginPage() {
             )}
 
             <Input
-              type="text"
+              isRequired
+              classNames={{
+                input: "text-gray-800 text-sm sm:text-base",
+                inputWrapper:
+                  "border-2 border-gray-300 hover:border-[#4a9b9b] focus-within:border-[#4a9b9b] h-12 sm:h-14",
+                label: "text-sm sm:text-base",
+              }}
               label="Username"
               placeholder="Masukkan username"
-              value={formData.username}
-              onChange={handleChange('username')}
               startContent={
-                <IconUser 
-                  size={18} 
-                  className="text-gray-400 sm:w-5 sm:h-5" 
-                  stroke={1.5} 
+                <IconUser
+                  className="text-gray-400 sm:w-5 sm:h-5"
+                  size={18}
+                  stroke={1.5}
                 />
               }
+              type="text"
+              value={formData.username}
               variant="bordered"
-              classNames={{
-                input: 'text-gray-800 text-sm sm:text-base',
-                inputWrapper: 'border-2 border-gray-300 hover:border-[#4a9b9b] focus-within:border-[#4a9b9b] h-12 sm:h-14',
-                label: 'text-sm sm:text-base',
-              }}
-              isRequired
+              onChange={handleChange("username")}
             />
 
             <Input
-              label="Password"
-              placeholder="Masukkan password"
-              value={formData.password}
-              onChange={handleChange('password')}
-              startContent={
-                <IconLock 
-                  size={18} 
-                  className="text-gray-400 sm:w-5 sm:h-5" 
-                  stroke={1.5} 
-                />
-              }
+              isRequired
+              classNames={{
+                input: "text-gray-800 text-sm sm:text-base",
+                inputWrapper:
+                  "border-2 border-gray-300 hover:border-[#4a9b9b] focus-within:border-[#4a9b9b] h-12 sm:h-14",
+                label: "text-sm sm:text-base",
+              }}
               endContent={
                 <button
+                  aria-label={isVisible ? "Hide password" : "Show password"}
                   className="focus:outline-none touch-manipulation"
                   type="button"
                   onClick={toggleVisibility}
-                  aria-label={isVisible ? 'Hide password' : 'Show password'}
                 >
                   {isVisible ? (
-                    <IconEyeOff 
-                      size={18} 
-                      className="text-gray-400 sm:w-5 sm:h-5" 
-                      stroke={1.5} 
+                    <IconEyeOff
+                      className="text-gray-400 sm:w-5 sm:h-5"
+                      size={18}
+                      stroke={1.5}
                     />
                   ) : (
-                    <IconEye 
-                      size={18} 
-                      className="text-gray-400 sm:w-5 sm:h-5" 
-                      stroke={1.5} 
+                    <IconEye
+                      className="text-gray-400 sm:w-5 sm:h-5"
+                      size={18}
+                      stroke={1.5}
                     />
                   )}
                 </button>
               }
-              type={isVisible ? 'text' : 'password'}
+              label="Password"
+              placeholder="Masukkan password"
+              startContent={
+                <IconLock
+                  className="text-gray-400 sm:w-5 sm:h-5"
+                  size={18}
+                  stroke={1.5}
+                />
+              }
+              type={isVisible ? "text" : "password"}
+              value={formData.password}
               variant="bordered"
-              classNames={{
-                input: 'text-gray-800 text-sm sm:text-base',
-                inputWrapper: 'border-2 border-gray-300 hover:border-[#4a9b9b] focus-within:border-[#4a9b9b] h-12 sm:h-14',
-                label: 'text-sm sm:text-base',
-              }}
-              isRequired
+              onChange={handleChange("password")}
             />
 
             <Button
-              type="submit"
               className="w-full bg-[#4a9b9b] hover:bg-[#3d8585] text-white font-semibold shadow-md text-sm sm:text-base touch-manipulation"
-              size="lg"
-              isLoading={isLoading}
               isDisabled={!formData.username || !formData.password}
+              isLoading={isLoading}
+              size="lg"
+              type="submit"
             >
-              {isLoading ? 'Memproses...' : 'Login'}
+              {isLoading ? "Memproses..." : "Login"}
             </Button>
           </form>
 

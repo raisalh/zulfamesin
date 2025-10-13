@@ -30,11 +30,16 @@ export default function UserLayout({
     const [isExpanded, setIsExpanded] = useState(true);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+    const pagesWithSidebar = ["/dashboard", "/produksi", "/karyawan", "/laporan"];
+
+    const showSidebar = pagesWithSidebar.some((page) => pathname === page);
+
     useEffect(() => {
         const fetchUserData = async () => {
             try {
                 const response = await fetch("/api/auth/session");
                 const data = await response.json();
+
                 if (data.user) {
                     setUser(data.user);
                 }
@@ -76,31 +81,36 @@ export default function UserLayout({
     const currentPage = menuItems.find((item) => item.href === pathname);
     const pageTitle = currentPage?.title || "Dashboard";
 
+    if (!showSidebar) {
+        return <>{children}</>;
+    }
+
     return (
         <div className="flex h-screen bg-gray-50">
-            {isMobileMenuOpen && (
-                <div
-                    className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                />
-            )}
+            <button
+                aria-label="Close mobile menu"
+                className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+                type="button"
+                onClick={() => setIsMobileMenuOpen(false)}
+            />
 
             <aside
-                className={`${
-                    isExpanded ? "w-64" : "w-20"
-                } bg-slate-800 text-white flex flex-col transition-all duration-300 
+                className={`${isExpanded ? "w-64" : "w-20"
+                    } bg-slate-800 text-white flex flex-col transition-all duration-300 
                 fixed lg:relative h-full z-50
                 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
                 lg:transition-all`}
             >
                 <div className="p-6">
-                    <div className={`flex items-center gap-3 ${!isExpanded && 'justify-center'}`}>
+                    <div
+                        className={`flex items-center gap-3 ${!isExpanded && "justify-center"}`}
+                    >
                         <Image
-                            src="/assets/Logo.svg"
                             alt="Zulfa Mesin Logo"
-                            width={40}
-                            height={40}
                             className="flex-shrink-0 object-contain"
+                            height={40}
+                            src="/assets/Logo.svg"
+                            width={40}
                         />
                         {isExpanded && (
                             <div className="overflow-hidden">
@@ -124,15 +134,13 @@ export default function UserLayout({
                             <Button
                                 key={item.href}
                                 as="a"
-                                href={item.href}
-                                isIconOnly={!isExpanded}
-                                className={`w-full ${
-                                    isExpanded ? "justify-start" : "justify-center"
-                                } gap-3 h-12 text-base font-medium ${
-                                    isActive
+                                className={`w-full ${isExpanded ? "justify-start" : "justify-center"
+                                    } gap-3 h-12 text-base font-medium ${isActive
                                         ? "bg-teal-600 text-black hover:bg-teal-700"
                                         : "bg-transparent text-slate-300 hover:bg-slate-700"
-                                }`}
+                                    }`}
+                                href={item.href}
+                                isIconOnly={!isExpanded}
                                 startContent={<Icon size={20} />}
                             >
                                 {isExpanded && item.title}
@@ -156,28 +164,28 @@ export default function UserLayout({
                                 </p>
                             </div>
                             <Button
-                                as="a"
                                 isIconOnly
-                                href="/logout"
+                                as="a"
                                 className="bg-transparent text-slate-300 hover:bg-slate-700"
+                                href="/logout"
                                 startContent={<IconLogout size={20} />}
                             />
                         </div>
                     ) : (
                         <div className="flex flex-col items-center gap-2">
                             <Button
-                                as="a"
                                 isIconOnly
-                                href="/profile"
+                                as="a"
                                 className="bg-transparent text-slate-300 hover:bg-slate-700"
+                                href="/profile"
                             >
                                 <IconUserCircle size={24} />
                             </Button>
                             <Button
-                                as="a"
                                 isIconOnly
-                                href="/logout"
+                                as="a"
                                 className="bg-transparent text-slate-300 hover:bg-slate-700"
+                                href="/logout"
                                 startContent={<IconLogout size={20} />}
                             />
                         </div>
@@ -189,6 +197,7 @@ export default function UserLayout({
                 <div className="bg-white border-b border-gray-200 px-4 lg:px-8 py-4 flex items-center gap-4">
                     <Button
                         isIconOnly
+                        className="bg-gray-100 hover:bg-gray-200 text-gray-700"
                         onClick={() => {
                             if (window.innerWidth < 1024) {
                                 setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -196,11 +205,12 @@ export default function UserLayout({
                                 setIsExpanded(!isExpanded);
                             }
                         }}
-                        className="bg-gray-100 hover:bg-gray-200 text-gray-700"
                     >
                         <IconMenu2 size={20} />
                     </Button>
-                    <h2 className="text-lg lg:text-xl font-bold text-gray-800">{pageTitle}</h2>
+                    <h2 className="text-lg lg:text-xl font-bold text-gray-800">
+                        {pageTitle}
+                    </h2>
                 </div>
 
                 <div className="p-4 lg:p-8">{children}</div>
