@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import {
   IconInfoCircle,
   IconAlertTriangle,
@@ -13,22 +13,72 @@ interface PolaGulungan {
   pola: string;
 }
 
-export default function TambahProdukPage() {
+export default function EditProdukPage() {
   const router = useRouter();
+  const params = useParams();
+  const id = params.id as string;
+
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
   const [showCancelModal, setShowCancelModal] = useState(false);
 
   const [status, setStatus] = useState("");
-  const [tanggalMulai, setTanggalMulai] = useState("");
-  const [estimasiSelesai, setEstimasiSelesai] = useState("");
-  const [tanggalSelesai, setTanggalSelesai] = useState("");
   const [namaProduk, setNamaProduk] = useState("");
   const [ukuran, setUkuran] = useState("");
   const [warna, setWarna] = useState("");
+  const [deadline, setDeadline] = useState("");
   const [jumlahGulungan, setJumlahGulungan] = useState(1);
   const [polaGulungan, setPolaGulungan] = useState<PolaGulungan[]>([
     { gulungan: 1, pola: "" },
   ]);
+
+  useEffect(() => {
+    fetchProdukData();
+  }, [id]);
+
+  const fetchProdukData = async () => {
+    try {
+      const response = await fetch(`/api/production/${id}`);
+      const result = await response.json();
+
+      if (result.success) {
+        const data = result.data;
+
+        setNamaProduk(data.nama_produk);
+        setWarna(data.warna);
+        setUkuran(data.ukuran);
+        setStatus(data.status || "diproses");
+        setJumlahGulungan(data.gulungan || 1);
+
+        if (data.deadline) {
+          const date = new Date(data.deadline);
+          const formattedDate = date.toISOString().split("T")[0];
+
+          setDeadline(formattedDate);
+        }
+
+        const jumlahPola = data.jumlah_pola || 0;
+        const gulungan = data.gulungan || 1;
+        const polaPerGulungan = Math.ceil(jumlahPola / gulungan);
+
+        const newPola = Array.from({ length: gulungan }, (_, i) => ({
+          gulungan: i + 1,
+          pola: String(polaPerGulungan),
+        }));
+
+        setPolaGulungan(newPola);
+      } else {
+        alert("Gagal mengambil data produk");
+        router.push("/produksi");
+      }
+    } catch (error) {
+      console.error("Error fetching product:", error);
+      alert("Terjadi kesalahan saat mengambil data");
+      router.push("/produksi");
+    } finally {
+      setLoadingData(false);
+    }
+  };
 
   const handleJumlahGulunganChange = (value: number) => {
     if (value < 1) return;
@@ -92,35 +142,33 @@ export default function TambahProdukPage() {
         return sum + pola;
       }, 0);
 
-      const response = await fetch("/api/production", {
-        method: "POST",
+      const response = await fetch(`/api/production/${id}`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           nama_produk: namaProduk,
-          warna: warna,
-          ukuran: ukuran,
+          warna: warna || null,
+          ukuran: ukuran || null,
           gulungan: jumlahGulungan,
           jumlah_pola: totalPola,
-          progress: 0,
-          deadline: estimasiSelesai || null,
+          deadline: deadline || null,
           status: status || "diproses",
-          id_user: null,
         }),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        alert("Produk berhasil ditambahkan!");
+        alert("Produk berhasil diupdate!");
         router.push("/produksi");
       } else {
-        alert("Gagal menambahkan produk: " + result.message);
+        alert("Gagal mengupdate produk: " + result.message);
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("Terjadi kesalahan saat menambahkan produk");
+      alert("Terjadi kesalahan saat mengupdate produk");
     } finally {
       setLoading(false);
     }
@@ -138,14 +186,23 @@ export default function TambahProdukPage() {
     setShowCancelModal(false);
   };
 
+  if (loadingData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <IconLoader2 className="animate-spin w-12 h-12 text-gray-600 mx-auto mb-4" />
+          <p className="text-gray-600">Memuat data produk...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <h1 className="text-2xl font-semibold text-gray-900">
-          Tambah Produk Baru
-        </h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Edit Produk</h1>
         <p className="text-sm text-gray-600 mt-1">
-          Masukkan detail produk dan pola gulungan
+          Edit detail produk dan pola gulungan
         </p>
       </div>
 
@@ -160,74 +217,9 @@ export default function TambahProdukPage() {
               value={status}
               onChange={(e) => setStatus(e.target.value)}
             >
-              <option value="">
-                Pilih Status yang Sesuai Untuk Produksi Ini
-              </option>
               <option value="diproses">Diproses</option>
               <option value="selesai">Selesai</option>
             </select>
-          </div>
-
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-base font-semibold text-gray-900 mb-4">
-              Informasi Awal Pengerjaan
-            </h3>
-
-            <div className="space-y-4">
-              <div>
-                <label
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                  htmlFor="tanggal_mulai"
-                >
-                  Tanggal Mulai Pengerjaan
-                </label>
-                <input
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none"
-                  id="tanggal_mulai"
-                  type="date"
-                  value={tanggalMulai}
-                  onChange={(e) => setTanggalMulai(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                  htmlFor="estimasi_selesai"
-                >
-                  Estimasi Selesai Pengerjaan
-                </label>
-                <input
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none"
-                  id="estimasi_selesai"
-                  type="date"
-                  value={estimasiSelesai}
-                  onChange={(e) => setEstimasiSelesai(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-base font-semibold text-gray-900 mb-4">
-              Informasi Selesai Pengerjaan
-            </h3>
-
-            <div>
-              <label
-                className="block text-sm font-medium text-gray-700 mb-2"
-                htmlFor="tanggal_selesai"
-              >
-                Tanggal Selesai Pengerjaan
-              </label>
-              <input
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none"
-                id="tanggal_selesai"
-                type="date"
-                value={tanggalSelesai}
-                onChange={(e) => setTanggalSelesai(e.target.value)}
-              />
-            </div>
           </div>
 
           <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -291,6 +283,22 @@ export default function TambahProdukPage() {
               <div>
                 <label
                   className="block text-sm font-medium text-gray-700 mb-2"
+                  htmlFor="deadline"
+                >
+                  Deadline
+                </label>
+                <input
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none"
+                  id="deadline"
+                  type="date"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label
+                  className="block text-sm font-medium text-gray-700 mb-2"
                   htmlFor="jumlah_gulungan"
                 >
                   Jumlah Gulungan
@@ -329,9 +337,10 @@ export default function TambahProdukPage() {
                       Gulungan {item.gulungan}
                     </label>
                     <input
+                      required
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none"
-                      id="pola"
-                      min="0"
+                      id={`pola-gulungan-${index}`}
+                      min="1"
                       placeholder={`Masukkan pola untuk gulungan ${item.gulungan}`}
                       type="number"
                       value={item.pola}
@@ -371,7 +380,7 @@ export default function TambahProdukPage() {
                   Menyimpan...
                 </>
               ) : (
-                <>+ Tambah Produk</>
+                <>Simpan Perubahan</>
               )}
             </button>
           </div>
@@ -389,10 +398,10 @@ export default function TambahProdukPage() {
               PERINGATAN
             </h3>
             <p className="text-gray-600 mb-2">
-              Anda yakin ingin membatalkan proses menambah produk?
+              Anda yakin ingin membatalkan perubahan?
             </p>
             <p className="text-gray-500 text-sm mb-8">
-              Data yang Anda masukkan akan hilang!
+              Perubahan yang Anda buat akan hilang!
             </p>
 
             <div className="flex gap-3 justify-center">

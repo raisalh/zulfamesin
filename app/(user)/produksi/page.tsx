@@ -16,10 +16,10 @@ import {
 interface Produksi {
   id_produk: number;
   nama_produk: string;
-  warna: string | null;
-  ukuran: string | null;
-  gulungan: number | null;
-  jumlah_pola: number | null;
+  warna: string;
+  ukuran: string;
+  gulungan: number;
+  jumlah_pola: number;
   progress: number | null;
   deadline: string | null;
   status: "diproses" | "selesai" | null;
@@ -256,7 +256,7 @@ export default function ProduksiPage() {
                                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 rounded-t-lg"
                                   onClick={() => {
                                     router.push(
-                                      `/produksi/edit/${produk.id_produk}`,
+                                      `/produksi/${produk.id_produk}/edit`,
                                     );
                                     setOpenDropdown(null);
                                   }}
@@ -267,7 +267,7 @@ export default function ProduksiPage() {
                                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                                   onClick={() => {
                                     router.push(
-                                      `/produksi/tambah-pekerjaan/${produk.id_produk}`,
+                                      `/produksi/${produk.id_produk}/tambah-pekerjaan`,
                                     );
                                     setOpenDropdown(null);
                                   }}
@@ -278,7 +278,7 @@ export default function ProduksiPage() {
                                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 rounded-b-lg"
                                   onClick={() => {
                                     router.push(
-                                      `/produksi/progress/${produk.id_produk}`,
+                                      `/produksi/${produk.id_produk}/progress`,
                                     );
                                     setOpenDropdown(null);
                                   }}
@@ -300,16 +300,16 @@ export default function ProduksiPage() {
                           {produk.nama_produk}
                         </td>
                         <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
-                          {produk.warna || "-"}
+                          {produk.warna}
                         </td>
                         <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
-                          {produk.ukuran || "-"}
+                          {produk.ukuran}
                         </td>
                         <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
-                          {produk.gulungan || "-"}
+                          {produk.gulungan}
                         </td>
                         <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
-                          {produk.jumlah_pola || "-"}
+                          {produk.jumlah_pola}
                         </td>
                         <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
                           {produk.progress || 0}%

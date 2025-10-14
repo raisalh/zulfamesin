@@ -4,8 +4,6 @@ import { getAllKaryawan, createKaryawan } from "@/lib/karyawan";
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-
     const result = await getAllKaryawan();
 
     return NextResponse.json({

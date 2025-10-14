@@ -1,16 +1,50 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { IconLoader2, IconAlertTriangle, IconPlus } from "@tabler/icons-react";
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
+import {
+  IconLoader2,
+  IconAlertTriangle,
+  IconPencil,
+} from "@tabler/icons-react";
 
-export default function TambahKaryawanPage() {
+export default function EditKaryawanPage() {
   const router = useRouter();
+  const params = useParams();
+  const id = params.id as string;
+
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
   const [showCancelModal, setShowCancelModal] = useState(false);
 
   const [namaKaryawan, setNamaKaryawan] = useState("");
   const [jenisKelamin, setJenisKelamin] = useState("");
+
+  useEffect(() => {
+    fetchKaryawanData();
+  }, [id]);
+
+  const fetchKaryawanData = async () => {
+    try {
+      setLoadingData(true);
+      const response = await fetch(`/api/employee/${id}`);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setNamaKaryawan(result.data.nama_karyawan);
+        setJenisKelamin(result.data.jenis_kelamin || "");
+      } else {
+        alert("Gagal memuat data karyawan");
+        router.push("/karyawan");
+      }
+    } catch (error) {
+      console.error("Error fetching karyawan:", error);
+      alert("Terjadi kesalahan saat memuat data");
+      router.push("/karyawan");
+    } finally {
+      setLoadingData(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,28 +70,28 @@ export default function TambahKaryawanPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/employee", {
-        method: "POST",
+      const response = await fetch(`/api/employee/${id}`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           nama_karyawan: namaKaryawan,
-          jenis_kelamin: jenisKelamin || null,
+          jenis_kelamin: jenisKelamin,
         }),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        alert("Karyawan berhasil ditambahkan!");
+        alert("Data karyawan berhasil diubah!");
         router.push("/karyawan");
       } else {
-        alert("Gagal menambahkan karyawan: " + result.message);
+        alert("Gagal mengubah data karyawan: " + result.message);
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("Terjadi kesalahan saat menambahkan karyawan");
+      alert("Terjadi kesalahan saat mengubah karyawan");
     } finally {
       setLoading(false);
     }
@@ -67,14 +101,28 @@ export default function TambahKaryawanPage() {
   const confirmBatal = () => router.push("/karyawan");
   const cancelBatal = () => setShowCancelModal(false);
 
+  if (loadingData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <IconLoader2
+            className="animate-spin mx-auto mb-4 text-gray-600"
+            size={48}
+          />
+          <p className="text-gray-600">Memuat data karyawan...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <h1 className="text-2xl font-semibold text-gray-900">
-          Tambah Karyawan Baru
+          Ubah Data Karyawan
         </h1>
         <p className="text-sm text-gray-600 mt-1">
-          Masukkan informasi karyawan
+          Perbaiki Informasi Karyawan
         </p>
       </div>
 
@@ -146,8 +194,8 @@ export default function TambahKaryawanPage() {
                   </>
                 ) : (
                   <>
-                    <IconPlus size={18} />
-                    Tambah Karyawan
+                    <IconPencil size={18} />
+                    Simpan Perubahan
                   </>
                 )}
               </button>
@@ -167,10 +215,10 @@ export default function TambahKaryawanPage() {
               PERINGATAN
             </h3>
             <p className="text-gray-600 mb-2">
-              Anda yakin ingin membatalkan proses menambah karyawan?
+              Anda yakin ingin membatalkan proses pengubahan karyawan?
             </p>
             <p className="text-gray-500 text-sm mb-8">
-              Data yang Anda masukkan akan hilang!
+              Perubahan yang Anda lakukan akan hilang!
             </p>
 
             <div className="flex gap-3 justify-center">
@@ -181,7 +229,7 @@ export default function TambahKaryawanPage() {
                 Kembali
               </button>
               <button
-                className="px-8 py-3 bg-yellow-400 rounded-full text-gray-900 font-semibold hover:bg-yellow-500 transition-colors min-w-[120px]"
+                className="px-8 py-3 bg-[#8EC3B3] rounded-full text-gray-900 font-semibold hover:bg-[#7AB9A8] transition-colors min-w-[120px]"
                 onClick={confirmBatal}
               >
                 Ya

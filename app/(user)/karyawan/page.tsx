@@ -152,7 +152,7 @@ export default function KaryawanPage() {
                                 className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 rounded-t-lg"
                                 onClick={() => {
                                   router.push(
-                                    `/karyawan/edit/${karyawan.id_karyawan}`,
+                                    `/karyawan/${karyawan.id_karyawan}/edit`,
                                   );
                                   setOpenDropdown(null);
                                 }}
@@ -164,7 +164,7 @@ export default function KaryawanPage() {
                                 className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 rounded-b-lg"
                                 onClick={() => {
                                   router.push(
-                                    `/produksi/progress/${karyawan.id_karyawan}`,
+                                    `/karyawan/${karyawan.id_karyawan}/progress`,
                                   );
                                   setOpenDropdown(null);
                                 }}
