@@ -8,6 +8,11 @@ import {
   IconPencil,
 } from "@tabler/icons-react";
 
+interface FormErrors {
+  namaKaryawan?: string;
+  jenisKelamin?: string;
+}
+
 export default function EditKaryawanPage() {
   const router = useRouter();
   const params = useParams();
@@ -16,6 +21,7 @@ export default function EditKaryawanPage() {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const [namaKaryawan, setNamaKaryawan] = useState("");
   const [jenisKelamin, setJenisKelamin] = useState("");
@@ -46,24 +52,39 @@ export default function EditKaryawanPage() {
     }
   };
 
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    // Validasi Nama Karyawan
+    if (!namaKaryawan.trim()) {
+      newErrors.namaKaryawan = "Nama karyawan harus diisi";
+    } else if (namaKaryawan.trim().length < 3) {
+      newErrors.namaKaryawan = "Nama karyawan minimal 3 huruf";
+    }
+
+    // Validasi Jenis Kelamin
+    if (!jenisKelamin) {
+      newErrors.jenisKelamin = "Jenis kelamin harus dipilih";
+    }
+
+    setErrors(newErrors);
+
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const clearError = (field: keyof FormErrors) => {
+    if (errors[field]) {
+      const newErrors = { ...errors };
+
+      delete newErrors[field];
+      setErrors(newErrors);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!namaKaryawan) {
-      alert("Nama karyawan harus diisi");
-
-      return;
-    }
-
-    if (namaKaryawan.trim().length < 3) {
-      alert("Nama karyawan minimal harus 3 huruf");
-
-      return;
-    }
-
-    if (!jenisKelamin) {
-      alert("Jenis kelamin harus dipilih");
-
+    if (!validateForm()) {
       return;
     }
 
@@ -138,17 +159,26 @@ export default function EditKaryawanPage() {
                 className="block text-sm font-medium text-gray-700 mb-2"
                 htmlFor="namaKaryawan"
               >
-                Nama Karyawan
+                Nama Karyawan <span className="text-red-500">*</span>
               </label>
               <input
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none"
+                className={`w-full px-4 py-3 border ${
+                  errors.namaKaryawan ? "border-red-500" : "border-gray-300"
+                } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                 id="namaKaryawan"
                 placeholder="Masukkan nama karyawan"
                 type="text"
                 value={namaKaryawan}
-                onChange={(e) => setNamaKaryawan(e.target.value)}
+                onChange={(e) => {
+                  setNamaKaryawan(e.target.value);
+                  clearError("namaKaryawan");
+                }}
               />
+              {errors.namaKaryawan && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.namaKaryawan}
+                </p>
+              )}
             </div>
 
             <div>
@@ -156,13 +186,18 @@ export default function EditKaryawanPage() {
                 className="block text-sm font-medium text-gray-700 mb-2"
                 htmlFor="jenisKelamin"
               >
-                Jenis Kelamin
+                Jenis Kelamin <span className="text-red-500">*</span>
               </label>
               <select
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none"
+                className={`w-full px-4 py-3 border ${
+                  errors.jenisKelamin ? "border-red-500" : "border-gray-300"
+                } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                 id="jenisKelamin"
                 value={jenisKelamin}
-                onChange={(e) => setJenisKelamin(e.target.value)}
+                onChange={(e) => {
+                  setJenisKelamin(e.target.value);
+                  clearError("jenisKelamin");
+                }}
               >
                 <option value="">
                   Pilih Jenis Kelamin yang Sesuai Untuk Karyawan Ini
@@ -170,6 +205,11 @@ export default function EditKaryawanPage() {
                 <option value="perempuan">Perempuan</option>
                 <option value="laki-laki">Laki-Laki</option>
               </select>
+              {errors.jenisKelamin && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.jenisKelamin}
+                </p>
+              )}
             </div>
 
             <div className="flex justify-end gap-3 pt-4">

@@ -177,7 +177,7 @@ export default function ProduksiPage() {
           <h2 className="text-base md:text-lg font-semibold">Data Produk</h2>
           <button
             className="bg-teal-500 hover:bg-teal-600 text-white px-3 md:px-4 py-2 rounded-lg flex items-center gap-2 text-sm md:text-base w-full sm:w-auto justify-center"
-            onClick={() => router.push("/produksi/tambah-produk")}
+            onClick={() => router.push("/produksi/tambah")}
           >
             <IconPlus size={18} /> Tambah Produk
           </button>
@@ -290,7 +290,7 @@ export default function ProduksiPage() {
                                   onClick={() => handleDelete(produk.id_produk)}
                                 >
                                   <IconTrash size={16} />
-                                  Hapus Karyawan
+                                  Hapus Produk
                                 </button>
                               </div>
                             )}

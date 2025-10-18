@@ -13,6 +13,18 @@ interface PolaGulungan {
   pola: string;
 }
 
+interface FormErrors {
+  status?: string;
+  tanggalMulai?: string;
+  estimasiSelesai?: string;
+  deadline?: string;
+  namaProduk?: string;
+  ukuran?: string;
+  warna?: string;
+  jumlahGulungan?: string;
+  polaGulungan?: { [key: number]: string };
+}
+
 export default function EditProdukPage() {
   const router = useRouter();
   const params = useParams();
@@ -21,7 +33,10 @@ export default function EditProdukPage() {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
 
+  const [tanggalMulai, setTanggalMulai] = useState("");
+  const [estimasiSelesai, setEstimasiSelesai] = useState("");
   const [status, setStatus] = useState("");
   const [namaProduk, setNamaProduk] = useState("");
   const [ukuran, setUkuran] = useState("");
@@ -45,8 +60,8 @@ export default function EditProdukPage() {
         const data = result.data;
 
         setNamaProduk(data.nama_produk);
-        setWarna(data.warna);
-        setUkuran(data.ukuran);
+        setWarna(data.warna || "");
+        setUkuran(data.ukuran || "");
         setStatus(data.status || "diproses");
         setJumlahGulungan(data.gulungan || 1);
 
@@ -57,16 +72,38 @@ export default function EditProdukPage() {
           setDeadline(formattedDate);
         }
 
-        const jumlahPola = data.jumlah_pola || 0;
-        const gulungan = data.gulungan || 1;
-        const polaPerGulungan = Math.ceil(jumlahPola / gulungan);
+        if (data.tanggal_mulai) {
+          const date = new Date(data.tanggal_mulai);
+          const formattedDate = date.toISOString().split("T")[0];
 
-        const newPola = Array.from({ length: gulungan }, (_, i) => ({
-          gulungan: i + 1,
-          pola: String(polaPerGulungan),
-        }));
+          setTanggalMulai(formattedDate);
+        }
 
-        setPolaGulungan(newPola);
+        if (data.tanggal_selesai) {
+          const date = new Date(data.tanggal_selesai);
+          const formattedDate = date.toISOString().split("T")[0];
+
+          setEstimasiSelesai(formattedDate);
+        }
+
+        if (data.gulungan_data && Array.isArray(data.gulungan_data)) {
+          const newPola = data.gulungan_data.map((g: any) => ({
+            gulungan: g.nomor_gulungan,
+            pola: String(g.jumlah_pola),
+          }));
+
+          setPolaGulungan(newPola);
+        } else {
+          const newPola = Array.from(
+            { length: data.gulungan || 1 },
+            (_, i) => ({
+              gulungan: i + 1,
+              pola: "",
+            }),
+          );
+
+          setPolaGulungan(newPola);
+        }
       } else {
         alert("Gagal mengambil data produk");
         router.push("/produksi");
@@ -80,6 +117,64 @@ export default function EditProdukPage() {
     }
   };
 
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    if (!namaProduk.trim()) {
+      newErrors.namaProduk = "Nama produk harus diisi";
+    }
+
+    if (!warna.trim()) {
+      newErrors.warna = "Warna harus diisi";
+    }
+
+    if (!ukuran.trim()) {
+      newErrors.ukuran = "Ukuran harus diisi";
+    }
+
+    if (jumlahGulungan < 1) {
+      newErrors.jumlahGulungan = "Jumlah gulungan minimal 1";
+    }
+
+    if (tanggalMulai && estimasiSelesai) {
+      const mulai = new Date(tanggalMulai);
+      const estimasi = new Date(estimasiSelesai);
+
+      if (estimasi < mulai) {
+        newErrors.estimasiSelesai =
+          "Estimasi selesai tidak boleh lebih awal dari tanggal mulai";
+      }
+    }
+
+    if (tanggalMulai && deadline) {
+      const mulai = new Date(tanggalMulai);
+      const deadlineDate = new Date(deadline);
+
+      if (deadlineDate < mulai) {
+        newErrors.deadline =
+          "Deadline tidak boleh lebih awal dari tanggal mulai";
+      }
+    }
+
+    const polaErrors: { [key: number]: string } = {};
+
+    polaGulungan.forEach((item, index) => {
+      const pola = parseInt(item.pola) || 0;
+
+      if (pola === 0 || item.pola === "") {
+        polaErrors[index] = "Jumlah pola harus diisi dan tidak boleh 0";
+      }
+    });
+
+    if (Object.keys(polaErrors).length > 0) {
+      newErrors.polaGulungan = polaErrors;
+    }
+
+    setErrors(newErrors);
+
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleJumlahGulunganChange = (value: number) => {
     if (value < 1) return;
 
@@ -91,6 +186,13 @@ export default function EditProdukPage() {
     }));
 
     setPolaGulungan(newPola);
+
+    if (errors.polaGulungan) {
+      const newErrors = { ...errors };
+
+      delete newErrors.polaGulungan;
+      setErrors(newErrors);
+    }
   };
 
   const handlePolaChange = (index: number, value: string) => {
@@ -98,50 +200,39 @@ export default function EditProdukPage() {
 
     newPola[index].pola = value;
     setPolaGulungan(newPola);
+
+    if (errors.polaGulungan && errors.polaGulungan[index]) {
+      const newErrors = { ...errors };
+
+      if (newErrors.polaGulungan) {
+        delete newErrors.polaGulungan[index];
+        if (Object.keys(newErrors.polaGulungan).length === 0) {
+          delete newErrors.polaGulungan;
+        }
+      }
+      setErrors(newErrors);
+    }
+  };
+
+  const clearError = (field: keyof FormErrors) => {
+    if (errors[field]) {
+      const newErrors = { ...errors };
+
+      delete newErrors[field];
+      setErrors(newErrors);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!namaProduk) {
-      alert("Nama produk harus diisi");
-
-      return;
-    }
-
-    if (!warna) {
-      alert("Warna harus diisi");
-
-      return;
-    }
-
-    if (!ukuran) {
-      alert("Ukuran harus diisi");
-
-      return;
-    }
-
-    const hasZeroPola = polaGulungan.some((item) => {
-      const pola = parseInt(item.pola) || 0;
-
-      return pola === 0;
-    });
-
-    if (hasZeroPola) {
-      alert("Jumlah pola tidak boleh 0! Harap isi semua pola gulungan.");
-
+    if (!validateForm()) {
       return;
     }
 
     setLoading(true);
 
     try {
-      const totalPola = polaGulungan.reduce((sum, item) => {
-        const pola = parseInt(item.pola) || 0;
-
-        return sum + pola;
-      }, 0);
-
       const response = await fetch(`/api/production/${id}`, {
         method: "PUT",
         headers: {
@@ -152,9 +243,11 @@ export default function EditProdukPage() {
           warna: warna || null,
           ukuran: ukuran || null,
           gulungan: jumlahGulungan,
-          jumlah_pola: totalPola,
           deadline: deadline || null,
           status: status || "diproses",
+          tanggal_mulai: tanggalMulai || null,
+          tanggal_selesai: estimasiSelesai || null,
+          gulungan_data: polaGulungan,
         }),
       });
 
@@ -212,14 +305,83 @@ export default function EditProdukPage() {
             <h3 className="text-sm font-semibold text-gray-900 mb-1">Status</h3>
             <p className="text-xs text-gray-500 mb-4">Status Produksi</p>
             <select
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none"
+              className={`w-full px-4 py-3 border ${
+                errors.status ? "border-red-500" : "border-gray-300"
+              } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
               id="status"
               value={status}
-              onChange={(e) => setStatus(e.target.value)}
+              onChange={(e) => {
+                setStatus(e.target.value);
+                clearError("status");
+              }}
             >
               <option value="diproses">Diproses</option>
               <option value="selesai">Selesai</option>
             </select>
+            {errors.status && (
+              <p className="text-red-500 text-sm mt-1">{errors.status}</p>
+            )}
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-base font-semibold text-gray-900 mb-4">
+              Tanggal Pengerjaan
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                  htmlFor="tanggal_mulai"
+                >
+                  Tanggal Mulai Pengerjaan
+                </label>
+                <input
+                  className={`w-full px-4 py-3 border ${
+                    errors.tanggalMulai ? "border-red-500" : "border-gray-300"
+                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                  id="tanggal_mulai"
+                  type="date"
+                  value={tanggalMulai}
+                  onChange={(e) => {
+                    setTanggalMulai(e.target.value);
+                    clearError("tanggalMulai");
+                  }}
+                />
+                {errors.tanggalMulai && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.tanggalMulai}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                  htmlFor="estimasi_selesai"
+                >
+                  Estimasi Selesai Pengerjaan
+                </label>
+                <input
+                  className={`w-full px-4 py-3 border ${
+                    errors.estimasiSelesai
+                      ? "border-red-500"
+                      : "border-gray-300"
+                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                  id="estimasi_selesai"
+                  type="date"
+                  value={estimasiSelesai}
+                  onChange={(e) => {
+                    setEstimasiSelesai(e.target.value);
+                    clearError("estimasiSelesai");
+                  }}
+                />
+                {errors.estimasiSelesai && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.estimasiSelesai}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -233,17 +395,26 @@ export default function EditProdukPage() {
                   className="block text-sm font-medium text-gray-700 mb-2"
                   htmlFor="nama_produk"
                 >
-                  Nama Produk
+                  Nama Produk <span className="text-red-500">*</span>
                 </label>
                 <input
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none"
+                  className={`w-full px-4 py-3 border ${
+                    errors.namaProduk ? "border-red-500" : "border-gray-300"
+                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                   id="nama_produk"
                   placeholder="Masukkan nama produk"
                   type="text"
                   value={namaProduk}
-                  onChange={(e) => setNamaProduk(e.target.value)}
+                  onChange={(e) => {
+                    setNamaProduk(e.target.value);
+                    clearError("namaProduk");
+                  }}
                 />
+                {errors.namaProduk && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.namaProduk}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -251,16 +422,24 @@ export default function EditProdukPage() {
                   className="block text-sm font-medium text-gray-700 mb-2"
                   htmlFor="ukuran"
                 >
-                  Ukuran
+                  Ukuran <span className="text-red-500">*</span>
                 </label>
                 <input
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none"
+                  className={`w-full px-4 py-3 border ${
+                    errors.ukuran ? "border-red-500" : "border-gray-300"
+                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                   id="ukuran"
                   placeholder="Masukkan ukuran produk"
                   type="text"
                   value={ukuran}
-                  onChange={(e) => setUkuran(e.target.value)}
+                  onChange={(e) => {
+                    setUkuran(e.target.value);
+                    clearError("ukuran");
+                  }}
                 />
+                {errors.ukuran && (
+                  <p className="text-red-500 text-sm mt-1">{errors.ukuran}</p>
+                )}
               </div>
 
               <div>
@@ -268,16 +447,24 @@ export default function EditProdukPage() {
                   className="block text-sm font-medium text-gray-700 mb-2"
                   htmlFor="warna"
                 >
-                  Warna
+                  Warna <span className="text-red-500">*</span>
                 </label>
                 <input
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none"
+                  className={`w-full px-4 py-3 border ${
+                    errors.warna ? "border-red-500" : "border-gray-300"
+                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                   id="warna"
                   placeholder="Masukkan warna produk"
                   type="text"
                   value={warna}
-                  onChange={(e) => setWarna(e.target.value)}
+                  onChange={(e) => {
+                    setWarna(e.target.value);
+                    clearError("warna");
+                  }}
                 />
+                {errors.warna && (
+                  <p className="text-red-500 text-sm mt-1">{errors.warna}</p>
+                )}
               </div>
 
               <div>
@@ -288,12 +475,20 @@ export default function EditProdukPage() {
                   Deadline
                 </label>
                 <input
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none"
+                  className={`w-full px-4 py-3 border ${
+                    errors.deadline ? "border-red-500" : "border-gray-300"
+                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                   id="deadline"
                   type="date"
                   value={deadline}
-                  onChange={(e) => setDeadline(e.target.value)}
+                  onChange={(e) => {
+                    setDeadline(e.target.value);
+                    clearError("deadline");
+                  }}
                 />
+                {errors.deadline && (
+                  <p className="text-red-500 text-sm mt-1">{errors.deadline}</p>
+                )}
               </div>
 
               <div>
@@ -301,19 +496,26 @@ export default function EditProdukPage() {
                   className="block text-sm font-medium text-gray-700 mb-2"
                   htmlFor="jumlah_gulungan"
                 >
-                  Jumlah Gulungan
+                  Jumlah Gulungan <span className="text-red-500">*</span>
                 </label>
                 <input
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none"
+                  className={`w-full px-4 py-3 border ${
+                    errors.jumlahGulungan ? "border-red-500" : "border-gray-300"
+                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                   id="jumlah_gulungan"
                   min="1"
                   type="number"
                   value={jumlahGulungan}
-                  onChange={(e) =>
-                    handleJumlahGulunganChange(parseInt(e.target.value))
-                  }
+                  onChange={(e) => {
+                    handleJumlahGulunganChange(parseInt(e.target.value));
+                    clearError("jumlahGulungan");
+                  }}
                 />
+                {errors.jumlahGulungan && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.jumlahGulungan}
+                  </p>
+                )}
                 <p className="text-xs text-gray-500 mt-1">Minimal 1 gulungan</p>
               </div>
             </div>
@@ -321,7 +523,7 @@ export default function EditProdukPage() {
 
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="text-base font-semibold text-gray-900 mb-4">
-              Pola Gulungan
+              Pola Gulungan <span className="text-red-500">*</span>
             </h3>
             <div className="space-y-4 mb-4">
               {polaGulungan.map((item, index) => (
@@ -337,8 +539,11 @@ export default function EditProdukPage() {
                       Gulungan {item.gulungan}
                     </label>
                     <input
-                      required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none"
+                      className={`w-full px-4 py-3 border ${
+                        errors.polaGulungan && errors.polaGulungan[index]
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                       id={`pola-gulungan-${index}`}
                       min="1"
                       placeholder={`Masukkan pola untuk gulungan ${item.gulungan}`}
@@ -346,13 +551,18 @@ export default function EditProdukPage() {
                       value={item.pola}
                       onChange={(e) => handlePolaChange(index, e.target.value)}
                     />
+                    {errors.polaGulungan && errors.polaGulungan[index] && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.polaGulungan[index]}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
 
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex gap-3">
-              <IconInfoCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+              <IconInfoCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-blue-900">
                 <span className="font-semibold">Tips:</span> Jumlah input pola
                 menyesuaikan dengan jumlah gulungan di atas.

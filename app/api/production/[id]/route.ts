@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getProduksiById, updateProduksi, deleteProduksi } from "@/lib/produk";
+import {
+  getGulunganByProduk,
+  deleteGulunganByProduk,
+  createMultipleGulungan,
+  getTotalPolaByProduk,
+} from "@/lib/gulungan";
 
 export async function GET(
   request: NextRequest,
@@ -25,9 +31,16 @@ export async function GET(
       );
     }
 
+    const gulunganList = await getGulunganByProduk(id);
+    const totalPola = await getTotalPolaByProduk(id);
+
     return NextResponse.json({
       success: true,
-      data: produksi,
+      data: {
+        ...produksi,
+        jumlah_pola: totalPola,
+        gulungan_data: gulunganList,
+      },
     });
   } catch (error) {
     console.error("Error in GET /api/production/[id]:", error);
@@ -71,14 +84,29 @@ export async function PUT(
     if (body.warna !== undefined) updateData.warna = body.warna;
     if (body.ukuran !== undefined) updateData.ukuran = body.ukuran;
     if (body.gulungan !== undefined) updateData.gulungan = body.gulungan;
-    if (body.jumlah_pola !== undefined)
-      updateData.jumlah_pola = body.jumlah_pola;
     if (body.progress !== undefined) updateData.progress = body.progress;
     if (body.deadline !== undefined) updateData.deadline = body.deadline;
     if (body.status !== undefined) updateData.status = body.status;
-    if (body.id_user !== undefined) updateData.id_user = body.id_user;
+    if (body.tanggal_mulai !== undefined)
+      updateData.tanggal_mulai = body.tanggal_mulai;
+    if (body.tanggal_selesai !== undefined)
+      updateData.tanggal_selesai = body.tanggal_selesai;
 
     await updateProduksi(id, updateData);
+
+    if (body.gulungan_data && Array.isArray(body.gulungan_data)) {
+      await deleteGulunganByProduk(id);
+
+      const gulunganList = body.gulungan_data.map(
+        (item: any, index: number) => ({
+          id_produk: id,
+          nomor_gulungan: index + 1,
+          jumlah_pola: parseInt(item.pola) || 0,
+        }),
+      );
+
+      await createMultipleGulungan(gulunganList);
+    }
 
     return NextResponse.json({
       success: true,

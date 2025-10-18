@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 
+import { authOptions } from "@/lib/auth";
 import { getAllProduksi, createProduksi } from "@/lib/produk";
+import { createMultipleGulungan, getTotalPolaByProduk } from "@/lib/gulungan";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,9 +13,22 @@ export async function GET(request: NextRequest) {
 
     const result = await getAllProduksi(page, limit);
 
+    const dataWithPola = await Promise.all(
+      result.data.map(async (produk) => {
+        const totalPola = await getTotalPolaByProduk(produk.id_produk);
+
+        return {
+          ...produk,
+          jumlah_pola: totalPola,
+        };
+      }),
+    );
+
     return NextResponse.json({
       success: true,
-      ...result,
+      data: dataWithPola,
+      total: result.total,
+      totalPages: result.totalPages,
     });
   } catch (error) {
     console.error("Error in GET /api/production:", error);
@@ -26,6 +42,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id ? parseInt(session.user.id) : null;
+
+    if (!userId || isNaN(userId)) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized or invalid user ID" },
+        { status: 401 },
+      );
+    }
+
     const body = await request.json();
 
     if (!body.nama_produk) {
@@ -35,23 +61,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!body.gulungan_data?.length) {
+      return NextResponse.json(
+        { success: false, message: "Data gulungan is required" },
+        { status: 400 },
+      );
+    }
+
     const result = await createProduksi({
       nama_produk: body.nama_produk,
       warna: body.warna || null,
       ukuran: body.ukuran || null,
       gulungan: body.gulungan || null,
-      jumlah_pola: body.jumlah_pola || null,
       progress: body.progress || 0,
       deadline: body.deadline || null,
       status: body.status || "diproses",
-      id_user: body.id_user || null,
+      id_user: userId,
+      tanggal_mulai: body.tanggal_mulai || null,
+      tanggal_selesai: body.tanggal_selesai || null,
     });
+
+    const idProduk = (result as any).insertId;
+
+    const gulunganList = body.gulungan_data.map((item: any, index: number) => ({
+      id_produk: idProduk,
+      nomor_gulungan: index + 1,
+      jumlah_pola: parseInt(item.pola) || 0,
+    }));
+
+    await createMultipleGulungan(gulunganList);
 
     return NextResponse.json(
       {
         success: true,
         message: "Produksi created successfully",
-        data: result,
+        data: { id_produk: idProduk },
       },
       { status: 201 },
     );

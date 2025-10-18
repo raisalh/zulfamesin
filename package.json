@@ -69,6 +69,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@eslint/compat": "^1.4.0",
     "@next/eslint-plugin-next": "15.3.4",
     "@react-types/shared": "3.30.0",
     "@tailwindcss/postcss": "4.1.11",
