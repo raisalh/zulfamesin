@@ -311,7 +311,7 @@ export default function TambahProdukPage() {
                 </p>
               )}
               <p className="text-xs text-gray-500 mt-1">
-                Status akan otomatis menjadi "Selesai" jika tanggal selesai diisi
+                Status akan otomatis menjadi Selesai jika tanggal selesai diisi
               </p>
             </div>
           </div>
