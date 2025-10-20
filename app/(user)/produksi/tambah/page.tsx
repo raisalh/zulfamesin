@@ -14,7 +14,6 @@ interface PolaGulungan {
 }
 
 interface FormErrors {
-  status?: string;
   tanggalMulai?: string;
   estimasiSelesai?: string;
   tanggalSelesai?: string;
@@ -31,7 +30,6 @@ export default function TambahProdukPage() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const [status, setStatus] = useState("");
   const [tanggalMulai, setTanggalMulai] = useState("");
   const [estimasiSelesai, setEstimasiSelesai] = useState("");
   const [tanggalSelesai, setTanggalSelesai] = useState("");
@@ -159,11 +157,7 @@ export default function TambahProdukPage() {
     setLoading(true);
 
     try {
-      const totalPola = polaGulungan.reduce((sum, item) => {
-        const pola = parseInt(item.pola) || 0;
-
-        return sum + pola;
-      }, 0);
+      const status = tanggalSelesai ? "selesai" : "diproses";
 
       const response = await fetch("/api/production", {
         method: "POST",
@@ -177,7 +171,7 @@ export default function TambahProdukPage() {
           gulungan: jumlahGulungan,
           progress: 0,
           deadline: estimasiSelesai || null,
-          status: status || "diproses",
+          status: status,
           tanggal_mulai: tanggalMulai || null,
           tanggal_selesai: tanggalSelesai || null,
           gulungan_data: polaGulungan,
@@ -225,31 +219,6 @@ export default function TambahProdukPage() {
 
       <div className="max-w-5xl mx-auto px-6 py-8">
         <form className="space-y-6" onSubmit={handleSubmit}>
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">Status</h3>
-            <p className="text-xs text-gray-500 mb-4">Status Produksi</p>
-            <select
-              className={`w-full px-4 py-3 border ${
-                errors.status ? "border-red-500" : "border-gray-300"
-              } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
-              id="status"
-              value={status}
-              onChange={(e) => {
-                setStatus(e.target.value);
-                clearError("status");
-              }}
-            >
-              <option value="">
-                Pilih Status yang Sesuai Untuk Produksi Ini
-              </option>
-              <option value="diproses">Diproses</option>
-              <option value="selesai">Selesai</option>
-            </select>
-            {errors.status && (
-              <p className="text-red-500 text-sm mt-1">{errors.status}</p>
-            )}
-          </div>
-
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="text-base font-semibold text-gray-900 mb-4">
               Informasi Awal Pengerjaan
@@ -341,6 +310,9 @@ export default function TambahProdukPage() {
                   {errors.tanggalSelesai}
                 </p>
               )}
+              <p className="text-xs text-gray-500 mt-1">
+                Status akan otomatis menjadi "Selesai" jika tanggal selesai diisi
+              </p>
             </div>
           </div>
 

@@ -1,19 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getProduksiById, updateProduksi, deleteProduksi } from "@/lib/produk";
-import {
-  getGulunganByProduk,
-  deleteGulunganByProduk,
-  createMultipleGulungan,
-  getTotalPolaByProduk,
-} from "@/lib/gulungan";
+import { getGulunganByProduk, deleteGulunganByProduk, createMultipleGulungan, getTotalPolaByProduk } from "@/lib/gulungan";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
 
     if (isNaN(id)) {
       return NextResponse.json(
@@ -54,10 +50,11 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
 
     if (isNaN(id)) {
       return NextResponse.json(
@@ -92,6 +89,16 @@ export async function PUT(
     if (body.tanggal_selesai !== undefined)
       updateData.tanggal_selesai = body.tanggal_selesai;
 
+    if (
+      body.tanggal_selesai !== undefined &&
+      body.tanggal_selesai !== null &&
+      body.tanggal_selesai !== ""
+    ) {
+      updateData.status = "selesai";
+    } else if (body.status !== undefined) {
+      updateData.status = body.status;
+    }
+
     await updateProduksi(id, updateData);
 
     if (body.gulungan_data && Array.isArray(body.gulungan_data)) {
@@ -124,10 +131,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
 
     if (isNaN(id)) {
       return NextResponse.json(

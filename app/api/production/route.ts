@@ -20,6 +20,10 @@ export async function GET(request: NextRequest) {
         return {
           ...produk,
           jumlah_pola: totalPola,
+          deadline:
+            produk.tanggal_selesai !== null
+              ? null
+              : produk.deadline,
         };
       }),
     );
@@ -68,6 +72,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const status = (body.tanggal_selesai && body.tanggal_selesai !== null && body.tanggal_selesai !== "") 
+      ? "selesai" 
+      : "diproses";
+
     const result = await createProduksi({
       nama_produk: body.nama_produk,
       warna: body.warna || null,
@@ -75,7 +83,7 @@ export async function POST(request: NextRequest) {
       gulungan: body.gulungan || null,
       progress: body.progress || 0,
       deadline: body.deadline || null,
-      status: body.status || "diproses",
+      status: status, 
       id_user: userId,
       tanggal_mulai: body.tanggal_mulai || null,
       tanggal_selesai: body.tanggal_selesai || null,

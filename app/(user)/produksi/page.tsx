@@ -315,7 +315,7 @@ export default function ProduksiPage() {
                           {produk.progress || 0}%
                         </td>
                         <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
-                          {getDeadlineText(produk.deadline)}
+                          {produk.deadline === null ? "-" : getDeadlineText(produk.deadline)}
                         </td>
                         <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap">
                           <span
