@@ -278,7 +278,7 @@ export default function ProduksiPage() {
                                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 rounded-b-lg"
                                   onClick={() => {
                                     router.push(
-                                      `/produksi/${produk.id_produk}/progress`,
+                                      `/produksi/${produk.id_produk}/lihat-progress`,
                                     );
                                     setOpenDropdown(null);
                                   }}

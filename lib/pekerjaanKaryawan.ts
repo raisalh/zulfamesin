@@ -7,7 +7,6 @@ export interface PekerjaanKaryawan {
     id_jenis_pekerjaan: number;
     unit_dikerjakan: number;
     target_unit: number | null;
-    tanggal_mulai: Date | null;
     tanggal_selesai: Date | null;
     status: 'dikerjakan' | 'selesai';
 }
@@ -52,8 +51,7 @@ export async function getPekerjaanByKaryawan(id_karyawan: number) {
             FROM pekerjaan_karyawan pk
             LEFT JOIN produksi p ON pk.id_produk = p.id_produk
             LEFT JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
-            WHERE pk.id_karyawan = ?
-            ORDER BY pk.tanggal_mulai DESC`,
+            WHERE pk.id_karyawan = ?`,
             [id_karyawan]
         );
 
@@ -68,15 +66,14 @@ export async function createPekerjaanKaryawan(data: Omit<PekerjaanKaryawan, 'id_
     try {
         const [result] = await pool.query(
             `INSERT INTO pekerjaan_karyawan 
-            (id_produk, id_karyawan, id_jenis_pekerjaan, unit_dikerjakan, target_unit, tanggal_mulai, tanggal_selesai, status) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            (id_produk, id_karyawan, id_jenis_pekerjaan, unit_dikerjakan, target_unit, tanggal_selesai, status) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
                 data.id_produk,
                 data.id_karyawan,
                 data.id_jenis_pekerjaan,
                 data.unit_dikerjakan,
                 data.target_unit,
-                data.tanggal_mulai,
                 data.tanggal_selesai,
                 data.status
             ]
@@ -98,15 +95,14 @@ export async function createMultiplePekerjaanKaryawan(pekerjaanList: Omit<Pekerj
         for (const pekerjaan of pekerjaanList) {
             await connection.query(
                 `INSERT INTO pekerjaan_karyawan 
-                (id_produk, id_karyawan, id_jenis_pekerjaan, unit_dikerjakan, target_unit, tanggal_mulai, tanggal_selesai, status) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                (id_produk, id_karyawan, id_jenis_pekerjaan, unit_dikerjakan, target_unit, tanggal_selesai, status) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)`,
                 [
                     pekerjaan.id_produk,
                     pekerjaan.id_karyawan,
                     pekerjaan.id_jenis_pekerjaan,
                     pekerjaan.unit_dikerjakan,
                     pekerjaan.target_unit,
-                    pekerjaan.tanggal_mulai,
                     pekerjaan.tanggal_selesai,
                     pekerjaan.status
                 ]

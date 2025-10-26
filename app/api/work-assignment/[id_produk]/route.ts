@@ -51,7 +51,6 @@ export async function GET(
                 target_unit: item.target_unit,
                 unit_dikerjakan: item.unit_dikerjakan,
                 status: item.status,
-                tanggal_mulai: item.tanggal_mulai,
                 tanggal_selesai: item.tanggal_selesai
             });
         });
