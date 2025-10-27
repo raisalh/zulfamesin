@@ -168,7 +168,7 @@ export default function InformasiPengerjaanPage() {
                             <div className="flex justify-between text-sm mb-2">
                                 <span className="font-medium text-gray-700">Progress Keseluruhan:</span>
                                 <span className="font-medium text-gray-700">
-                                    {overallProgress.toFixed(0)}%
+                                    {overallProgress.toFixed(2)}%
                                 </span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-3">

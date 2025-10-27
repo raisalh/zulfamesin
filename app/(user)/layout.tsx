@@ -13,6 +13,7 @@ import {
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { signOut } from "next-auth/react";
 
 interface User {
   id_user: number;
@@ -168,11 +169,11 @@ export default function UserLayout({
               </div>
               <Button
                 isIconOnly
-                as="a"
                 className="bg-transparent text-slate-300 hover:bg-slate-700"
-                href="/logout"
-                startContent={<IconLogout size={20} />}
-              />
+                onClick={() => signOut({ callbackUrl: "/" })}
+              >
+                <IconLogout size={20} />
+              </Button>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2">
@@ -186,11 +187,11 @@ export default function UserLayout({
               </Button>
               <Button
                 isIconOnly
-                as="a"
                 className="bg-transparent text-slate-300 hover:bg-slate-700"
-                href="/logout"
-                startContent={<IconLogout size={20} />}
-              />
+                onClick={() => signOut({ callbackUrl: "/" })}
+              >
+                <IconLogout size={20} />
+              </Button>
             </div>
           )}
         </div>

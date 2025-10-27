@@ -8,11 +8,6 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  const handleLogout = async () => {
-    await signOut({ redirect: false });
-    router.push("/login");
-  };
-
   if (status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -22,7 +17,7 @@ export default function DashboardPage() {
   }
 
   if (!session) {
-    router.push("/login");
+    router.push("/");
 
     return null;
   }

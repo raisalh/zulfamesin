@@ -169,7 +169,6 @@ export default function TambahProdukPage() {
           warna: warna,
           ukuran: ukuran,
           gulungan: jumlahGulungan,
-          progress: 0,
           deadline: estimasiSelesai || null,
           status: status,
           tanggal_mulai: tanggalMulai || null,

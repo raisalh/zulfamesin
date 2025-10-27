@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
-import { getAllProduksi, createProduksi } from "@/lib/produk";
-import { createMultipleGulungan, getTotalPolaByProduk } from "@/lib/gulungan";
+import { getAllProduksi, createProduksi, getOverallProgressByProduk } from "@/lib/produk";
+import { createMultipleGulungan, getTotalPolaByProduk} from "@/lib/gulungan";
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,14 +16,14 @@ export async function GET(request: NextRequest) {
     const dataWithPola = await Promise.all(
       result.data.map(async (produk) => {
         const totalPola = await getTotalPolaByProduk(produk.id_produk);
-
+        const progress = await getOverallProgressByProduk(produk.id_produk);
+    
         return {
           ...produk,
           jumlah_pola: totalPola,
+          progress: progress, 
           deadline:
-            produk.tanggal_selesai !== null
-              ? null
-              : produk.deadline,
+            produk.tanggal_selesai !== null ? null : produk.deadline,
         };
       }),
     );
@@ -81,7 +81,6 @@ export async function POST(request: NextRequest) {
       warna: body.warna || null,
       ukuran: body.ukuran || null,
       gulungan: body.gulungan || null,
-      progress: body.progress || 0,
       deadline: body.deadline || null,
       status: status, 
       id_user: userId,
