@@ -26,7 +26,8 @@ interface ProdukData {
     warna: string;
     ukuran: string;
     deadline: string;
-    total_pola: number;
+    jumlah_pola: number;
+    status: "selesai" | "diproses" | null;
 }
 
 export default function InformasiPengerjaanPage() {
@@ -135,13 +136,18 @@ export default function InformasiPengerjaanPage() {
                         </h1>
                     </div>
                     <div className="flex gap-3">
-                        <button
-                            onClick={() => router.push(`/produksi/${idProduk}/tambah-progress`)}
-                            className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors flex items-center gap-2"
-                        >
-                            <IconPlus size={20} />
-                            Tambah Progress
-                        </button>
+                    <button
+                        onClick={() => router.push(`/produksi/${idProduk}/tambah-progress`)}
+                        disabled={produk?.status === "selesai"} 
+                        className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors
+                            ${produk?.status === "selesai"
+                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                : "bg-teal-600 text-white hover:bg-teal-700"}
+                        `}
+                    >
+                        <IconPlus size={20} />
+                        Tambah Progress
+                    </button>
                         <button
                             onClick={() => router.push(`/produksi/${idProduk}/detail-progress`)}
                             className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
@@ -158,7 +164,7 @@ export default function InformasiPengerjaanPage() {
                                 {produk.nama_produk}
                             </h2>
                             <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                                <span>Target: {produk.total_pola} unit</span>
+                                <span>Target: {produk.jumlah_pola} unit</span>
                                 <span>•</span>
                                 <span>Deadline: {formatDate(produk.deadline)}</span>
                             </div>
