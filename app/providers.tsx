@@ -29,7 +29,7 @@ export function Providers({ children, themeProps }: ProvidersProps) {
     <HeroUIProvider navigate={router.push}>
       <SessionProvider>
         <ToastProvider />
-        <NextThemesProvider {...themeProps}>{children}</NextThemesProvider>
+        <NextThemesProvider forcedTheme="dark" {...themeProps}>{children}</NextThemesProvider>
       </SessionProvider>
     </HeroUIProvider>
   );
