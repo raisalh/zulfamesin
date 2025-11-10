@@ -15,6 +15,7 @@ export interface PekerjaanKaryawanWithDetails extends PekerjaanKaryawan {
     nama_karyawan?: string;
     nama_pekerjaan?: string;
     upah_per_unit?: number;
+    tanggal_mulai?: Date | null; 
 }
 
 export async function getPekerjaanByProduk(id_produk: number) {
@@ -24,7 +25,10 @@ export async function getPekerjaanByProduk(id_produk: number) {
                 pk.*,
                 k.nama_karyawan,
                 jp.nama_pekerjaan,
-                jp.upah_per_unit
+                jp.upah_per_unit,
+                (SELECT MIN(tanggal_update) 
+                FROM progress_pekerjaan pp 
+                WHERE pp.id_pekerjaan_karyawan = pk.id_pekerjaan_karyawan) as tanggal_mulai
             FROM pekerjaan_karyawan pk
             LEFT JOIN karyawan k ON pk.id_karyawan = k.id_karyawan
             LEFT JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
@@ -47,11 +51,15 @@ export async function getPekerjaanByKaryawan(id_karyawan: number) {
                 pk.*,
                 p.nama_produk,
                 jp.nama_pekerjaan,
-                jp.upah_per_unit
+                jp.upah_per_unit,
+                (SELECT MIN(tanggal_update) 
+                FROM progress_pekerjaan pp 
+                WHERE pp.id_pekerjaan_karyawan = pk.id_pekerjaan_karyawan) as tanggal_mulai
             FROM pekerjaan_karyawan pk
             LEFT JOIN produksi p ON pk.id_produk = p.id_produk
             LEFT JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
-            WHERE pk.id_karyawan = ?`,
+            WHERE pk.id_karyawan = ?
+            ORDER BY pk.id_pekerjaan_karyawan DESC`,
             [id_karyawan]
         );
 
