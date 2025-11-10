@@ -2,7 +2,6 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { z } from "zod";
 import validator from "validator";
-import DOMPurify from "isomorphic-dompurify";
 import bcrypt from "bcrypt";
 import { RowDataPacket } from "mysql2/promise";
 
@@ -17,7 +16,16 @@ interface UserRow extends RowDataPacket {
   id_user: number;
   nama: string;
   password: string;
-  no_telp: string | null;
+  email: string | null;
+}
+
+// Simple sanitization function untuk mengganti DOMPurify
+function sanitizeInput(input: string): string {
+  return input
+    .replace(/[<>]/g, '') // Remove < and >
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .replace(/on\w+\s*=/gi, '') // Remove event handlers
+    .trim();
 }
 
 export const authOptions: NextAuthOptions = {
@@ -32,7 +40,8 @@ export const authOptions: NextAuthOptions = {
         try {
           const validatedData = loginSchema.parse(credentials);
 
-          const username = DOMPurify.sanitize(
+          // Gunakan sanitizeInput sebagai pengganti DOMPurify
+          const username = sanitizeInput(
             validator.trim(validatedData.username),
           );
           const password = validatedData.password;
