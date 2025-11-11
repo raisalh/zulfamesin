@@ -100,7 +100,7 @@ export async function getDistribusiUpah(): Promise<DistribusiUpah> {
             SELECT 
                 SUM(CASE WHEN uk.total_upah > 100000 THEN 1 ELSE 0 END) as upah_tinggi,
                 SUM(CASE WHEN uk.total_upah BETWEEN 50000 AND 100000 THEN 1 ELSE 0 END) as upah_menengah,
-                SUM(CASE WHEN uk.total_upah < 500000 THEN 1 ELSE 0 END) as upah_rendah
+                SUM(CASE WHEN uk.total_upah < 50000 THEN 1 ELSE 0 END) as upah_rendah
             FROM upah_karyawan uk
             INNER JOIN produksi p ON uk.id_produk = p.id_produk
             WHERE uk.status_pembayaran = 'belum'
@@ -243,6 +243,64 @@ export async function getAbsensiKaryawan(hari: number = 7): Promise<AbsensiKarya
         return rows as AbsensiKaryawan[];
     } catch (error) {
         console.error('Error getting absensi karyawan:', error);
+        throw error;
+    }
+}
+
+export async function getCountProductionThisMonth() {
+    try {
+        const [rows] = await pool.query(`
+            SELECT COUNT(*) AS total
+            FROM produksi
+            WHERE DATE_FORMAT(tanggal_mulai, '%Y-%m') = DATE_FORMAT(CURRENT_DATE(), '%Y-%m')
+        `);
+        return (rows as any)[0].total || 0;
+    } catch (error) {
+        console.error('Error counting production this month:', error);
+        throw error;
+    }
+}
+
+export async function getCountProductionLastMonth() {
+    try {
+        const [rows] = await pool.query(`
+            SELECT COUNT(*) AS total
+            FROM produksi
+            WHERE DATE_FORMAT(tanggal_mulai, '%Y-%m') = DATE_FORMAT(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH), '%Y-%m')
+        `);
+        return (rows as any)[0].total || 0;
+    } catch (error) {
+        console.error('Error counting production last month:', error);
+        throw error;
+    }
+}
+
+export async function getCountPolaThisMonth() {
+    try {
+        const [rows] = await pool.query(`
+            SELECT COALESCE(SUM(g.jumlah_pola), 0) AS total
+            FROM gulungan g
+            INNER JOIN produksi p ON g.id_produk = p.id_produk
+            WHERE DATE_FORMAT(p.tanggal_mulai, '%Y-%m') = DATE_FORMAT(CURRENT_DATE(), '%Y-%m')
+        `);
+        return (rows as any)[0].total || 0;
+    } catch (error) {
+        console.error('Error counting pola this month:', error);
+        throw error;
+    }
+}
+
+export async function getCountPolaLastMonth() {
+    try {
+        const [rows] = await pool.query(`
+            SELECT COALESCE(SUM(g.jumlah_pola), 0) AS total
+            FROM gulungan g
+            INNER JOIN produksi p ON g.id_produk = p.id_produk
+            WHERE DATE_FORMAT(p.tanggal_mulai, '%Y-%m') = DATE_FORMAT(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH), '%Y-%m')
+        `);
+        return (rows as any)[0].total || 0;
+    } catch (error) {
+        console.error('Error counting pola last month:', error);
         throw error;
     }
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { IconShirt, IconCurrencyDollar, IconAlertCircle, IconUsers, IconCalendar, IconTrendingUp } from '@tabler/icons-react';
+import { IconShirt, IconCurrencyDollar, IconAlertCircle, IconUsers, IconCalendar, IconTrendingUp, IconChartBar } from '@tabler/icons-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface DashboardData {
@@ -52,6 +52,18 @@ interface DashboardData {
         tanggal_terakhir: string;
         jumlah_kehadiran: number;
     }>;
+
+    produkGrowth: {
+        bulanIni: number;
+        bulanLalu: number;
+        persen: number;
+    };
+
+    polaGrowth: {
+        bulanIni: number;
+        bulanLalu: number;
+        persen: number;
+    };
 }
 
 const COLORS = ['#10b981', '#3b82f6', '#94a3b8'];
@@ -94,9 +106,9 @@ export default function BerandaPage() {
     }
 
     const chartData = [
-        { name: 'Upah Tinggi (>100K)', value: data.distribusiUpah.upahTinggi || 0},
-        { name: 'Upah Menengah (50K-100K)', value: data.distribusiUpah.upahMenengah || 0},
-        { name: 'Upah Rendah (<50K)', value: data.distribusiUpah.upahRendah || 0},
+        { name: 'Upah Tinggi (>100K)', value: data.distribusiUpah.upahTinggi || 0 },
+        { name: 'Upah Menengah (50K-100K)', value: data.distribusiUpah.upahMenengah || 0 },
+        { name: 'Upah Rendah (<50K)', value: data.distribusiUpah.upahRendah || 0 },
     ];
 
     const formatRupiah = (amount: number) => {
@@ -105,6 +117,28 @@ export default function BerandaPage() {
             currency: 'IDR',
             minimumFractionDigits: 0
         }).format(amount);
+    };
+
+    const renderPercentageText = (growth: { bulanIni: number; bulanLalu: number; persen: number }) => {
+        if (growth.persen > 0) {
+            return (
+                <p className="text-sm text-green-600 mt-1">
+                    ▲ Naik {growth.persen}% dari bulan lalu, yaitu {growth.bulanLalu}
+                </p>
+            );
+        } else if (growth.persen < 0) {
+            return (
+                <p className="text-sm text-red-600 mt-1">
+                    ▼ Turun {Math.abs(growth.persen)}% dari bulan lalu, yaitu {growth.bulanLalu}
+                </p>
+            );
+        } else {
+            return (
+                <p className="text-sm text-gray-500 mt-1">
+                    Tidak ada perubahan dari bulan lalu, yaitu {growth.bulanLalu}
+                </p>
+            );
+        }
     };
 
     return (
@@ -167,6 +201,38 @@ export default function BerandaPage() {
                 </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white rounded-lg shadow-md p-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                            <p className="text-sm text-gray-600">Perbandingan Produk</p>
+                            <p className="text-3xl font-bold text-gray-800 mt-2">
+                                {data.produkGrowth.bulanIni} Produk
+                            </p>
+                            {renderPercentageText(data.produkGrowth)}
+                        </div>
+                        <div className="bg-gray-100 p-3 rounded-full">
+                            <IconChartBar className="w-8 h-8 text-gray-600" />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-md p-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                            <p className="text-sm text-gray-600">Perbandingan Total Pola</p>
+                            <p className="text-3xl font-bold text-gray-800 mt-2">
+                                {data.polaGrowth.bulanIni} Pola
+                            </p>
+                            {renderPercentageText(data.polaGrowth)}
+                        </div>
+                        <div className="bg-gray-100 p-3 rounded-full">
+                            <IconChartBar className="w-8 h-8 text-gray-600" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-xl font-semibold text-gray-800 mb-4">
@@ -198,8 +264,8 @@ export default function BerandaPage() {
                             {chartData.map((item, index) => (
                                 <div key={index} className="flex items-center justify-between text-sm">
                                     <div className="flex items-center">
-                                        <div 
-                                            className="w-3 h-3 rounded-full mr-2" 
+                                        <div
+                                            className="w-3 h-3 rounded-full mr-2"
                                             style={{ backgroundColor: COLORS[index] }}
                                         />
                                         <span className="text-gray-600">{item.name}</span>
@@ -218,13 +284,13 @@ export default function BerandaPage() {
                             onClick={() => router.push('/produksi')}
                             className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 text-sm font-medium transition"
                         >
-                            <span>Lihat Semua</span>
+                            <span><u>Lihat Semua</u></span>
                         </button>
                     </div>
                     <div className="space-y-3">
                         {data.produkTerbaru.map((produk) => (
-                            <div 
-                                key={produk.id_produk} 
+                            <div
+                                key={produk.id_produk}
                                 className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
                             >
                                 <div className="flex items-center space-x-3">
@@ -240,12 +306,11 @@ export default function BerandaPage() {
                                         </p>
                                     </div>
                                 </div>
-                                <span 
-                                    className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                        produk.status === 'selesai' 
-                                            ? 'bg-green-100 text-green-700' 
-                                            : 'bg-yellow-100 text-yellow-700'
-                                    }`}
+                                <span
+                                    className={`px-3 py-1 rounded-full text-sm font-medium ${produk.status === 'selesai'
+                                        ? 'bg-green-100 text-green-700'
+                                        : 'bg-yellow-100 text-yellow-700'
+                                        }`}
                                 >
                                     {produk.status === 'selesai' ? 'Selesai' : 'Diproses'}
                                 </span>
@@ -270,7 +335,7 @@ export default function BerandaPage() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {data.deadlineMendekat.map((produk) => (
-                            <div 
+                            <div
                                 key={produk.id_produk}
                                 className="border border-red-200 rounded-lg p-4 bg-red-50 hover:shadow-md transition"
                             >
@@ -293,7 +358,7 @@ export default function BerandaPage() {
                                         <span className="font-semibold">{produk.progress}%</span>
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-2">
-                                        <div 
+                                        <div
                                             className="bg-red-600 h-2 rounded-full transition-all"
                                             style={{ width: `${produk.progress}%` }}
                                         />
@@ -314,7 +379,7 @@ export default function BerandaPage() {
                 </div>
                 <div className="space-y-4">
                     {data.produkProgress.map((produk) => (
-                        <div 
+                        <div
                             key={produk.id_produk}
                             className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition"
                         >
@@ -338,7 +403,7 @@ export default function BerandaPage() {
                                     </span>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-3">
-                                <div className={`h-3 rounded-full transition-all ${produk.progress === 100 ? 'bg-green-500' : 'bg-yellow-400'}`} style={{ width: `${produk.progress}%` }}/>
+                                    <div className={`h-3 rounded-full transition-all ${produk.progress === 100 ? 'bg-green-500' : 'bg-yellow-400'}`} style={{ width: `${produk.progress}%` }} />
                                 </div>
                             </div>
                         </div>

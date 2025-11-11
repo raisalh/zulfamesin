@@ -7,7 +7,11 @@ import {
     getProdukTerbaru,
     getProdukDeadlineMendekat,
     getProdukProgress,
-    getAbsensiKaryawan
+    getAbsensiKaryawan,
+    getCountProductionLastMonth,
+    getCountProductionThisMonth,
+    getCountPolaThisMonth,
+    getCountPolaLastMonth
 } from '@/lib/dashboard';
 
 export async function GET(request: NextRequest) {
@@ -27,24 +31,68 @@ export async function GET(request: NextRequest) {
             produkTerbaru,
             deadlineMendekat,
             produkProgress,
-            absensiKaryawan
+            absensiKaryawan,
+            countLastMonth,
+            countThisMonth,
+            countPolaThisMonth,
+            countPolaLastMonth
         ] = await Promise.all([
             getDashboardStats(),
             getDistribusiUpah(),
             getProdukTerbaru(5),
             getProdukDeadlineMendekat(),
             getProdukProgress(),
-            getAbsensiKaryawan(7)
+            getAbsensiKaryawan(7),
+            getCountProductionLastMonth(),
+            getCountProductionThisMonth(),
+            getCountPolaThisMonth(),
+            getCountPolaLastMonth()
         ]);
+        
+        const bulanIni = Number(countThisMonth) || 0;
+        const bulanLalu = Number(countLastMonth) || 0;
 
-        return NextResponse.json({
+        let persenProduk = 0;
+        if (bulanLalu > 0) {
+            persenProduk = ((bulanIni - bulanLalu) / bulanLalu) * 100;
+        } else if (bulanIni > 0) {
+            persenProduk = 100;
+        }
+
+        const produkGrowth = {
+            bulanIni,
+            bulanLalu,
+            persen: Number(persenProduk.toFixed(2))
+        };
+
+        const polaBulanIni = Number(countPolaThisMonth) || 0;
+        const polaBulanLalu = Number(countPolaLastMonth) || 0;
+
+        let persenPola = 0;
+        if (polaBulanLalu > 0) {
+            persenPola = ((polaBulanIni - polaBulanLalu) / polaBulanLalu) * 100;
+        } else if (polaBulanIni > 0) {
+            persenPola = 100;
+        }
+
+        const polaGrowth = {
+            bulanIni: polaBulanIni,
+            bulanLalu: polaBulanLalu,
+            persen: Number(persenPola.toFixed(2))
+        };
+
+        const response = {
             stats,
             distribusiUpah,
             produkTerbaru,
             deadlineMendekat,
             produkProgress,
-            absensiKaryawan
-        });
+            absensiKaryawan,
+            produkGrowth,
+            polaGrowth
+        };
+
+        return NextResponse.json(response);
     } catch (error) {
         console.error('Error fetching dashboard data:', error);
         return NextResponse.json(
