@@ -6,6 +6,7 @@ export interface Produksi {
   warna: string | null;
   ukuran: string | null;
   gulungan: number | null;
+  progress: number | null;
   deadline: Date | null;
   status: "diproses" | "selesai" | null;
   id_user: number;
@@ -88,18 +89,19 @@ export async function createProduksi(data: Omit<Produksi, "id_produk">) {
   try {
     const [result] = await pool.query(
       `INSERT INTO produksi 
-      (nama_produk, warna, ukuran, gulungan, deadline, status, id_user, tanggal_mulai, tanggal_selesai)  
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (nama_produk, warna, ukuran, gulungan, progress, deadline, status, id_user, tanggal_mulai, tanggal_selesai)  
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         data.nama_produk,
         data.warna,
         data.ukuran,
         data.gulungan,
+        data.progress,
         data.deadline,
         data.status,
         data.id_user,
         data.tanggal_mulai,
-        data.tanggal_selesai,
+        data.tanggal_selesai
       ],
     );
 
@@ -146,24 +148,51 @@ export async function deleteProduksi(id: number) {
   }
 }
 
-export async function getOverallProgressByProduk(id_produk: number) {
+export async function getOverallProgressByProduk(id_produk: number): Promise<number> {
   try {
-    const [rows]: any = await pool.query(`
+    const [rows] = await pool.query(`
       SELECT 
-        COALESCE(SUM(pk.unit_dikerjakan), 0) AS total_dikerjakan,
-        COALESCE(SUM(pk.target_unit), 0) AS total_target
-      FROM pekerjaan_karyawan pk
-      WHERE pk.id_produk = ?
+        COALESCE(
+          CASE 
+            WHEN SUM(target_unit) > 0 
+            THEN LEAST(ROUND((SUM(unit_dikerjakan) / SUM(target_unit)) * 100, 2), 100)
+            ELSE 0 
+          END, 
+          0
+        ) as progress
+      FROM pekerjaan_karyawan
+      WHERE id_produk = ?
     `, [id_produk]);
 
-    const totalDikerjakan = rows[0]?.total_dikerjakan || 0;
-    const totalTarget = rows[0]?.total_target || 0;
-
-    if (totalTarget === 0) return 0;
-
-    return Number((Math.min((totalDikerjakan / totalTarget) * 100, 100)).toFixed(2));
+    const result = (rows as any)[0];
+    return result.progress || 0;
   } catch (error) {
-    console.error('Error getting overall progress:', error);
+    console.error("Error getting overall progress:", error);
+    throw error;
+  }
+}
+
+export async function updateStatusBasedOnProgress(id_produk: number) {
+  try {
+    const progress = await getOverallProgressByProduk(id_produk);
+    
+    if (progress >= 100) {
+      await pool.query(`
+        UPDATE produksi 
+        SET status = 'selesai', 
+            tanggal_selesai = CASE 
+              WHEN tanggal_selesai IS NULL THEN CURRENT_DATE 
+              ELSE tanggal_selesai 
+            END
+        WHERE id_produk = ? AND status != 'selesai'
+      `, [id_produk]);
+      
+      return { updated: true, progress };
+    }
+    
+    return { updated: false, progress };
+  } catch (error) {
+    console.error("Error updating status based on progress:", error);
     throw error;
   }
 }

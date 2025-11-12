@@ -221,7 +221,7 @@ export default function TambahKaryawanPage() {
                 Kembali
               </button>
               <button
-                className="px-8 py-3 bg-yellow-400 rounded-full text-gray-900 font-semibold hover:bg-yellow-500 transition-colors min-w-[120px]"
+                className="px-8 py-3 bg-[#8EC3B3] rounded-full text-gray-900 font-semibold hover:bg-yellow-500 transition-colors min-w-[120px]"
                 onClick={confirmBatal}
               >
                 Ya

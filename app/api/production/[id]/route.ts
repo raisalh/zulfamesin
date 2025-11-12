@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getProduksiById, updateProduksi, deleteProduksi } from "@/lib/produk";
+import { getProduksiById, updateProduksi, deleteProduksi, updateStatusBasedOnProgress } from "@/lib/produk";
 import { getGulunganByProduk, deleteGulunganByProduk, createMultipleGulungan, getTotalPolaByProduk } from "@/lib/gulungan";
 
 export async function GET(
@@ -113,6 +113,10 @@ export async function PUT(
       );
 
       await createMultipleGulungan(gulunganList);
+    }
+
+    if (!body.tanggal_selesai) {
+      await updateStatusBasedOnProgress(id);
     }
 
     return NextResponse.json({

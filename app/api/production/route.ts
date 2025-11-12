@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
       warna: body.warna || null,
       ukuran: body.ukuran || null,
       gulungan: body.gulungan || null,
+      progress: 0, 
       deadline: body.deadline || null,
       status: status, 
       id_user: userId,

@@ -1,4 +1,5 @@
 import pool from '@/lib/db';
+import { updateStatusBasedOnProgress } from './produk';
 
 export interface ProgressPekerjaan {
     id_progress: number;
@@ -52,12 +53,14 @@ export async function createProgressPekerjaan(data: ProgressPekerjaanInput) {
         );
 
         const [pekerjaanRows] = await connection.query(
-            `SELECT unit_dikerjakan, target_unit FROM pekerjaan_karyawan 
+            `SELECT id_produk, unit_dikerjakan, target_unit 
+            FROM pekerjaan_karyawan 
             WHERE id_pekerjaan_karyawan = ?`,
             [data.id_pekerjaan_karyawan]
         );
 
         const pekerjaan = (pekerjaanRows as any)[0];
+        
         if (pekerjaan.unit_dikerjakan >= pekerjaan.target_unit) {
             await connection.query(
                 `UPDATE pekerjaan_karyawan 
@@ -68,6 +71,10 @@ export async function createProgressPekerjaan(data: ProgressPekerjaanInput) {
         }
 
         await connection.commit();
+        
+        const id_produk = pekerjaan.id_produk;
+        await updateStatusBasedOnProgress(id_produk);
+        
         return result;
     } catch (error) {
         await connection.rollback();
@@ -83,6 +90,8 @@ export async function createMultipleProgress(progressList: ProgressPekerjaanInpu
     
     try {
         await connection.beginTransaction();
+
+        const affectedProducts = new Set<number>();
 
         for (const progress of progressList) {
             await connection.query(
@@ -104,12 +113,14 @@ export async function createMultipleProgress(progressList: ProgressPekerjaanInpu
             );
 
             const [pekerjaanRows] = await connection.query(
-                `SELECT unit_dikerjakan, target_unit FROM pekerjaan_karyawan 
+                `SELECT id_produk, unit_dikerjakan, target_unit 
+                FROM pekerjaan_karyawan 
                 WHERE id_pekerjaan_karyawan = ?`,
                 [progress.id_pekerjaan_karyawan]
             );
 
             const pekerjaan = (pekerjaanRows as any)[0];
+            
             if (pekerjaan.unit_dikerjakan >= pekerjaan.target_unit) {
                 await connection.query(
                     `UPDATE pekerjaan_karyawan 
@@ -118,9 +129,17 @@ export async function createMultipleProgress(progressList: ProgressPekerjaanInpu
                     [progress.id_pekerjaan_karyawan]
                 );
             }
+
+            affectedProducts.add(pekerjaan.id_produk);
         }
 
         await connection.commit();
+
+        const productIds = Array.from(affectedProducts);
+        for (const id_produk of productIds) {
+            await updateStatusBasedOnProgress(id_produk);
+        }
+
         return { success: true };
     } catch (error) {
         await connection.rollback();
