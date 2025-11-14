@@ -90,15 +90,32 @@ export default function ProduksiPage() {
     }
   };
 
-  const getDeadlineText = (deadline: string | null) => {
-    if (!deadline) return "0 Hari";
+  const getDeadlineText = (deadline: string | null, status: "diproses" | "selesai" | null) => {
+    if (status === "selesai") return { text: "-" };
+    if (!deadline) return { text: "-" };
 
     const deadlineDate = new Date(deadline);
     const today = new Date();
+
+    deadlineDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
     const diffTime = deadlineDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    return `${diffDays} Hari`;
+    if (diffDays < 0) {
+      return {
+        text: `Lewat ${Math.abs(diffDays)} Hari`
+      };
+    } else if (diffDays === 0) {
+      return {
+        text: "Hari Ini"
+      };
+    } else {
+      return {
+        text: `${diffDays} Hari`
+      };
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -231,107 +248,110 @@ export default function ProduksiPage() {
                       </td>
                     </tr>
                   ) : (
-                    produksiList.map((produk) => (
-                      <tr key={produk.id_produk} className="hover:bg-gray-50">
-                        <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap">
-                          <div
-                            ref={
-                              openDropdown === produk.id_produk
-                                ? dropdownRef
-                                : null
-                            }
-                            className="relative"
-                          >
-                            <button
-                              className="text-gray-600 hover:text-gray-900 p-1"
-                              title="Menu"
-                              onClick={() => toggleDropdown(produk.id_produk)}
-                            >
-                              <IconDotsVertical size={20} />
-                            </button>
+                    produksiList.map((produk) => {
+                      const deadlineInfo = getDeadlineText(produk.deadline, produk.status);
 
-                            {openDropdown === produk.id_produk && (
-                              <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                                <button
-                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 rounded-t-lg"
-                                  onClick={() => {
-                                    router.push(
-                                      `/produksi/${produk.id_produk}/edit`,
-                                    );
-                                    setOpenDropdown(null);
-                                  }}
-                                >
-                                  <IconEdit size={16} /> Edit Produksi
-                                </button>
-                                <button
-                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                                  onClick={() => {
-                                    router.push(
-                                      `/produksi/${produk.id_produk}/assign-kerjaan`,
-                                    );
-                                    setOpenDropdown(null);
-                                  }}
-                                >
-                                  <IconPlus size={16} /> Tambah Pekerjaan
-                                </button>
-                                <button
-                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 rounded-b-lg"
-                                  onClick={() => {
-                                    router.push(
-                                      `/produksi/${produk.id_produk}/lihat-progress`,
-                                    );
-                                    setOpenDropdown(null);
-                                  }}
-                                >
-                                  <IconEye size={16} /> Lihat Progress
-                                </button>
-                                <button
-                                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 rounded-b-lg"
-                                  onClick={() => handleDelete(produk.id_produk)}
-                                >
-                                  <IconTrash size={16} />
-                                  Hapus Produk
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
-                          {produk.nama_produk}
-                        </td>
-                        <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
-                          {produk.warna}
-                        </td>
-                        <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
-                          {produk.ukuran}
-                        </td>
-                        <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
-                          {produk.gulungan}
-                        </td>
-                        <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
-                          {produk.jumlah_pola}
-                        </td>
-                        <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
-                          {produk.progress}%
-                        </td>
-                        <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
-                          {produk.deadline === null ? "-" : getDeadlineText(produk.deadline)}
-                        </td>
-                        <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 md:px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              produk.status === "selesai"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-yellow-100 text-yellow-800"
-                            }`}
-                          >
-                            {produk.status === "selesai"
-                              ? "Selesai"
-                              : "Diproses"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
+                      return (
+                        <tr key={produk.id_produk} className="hover:bg-gray-50">
+                          <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap">
+                            <div
+                              ref={
+                                openDropdown === produk.id_produk
+                                  ? dropdownRef
+                                  : null
+                              }
+                              className="relative"
+                            >
+                              <button
+                                className="text-gray-600 hover:text-gray-900 p-1"
+                                title="Menu"
+                                onClick={() => toggleDropdown(produk.id_produk)}
+                              >
+                                <IconDotsVertical size={20} />
+                              </button>
+
+                              {openDropdown === produk.id_produk && (
+                                <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                                  <button
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 rounded-t-lg"
+                                    onClick={() => {
+                                      router.push(
+                                        `/produksi/${produk.id_produk}/edit`,
+                                      );
+                                      setOpenDropdown(null);
+                                    }}
+                                  >
+                                    <IconEdit size={16} /> Edit Produksi
+                                  </button>
+                                  <button
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                    onClick={() => {
+                                      router.push(
+                                        `/produksi/${produk.id_produk}/assign-kerjaan`,
+                                      );
+                                      setOpenDropdown(null);
+                                    }}
+                                  >
+                                    <IconPlus size={16} /> Tambah Pekerjaan
+                                  </button>
+                                  <button
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 rounded-b-lg"
+                                    onClick={() => {
+                                      router.push(
+                                        `/produksi/${produk.id_produk}/lihat-progress`,
+                                      );
+                                      setOpenDropdown(null);
+                                    }}
+                                  >
+                                    <IconEye size={16} /> Lihat Progress
+                                  </button>
+                                  <button
+                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 rounded-b-lg"
+                                    onClick={() => handleDelete(produk.id_produk)}
+                                  >
+                                    <IconTrash size={16} />
+                                    Hapus Produk
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
+                            {produk.nama_produk}
+                          </td>
+                          <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
+                            {produk.warna}
+                          </td>
+                          <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
+                            {produk.ukuran}
+                          </td>
+                          <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
+                            {produk.gulungan}
+                          </td>
+                          <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
+                            {produk.jumlah_pola}
+                          </td>
+                          <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
+                            {produk.progress}%
+                          </td>
+                          <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm">
+                            {deadlineInfo.text}
+                          </td>
+                          <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap">
+                            <span
+                              className={`px-2 md:px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${produk.status === "selesai"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                                }`}
+                            >
+                              {produk.status === "selesai"
+                                ? "Selesai"
+                                : "Diproses"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -353,11 +373,10 @@ export default function ProduksiPage() {
                 {[...Array(totalPages)].map((_, idx) => (
                   <button
                     key={idx}
-                    className={`px-2 md:px-3 py-1 border rounded text-xs md:text-sm ${
-                      currentPage === idx + 1
+                    className={`px-2 md:px-3 py-1 border rounded text-xs md:text-sm ${currentPage === idx + 1
                         ? "bg-teal-500 text-white"
                         : "hover:bg-gray-100"
-                    }`}
+                      }`}
                     onClick={() => setCurrentPage(idx + 1)}
                   >
                     {idx + 1}
