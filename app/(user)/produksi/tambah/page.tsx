@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   IconInfoCircle,
   IconAlertTriangle,
   IconLoader2,
+  IconSearch,
+  IconCheck,
 } from "@tabler/icons-react";
 
 interface PolaGulungan {
@@ -24,11 +26,27 @@ interface FormErrors {
   polaGulungan?: { [key: number]: string };
 }
 
+interface ProdukSuggestion {
+  id_produk: number;
+  nama_produk: string;
+  warna: string;
+  ukuran: string;
+  nomor_gulungan: number | null;
+}
+
 export default function TambahProdukPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+  
+  // Autocomplete states
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState<ProdukSuggestion[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const suggestionRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const [tanggalMulai, setTanggalMulai] = useState("");
   const [estimasiSelesai, setEstimasiSelesai] = useState("");
@@ -40,6 +58,103 @@ export default function TambahProdukPage() {
   const [polaGulungan, setPolaGulungan] = useState<PolaGulungan[]>([
     { gulungan: 1, pola: "" },
   ]);
+
+  useEffect(() => {
+    if (namaProduk.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      searchProduk(namaProduk);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [namaProduk]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        suggestionRef.current &&
+        !suggestionRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const searchProduk = async (query: string) => {
+    setSearchLoading(true);
+    try {
+      const response = await fetch(
+        `/api/production?search=${encodeURIComponent(query)}`
+      );
+      const result = await response.json();
+
+      if (result.success) {
+        setSuggestions(result.data);
+        setShowSuggestions(result.data.length > 0);
+      }
+    } catch (error) {
+      console.error("Error searching produk:", error);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleSelectSuggestion = (suggestion: ProdukSuggestion) => {
+    setNamaProduk(suggestion.nama_produk);
+    setWarna(suggestion.warna);
+    setUkuran(suggestion.ukuran);
+    
+    // Auto-fill jumlah gulungan berdasarkan nomor_gulungan terakhir
+    if (suggestion.nomor_gulungan && suggestion.nomor_gulungan > 0) {
+      handleJumlahGulunganChange(suggestion.nomor_gulungan);
+    }
+    
+    setShowSuggestions(false);
+    setSelectedIndex(-1);
+    
+    const newErrors = { ...errors };
+    delete newErrors.namaProduk;
+    delete newErrors.warna;
+    delete newErrors.ukuran;
+    delete newErrors.jumlahGulungan;
+    setErrors(newErrors);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setSelectedIndex((prev) =>
+          prev < suggestions.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
+          handleSelectSuggestion(suggestions[selectedIndex]);
+        }
+        break;
+      case "Escape":
+        setShowSuggestions(false);
+        setSelectedIndex(-1);
+        break;
+    }
+  };
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -321,31 +436,108 @@ export default function TambahProdukPage() {
             </h3>
 
             <div className="space-y-4">
-              <div>
+              <div className="relative">
                 <label
                   className="block text-sm font-medium text-gray-700 mb-2"
                   htmlFor="nama_produk"
                 >
                   Nama Produk <span className="text-red-500">*</span>
                 </label>
-                <input
-                  className={`w-full px-4 py-3 border ${
-                    errors.namaProduk ? "border-red-500" : "border-gray-300"
-                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
-                  id="nama_produk"
-                  placeholder="Masukkan nama produk"
-                  type="text"
-                  value={namaProduk}
-                  onChange={(e) => {
-                    setNamaProduk(e.target.value);
-                    clearError("namaProduk");
-                  }}
-                />
+                <div className="relative">
+                  <input
+                    ref={inputRef}
+                    className={`w-full px-4 py-3 pr-10 border ${
+                      errors.namaProduk ? "border-red-500" : "border-gray-300"
+                    } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                    id="nama_produk"
+                    placeholder="Ketik nama produk (min. 2 karakter untuk pencarian)"
+                    type="text"
+                    value={namaProduk}
+                    onChange={(e) => {
+                      setNamaProduk(e.target.value);
+                      clearError("namaProduk");
+                    }}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => {
+                      if (suggestions.length > 0) {
+                        setShowSuggestions(true);
+                      }
+                    }}
+                    autoComplete="off"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {searchLoading ? (
+                      <IconLoader2 className="w-5 h-5 text-gray-400 animate-spin" />
+                    ) : (
+                      <IconSearch className="w-5 h-5 text-gray-400" />
+                    )}
+                  </div>
+                </div>
+                
                 {errors.namaProduk && (
                   <p className="text-red-500 text-sm mt-1">
                     {errors.namaProduk}
                   </p>
                 )}
+
+                {showSuggestions && suggestions.length > 0 && (
+                  <div
+                    ref={suggestionRef}
+                    className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                  >
+                    <div className="p-2 bg-gray-50 border-b border-gray-200 sticky top-0">
+                      <p className="text-xs text-gray-600 font-medium">
+                        Pilih dari data yang ada (akan auto-fill form):
+                      </p>
+                    </div>
+                    {suggestions.map((suggestion, index) => (
+                      <div
+                        key={suggestion.id_produk}
+                        className={`px-4 py-3 cursor-pointer transition-colors ${
+                          index === selectedIndex
+                            ? "bg-blue-50 border-l-4 border-blue-500"
+                            : "hover:bg-gray-50 border-l-4 border-transparent"
+                        }`}
+                        onClick={() => handleSelectSuggestion(suggestion)}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 truncate">
+                              {suggestion.nama_produk}
+                            </p>
+                            <div className="flex items-center gap-3 mt-1 flex-wrap">
+                              <span className="text-xs text-gray-600">
+                                <span className="font-medium">Warna:</span>{" "}
+                                {suggestion.warna}
+                              </span>
+                              <span className="text-xs text-gray-400">•</span>
+                              <span className="text-xs text-gray-600">
+                                <span className="font-medium">Ukuran:</span>{" "}
+                                {suggestion.ukuran}
+                              </span>
+                              {suggestion.nomor_gulungan && (
+                                <>
+                                  <span className="text-xs text-gray-400">•</span>
+                                  <span className="text-xs text-gray-600">
+                                    <span className="font-medium">Gulungan:</span>{" "}
+                                    {suggestion.nomor_gulungan}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          {index === selectedIndex && (
+                            <IconCheck className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-xs text-gray-500 mt-1">
+                  Ketik minimal 2 karakter untuk mencari produk yang sudah ada. Data akan auto-fill.
+                </p>
               </div>
 
               <div>
@@ -423,7 +615,7 @@ export default function TambahProdukPage() {
                     {errors.jumlahGulungan}
                   </p>
                 )}
-                <p className="text-xs text-gray-500 mt-1">Minimal 1 gulungan</p>
+                <p className="text-xs text-gray-500 mt-1">Minimal 1 gulungan. Auto-fill dari data produk sebelumnya.</p>
               </div>
             </div>
           </div>

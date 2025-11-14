@@ -20,7 +20,7 @@ interface Produksi {
   ukuran: string;
   gulungan: number;
   jumlah_pola: number;
-  progress: number | null;
+  progress: number;
   deadline: string | null;
   status: "diproses" | "selesai" | null;
 }
@@ -312,7 +312,7 @@ export default function ProduksiPage() {
                           {produk.jumlah_pola}
                         </td>
                         <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
-                          {produk.progress || 0}%
+                          {produk.progress}%
                         </td>
                         <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
                           {produk.deadline === null ? "-" : getDeadlineText(produk.deadline)}

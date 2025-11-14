@@ -148,30 +148,6 @@ export async function deleteProduksi(id: number) {
   }
 }
 
-export async function getOverallProgressByProduk(id_produk: number): Promise<number> {
-  try {
-    const [rows] = await pool.query(`
-      SELECT 
-        COALESCE(
-          CASE 
-            WHEN SUM(target_unit) > 0 
-            THEN LEAST(ROUND((SUM(unit_dikerjakan) / SUM(target_unit)) * 100, 2), 100)
-            ELSE 0 
-          END, 
-          0
-        ) as progress
-      FROM pekerjaan_karyawan
-      WHERE id_produk = ?
-    `, [id_produk]);
-
-    const result = (rows as any)[0];
-    return result.progress || 0;
-  } catch (error) {
-    console.error("Error getting overall progress:", error);
-    throw error;
-  }
-}
-
 export async function updateStatusBasedOnProgress(id_produk: number) {
   try {
     const progress = await getOverallProgressByProduk(id_produk);
@@ -193,6 +169,31 @@ export async function updateStatusBasedOnProgress(id_produk: number) {
     return { updated: false, progress };
   } catch (error) {
     console.error("Error updating status based on progress:", error);
+    throw error;
+  }
+}
+
+export async function getOverallProgressByProduk(id_produk: number): Promise<number> {
+  try {
+    const [rows] = await pool.query(
+      `SELECT 
+        COALESCE(
+          CASE 
+            WHEN SUM(target_unit) > 0 
+            THEN LEAST(ROUND((SUM(unit_dikerjakan) / SUM(target_unit)) * 100, 2), 100)
+            ELSE 0 
+          END, 
+          0
+        ) as progress
+      FROM pekerjaan_karyawan
+      WHERE id_produk = ?`,
+      [id_produk]
+    );
+
+    const result = (rows as any)[0];
+    return result.progress || 0;
+  } catch (error) {
+    console.error('Error getting overall progress:', error);
     throw error;
   }
 }
