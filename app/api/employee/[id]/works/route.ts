@@ -31,7 +31,7 @@ export async function GET(
             p.nama_produk,
             p.warna,
             p.ukuran,
-            p.status,
+            p.status AS status_kerjaan,
             SUM(pk.unit_dikerjakan * jp.upah_per_unit) as total_upah,
             uk.status_pembayaran,
             uk.tanggal_pembayaran

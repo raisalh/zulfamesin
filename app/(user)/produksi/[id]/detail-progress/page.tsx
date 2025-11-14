@@ -35,6 +35,25 @@ export default function DetailProgressPage() {
         }
     }, [idProduk]);
 
+    const groupProgress = (progressList: ProgressDetail[]) => {
+        const grouped = new Map();
+    
+        for (const p of progressList) {
+            const key = `${p.nama_karyawan}-${p.tanggal_update.split("T")[0]}`;
+    
+            if (!grouped.has(key)) {
+                grouped.set(key, {
+                    ...p,
+                    unit_progress: p.unit_progress
+                });
+            } else {
+                grouped.get(key).unit_progress += p.unit_progress;
+            }
+        }
+    
+        return Array.from(grouped.values());
+    };
+    
     const fetchProgressDetail = async () => {
         try {
             setLoading(true);
@@ -73,7 +92,7 @@ export default function DetailProgressPage() {
                         return {
                             id_jenis_pekerjaan: pekerjaan.id_jenis_pekerjaan,
                             nama_pekerjaan: pekerjaan.nama_pekerjaan,
-                            progress_list: progressList
+                            progress_list: groupProgress(progressList)
                         };
                     })
                 );
@@ -121,7 +140,7 @@ export default function DetailProgressPage() {
             </div>
         );
     }
-
+    
     return (
         <div className="min-h-screen bg-gray-50 p-6">
             <div className="max-w-7xl mx-auto">

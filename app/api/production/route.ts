@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // Query baru untuk mengambil data dengan gulungan terakhir
       const [rows] = await pool.query(`
         SELECT 
           p.id_produk,
@@ -54,17 +53,14 @@ export async function GET(request: NextRequest) {
 
     const result = await getAllProduksi(page, limit);
 
-    // Ambil data dengan progress dan jumlah_pola yang dihitung
     const dataWithDetails = await Promise.all(
       result.data.map(async (produk) => {
-        // Hitung total jumlah_pola dari tabel gulungan
         const [polaResult] = await pool.query(
           `SELECT COALESCE(SUM(jumlah_pola), 0) as total_pola FROM gulungan WHERE id_produk = ?`,
           [produk.id_produk]
         );
         const totalPola = (polaResult as any)[0].total_pola || 0;
 
-        // Hitung progress dari pekerjaan_karyawan
         const [progressResult] = await pool.query(
           `SELECT 
             COALESCE(
@@ -81,10 +77,17 @@ export async function GET(request: NextRequest) {
         );
         const progress = (progressResult as any)[0].progress || 0;
 
+        const [pekerjaanCount] = await pool.query(
+          `SELECT COUNT(*) AS jumlah FROM pekerjaan_karyawan WHERE id_produk = ?`,
+          [produk.id_produk]
+        );
+        const hasPekerjaan = (pekerjaanCount as any)[0].jumlah > 0;
+        
         return {
           ...produk,
           jumlah_pola: totalPola,
           progress: progress,
+          hasPekerjaan: hasPekerjaan,
         };
       })
     );

@@ -23,6 +23,7 @@ interface Produksi {
   progress: number;
   deadline: string | null;
   status: "diproses" | "selesai" | null;
+  hasPekerjaan: boolean;
 }
 
 interface Stats {
@@ -284,12 +285,17 @@ export default function ProduksiPage() {
                                     <IconEdit size={16} /> Edit Produksi
                                   </button>
                                   <button
-                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                    disabled={produk.hasPekerjaan}
+                                    className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 
+    ${produk.hasPekerjaan
+                                        ? "text-gray-400 cursor-not-allowed bg-gray-50"
+                                        : "text-gray-700 hover:bg-gray-100"
+                                      }`}
                                     onClick={() => {
-                                      router.push(
-                                        `/produksi/${produk.id_produk}/assign-kerjaan`,
-                                      );
-                                      setOpenDropdown(null);
+                                      if (!produk.hasPekerjaan) {
+                                        router.push(`/produksi/${produk.id_produk}/assign-kerjaan`);
+                                        setOpenDropdown(null);
+                                      }
                                     }}
                                   >
                                     <IconPlus size={16} /> Tambah Pekerjaan
@@ -340,8 +346,8 @@ export default function ProduksiPage() {
                           <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap">
                             <span
                               className={`px-2 md:px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${produk.status === "selesai"
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-yellow-100 text-yellow-800"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-yellow-100 text-yellow-800"
                                 }`}
                             >
                               {produk.status === "selesai"
@@ -374,8 +380,8 @@ export default function ProduksiPage() {
                   <button
                     key={idx}
                     className={`px-2 md:px-3 py-1 border rounded text-xs md:text-sm ${currentPage === idx + 1
-                        ? "bg-teal-500 text-white"
-                        : "hover:bg-gray-100"
+                      ? "bg-teal-500 text-white"
+                      : "hover:bg-gray-100"
                       }`}
                     onClick={() => setCurrentPage(idx + 1)}
                   >

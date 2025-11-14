@@ -258,7 +258,7 @@ export default function WorkAssignmentPage() {
         <div className="min-h-screen bg-gray-50 p-6">
             <div className="max-w-7xl mx-auto">
                 <div className="flex items-center gap-4 mb-6">
-                <h1 className="text-2xl font-semibold text-gray-900">Pengaturan Pekerjaan Karyawan</h1>
+                    <h1 className="text-2xl font-semibold text-gray-900">Pengaturan Pekerjaan Karyawan</h1>
                 </div>
 
                 <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -341,8 +341,16 @@ export default function WorkAssignmentPage() {
                                             </span>
                                             <span className="text-gray-600">
                                                 Unit per Pekerja: <strong>
-                                                    {Math.floor(totalPola / pekerjaan.karyawan_ids.length)}-
-                                                    {Math.floor(totalPola / pekerjaan.karyawan_ids.length) + (totalPola % pekerjaan.karyawan_ids.length)} unit
+                                                    {(() => {
+                                                        const total = totalPola;
+                                                        const k = pekerjaan.karyawan_ids.length;
+                                                        const base = Math.floor(total / k);
+                                                        const remainder = total % k;
+
+                                                        return remainder === 0
+                                                            ? `${base} unit`
+                                                            : `${base}-${base + remainder} unit`;
+                                                    })()}
                                                 </strong>
                                             </span>
                                             <span className="text-gray-600">
