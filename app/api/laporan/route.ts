@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-    getLaporanProduksiPerBulan, 
+import {
+    getLaporanProduksiPerBulan,
     getLaporanProduksiDetail,
     getLaporanKaryawan,
     getLaporanKaryawanDetail,
     getLaporanUpah,
-    getLaporanUpahPerProduk 
+    getLaporanUpahPerProduk, 
+    getLaporanPolaProduksi
 } from '@/lib/laporan';
 
 export async function GET(request: NextRequest) {
@@ -15,26 +16,30 @@ export async function GET(request: NextRequest) {
         const type = searchParams.get('type');
 
         const status = searchParams.get('status') || undefined;
-        const tahun = searchParams.get('tahun') 
-                ? parseInt(searchParams.get('tahun')!) 
-                : undefined;
-            const bulan = searchParams.get('bulan') 
-                ? parseInt(searchParams.get('bulan')!) 
-                : undefined;
+        const tahun = searchParams.get('tahun')
+            ? parseInt(searchParams.get('tahun')!)
+            : undefined;
+        const bulan = searchParams.get('bulan')
+            ? parseInt(searchParams.get('bulan')!)
+            : undefined;
 
         if (category === 'produksi') {
-
             if (type === 'monthly') {
                 const data = await getLaporanProduksiPerBulan({ tahun, bulan });
                 return NextResponse.json({ success: true, data });
-            } 
-            
+            }
+
             if (type === 'detail') {
                 const data = await getLaporanProduksiDetail({
                     tahun,
                     bulan,
                     status
                 });
+                return NextResponse.json({ success: true, data });
+            }
+
+            if (type === 'pola') {
+                const data = await getLaporanPolaProduksi({ tahun, bulan });
                 return NextResponse.json({ success: true, data });
             }
         }
@@ -47,7 +52,7 @@ export async function GET(request: NextRequest) {
                 });
                 return NextResponse.json({ success: true, data });
             }
-            
+
             if (type === 'detail') {
                 const id_karyawan = searchParams.get('id_karyawan');
                 if (!id_karyawan) {
@@ -56,7 +61,7 @@ export async function GET(request: NextRequest) {
                         { status: 400 }
                     );
                 }
-                
+
                 const data = await getLaporanKaryawanDetail(parseInt(id_karyawan), {
                     tahun,
                     bulan
@@ -74,7 +79,7 @@ export async function GET(request: NextRequest) {
                 });
                 return NextResponse.json({ success: true, data });
             }
-            
+
             if (type === 'per-produk') {
                 const id_karyawan = searchParams.get('id_karyawan');
                 const data = await getLaporanUpahPerProduk({

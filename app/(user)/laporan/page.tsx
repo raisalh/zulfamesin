@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { IconChartBar, IconUsers, IconCash, IconFilter, IconCalendar, IconRefresh, IconFileSpreadsheet} from '@tabler/icons-react';
-import {BarChart, Bar,PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer} from 'recharts';
+import { IconChartBar, IconUsers, IconCash, IconFilter, IconCalendar, IconRefresh, IconFileSpreadsheet } from '@tabler/icons-react';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 type TabType = 'produksi' | 'karyawan' | 'upah';
 
@@ -28,6 +28,7 @@ export default function LaporanPage() {
     const [laporanProduksi, setLaporanProduksi] = useState<any[]>([]);
     const [laporanKaryawan, setLaporanKaryawan] = useState<any[]>([]);
     const [laporanUpah, setLaporanUpah] = useState<any[]>([]);
+    const [laporanPola, setLaporanPola] = useState<any>(null);
 
     const tabs = [
         { id: 'produksi' as TabType, label: 'Laporan Produksi', icon: IconChartBar },
@@ -68,6 +69,19 @@ export default function LaporanPage() {
         const json = await res.json();
         if (json.success) {
             setLaporanProduksi(json.data);
+        }
+
+        const paramsPola = new URLSearchParams({
+            category: 'produksi',
+            type: 'pola',
+            tahun: filters.tahun,
+            ...(filters.bulan && { bulan: filters.bulan })
+        });
+
+        const resPola = await fetch(`/api/laporan?${paramsPola}`);
+        const jsonPola = await resPola.json();
+        if (jsonPola.success) {
+            setLaporanPola(jsonPola.data);
         }
     };
 
@@ -148,11 +162,10 @@ export default function LaporanPage() {
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-                                        activeTab === tab.id
-                                            ? 'border-blue-600 text-blue-600'
-                                            : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
-                                    }`}
+                                    className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
+                                        ? 'border-blue-600 text-blue-600'
+                                        : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                                        }`}
                                 >
                                     <Icon size={20} />
                                     {tab.label}
@@ -178,7 +191,7 @@ export default function LaporanPage() {
                                             value={filters.tahun}
                                             onChange={(e) => handleFilterChange('tahun', e.target.value)}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            placeholder="2024"
+                                            placeholder="2025"
                                         />
                                     </div>
                                     <div>
@@ -210,76 +223,58 @@ export default function LaporanPage() {
 
                             {(activeTab === 'karyawan' || activeTab === 'upah') && (
                                 <>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Tahun
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={filters.tahun}
-                                        onChange={(e) => handleFilterChange('tahun', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                        placeholder="2025"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Bulan
-                                    </label>
-                                    <select
-                                        value={filters.bulan}
-                                        onChange={(e) => handleFilterChange('bulan', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    >
-                                        <option value="">Semua Bulan</option>
-                                        <option value="1">Januari</option>
-                                        <option value="2">Februari</option>
-                                        <option value="3">Maret</option>
-                                        <option value="4">April</option>
-                                        <option value="5">Mei</option>
-                                        <option value="6">Juni</option>
-                                        <option value="7">Juli</option>
-                                        <option value="8">Agustus</option>
-                                        <option value="9">September</option>
-                                        <option value="10">Oktober</option>
-                                        <option value="11">November</option>
-                                        <option value="12">Desember</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Status
-                                    </label>
-                                    <select
-                                        value={filters.status}
-                                        onChange={(e) => handleFilterChange('status', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    >
-                                        <option value="">Semua Status</option>
-                                        <option value="diproses">Diproses</option>
-                                        <option value="selesai">Selesai</option>
-                                    </select>
-                                </div>
-                            </>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Tahun
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={filters.tahun}
+                                            onChange={(e) => handleFilterChange('tahun', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder="2025"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Bulan
+                                        </label>
+                                        <select
+                                            value={filters.bulan}
+                                            onChange={(e) => handleFilterChange('bulan', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        >
+                                            <option value="">Semua Bulan</option>
+                                            <option value="1">Januari</option>
+                                            <option value="2">Februari</option>
+                                            <option value="3">Maret</option>
+                                            <option value="4">April</option>
+                                            <option value="5">Mei</option>
+                                            <option value="6">Juni</option>
+                                            <option value="7">Juli</option>
+                                            <option value="8">Agustus</option>
+                                            <option value="9">September</option>
+                                            <option value="10">Oktober</option>
+                                            <option value="11">November</option>
+                                            <option value="12">Desember</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Status
+                                        </label>
+                                        <select
+                                            value={filters.status}
+                                            onChange={(e) => handleFilterChange('status', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        >
+                                            <option value="">Semua Status</option>
+                                            <option value="diproses">Diproses</option>
+                                            <option value="selesai">Selesai</option>
+                                        </select>
+                                    </div>
+                                </>
                             )}
-
-                            {activeTab === 'upah' && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Status Pekerjaan
-                                    </label>
-                                    <select
-                                        value={filters.status}
-                                        onChange={(e) => handleFilterChange('status', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    >
-                                        <option value="">Semua Status</option>
-                                        <option value="selesai">Selesai</option>
-                                        <option value="dikerjakan">Dikerjakan</option>
-                                    </select>
-                                </div>
-                            )}
-
                             <div className="flex items-end">
                                 <button
                                     onClick={resetFilters}
@@ -304,7 +299,7 @@ export default function LaporanPage() {
                 ) : (
                     <>
                         {activeTab === 'produksi' && (
-                            <LaporanProduksiContent data={laporanProduksi} colors={COLORS} />
+                            <LaporanProduksiContent data={laporanProduksi} colors={COLORS} laporanPola={laporanPola} />
                         )}
                         {activeTab === 'karyawan' && (
                             <LaporanKaryawanContent data={laporanKaryawan} colors={COLORS} />
@@ -319,7 +314,11 @@ export default function LaporanPage() {
     );
 }
 
-function LaporanProduksiContent({ data, colors }: { data: any[]; colors: string[] }) {
+function LaporanProduksiContent({ data, colors, laporanPola }: {
+    data: any[];
+    colors: string[];
+    laporanPola: any;
+}) {
     const formatBulan = (bulanStr: string) => {
         const [year, month] = bulanStr.split('-');
         const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -332,12 +331,15 @@ function LaporanProduksiContent({ data, colors }: { data: any[]; colors: string[
     }));
 
     const totalStats = {
-        total: data.reduce((sum, item) => sum + item.total_produksi, 0),
-        selesai: data.reduce((sum, item) => sum + item.selesai, 0),
-        diproses: data.reduce((sum, item) => sum + item.diproses, 0)
+        total: Number(data.reduce((sum, item) => sum + Number(item.total_produksi || 0), 0)),
+        selesai: Number(data.reduce((sum, item) => sum + Number(item.selesai || 0), 0)),
+        diproses: Number(data.reduce((sum, item) => sum + Number(item.diproses || 0), 0))
     };
 
-    const pieData = [
+    const pieData = laporanPola ? [
+        { name: 'Pola Selesai', value: Number(laporanPola.pola_selesai || 0) },
+        { name: 'Pola Belum Selesai', value: Number(laporanPola.pola_belum_selesai || 0) }
+    ] : [
         { name: 'Selesai', value: totalStats.selesai },
         { name: 'Diproses', value: totalStats.diproses }
     ];
@@ -402,27 +404,47 @@ function LaporanProduksiContent({ data, colors }: { data: any[]; colors: string[
 
                 <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                        Distribusi Status
+                        Distribusi Pola
                     </h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                            <Pie
-                                data={pieData}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                label={(entry) => `${entry.name}: ${entry.value}`}
-                                outerRadius={100}
-                                fill="#8884d8"
-                                dataKey="value"
-                            >
-                                {pieData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-                                ))}
-                            </Pie>
-                            <Tooltip />
-                        </PieChart>
-                    </ResponsiveContainer>
+                    <div className="relative">
+                        <ResponsiveContainer width="100%" height={300}>
+                            <PieChart>
+                                <Pie
+                                    data={pieData}
+                                    cx="50%"
+                                    cy="45%"
+                                    labelLine={false}
+                                    label={false}
+                                    outerRadius={80}
+                                    fill="#8884d8"
+                                    dataKey="value"
+                                >
+                                    {pieData.map((entry, index) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={index === 0 ? '#10b981' : '#f59e0b'}
+                                        />
+                                    ))}
+                                </Pie>
+                                <Tooltip />
+                            </PieChart>
+                        </ResponsiveContainer>
+
+                        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-6">
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                <span className="text-sm font-medium text-gray-700">
+                                    Pola Selesai: {Number(laporanPola?.pola_selesai || 0)}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                                <span className="text-sm font-medium text-gray-700">
+                                    Pola Belum Selesai: {Number(laporanPola?.pola_belum_selesai || 0)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -457,7 +479,7 @@ function LaporanProduksiContent({ data, colors }: { data: any[]; colors: string[
                                     <td className="px-6 py-4 text-sm text-gray-900">
                                         {row.total_produksi}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-green-600 font-medium">
+                                    <td className="px-6 py-4 text-sm text-gray-600 font-medium">
                                         {row.selesai}
                                     </td>
                                     <td className="px-6 py-4 text-sm text-orange-600 font-medium">
@@ -474,18 +496,21 @@ function LaporanProduksiContent({ data, colors }: { data: any[]; colors: string[
 }
 
 function LaporanKaryawanContent({ data, colors }: { data: any[]; colors: string[] }) {
-    const topPerformers = [...data].sort((a, b) => b.total_unit - a.total_unit).slice(0, 5);
+    const topPerformers = [...data]
+        .sort((a, b) => Number(b.unit_selesai || 0) - Number(a.unit_selesai || 0))
+        .slice(0, 5);
 
     const chartData = topPerformers.map(item => ({
         nama: item.nama_karyawan,
-        unit: item.total_unit || 0
+        selesai: Number(item.unit_selesai || 0),
+        sisa: Number(item.unit_sisa || 0)
     }));
 
     return (
         <div className="space-y-6">
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    Top 5 Karyawan Berdasarkan Unit Dikerjakan
+                    Top 5 Karyawan Berdasarkan Unit Selesai
                 </h3>
                 <ResponsiveContainer width="100%" height={400}>
                     <BarChart data={chartData} layout="vertical">
@@ -493,7 +518,9 @@ function LaporanKaryawanContent({ data, colors }: { data: any[]; colors: string[
                         <XAxis type="number" />
                         <YAxis dataKey="nama" type="category" width={150} />
                         <Tooltip />
-                        <Bar dataKey="unit" fill="#3b82f6" name="Total Unit" />
+                        <Legend />
+                        <Bar dataKey="selesai" fill="#10b981" name="Unit Selesai" stackId="a" />
+                        <Bar dataKey="sisa" fill="#f59e0b" name="Unit Sisa" stackId="a" />
                     </BarChart>
                 </ResponsiveContainer>
             </div>
@@ -516,33 +543,50 @@ function LaporanKaryawanContent({ data, colors }: { data: any[]; colors: string[
                                     Total Unit
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                    Selesai
+                                    Unit Selesai
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                    Dikerjakan
+                                    Unit Sisa
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                    Progress
                                 </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                            {data.map((row, index) => (
-                                <tr key={index} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                                        {row.nama_karyawan}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-900">
-                                        {row.total_pekerjaan || 0}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-900">
-                                        {row.total_unit || 0}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-green-600 font-medium">
-                                        {row.pekerjaan_selesai || 0}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-orange-600 font-medium">
-                                        {row.pekerjaan_dikerjakan || 0}
-                                    </td>
-                                </tr>
-                            ))}
+                            {data.map((row, index) => {
+                                const totalUnit = Number(row.total_unit || 0);
+                                const unitSelesai = Number(row.unit_selesai || 0);
+                                const unitSisa = Number(row.unit_sisa || 0);
+                                const progress = totalUnit > 0
+                                    ? Math.round((unitSelesai / totalUnit) * 100)
+                                    : 0;
+
+                                return (
+                                    <tr key={index} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                                            {row.nama_karyawan}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-900">
+                                            {Number(row.total_pekerjaan || 0)}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                                            {totalUnit}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-green-600 font-medium">
+                                            {unitSelesai}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-orange-600 font-medium">
+                                            {unitSisa}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm">
+                                            <div className="flex items-center gap-2">
+                                                {progress}%
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

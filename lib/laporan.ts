@@ -25,9 +25,9 @@ export interface LaporanKaryawan {
     id_karyawan: number;
     nama_karyawan: string;
     total_pekerjaan: number;
-    total_unit: number;
-    pekerjaan_selesai: number;
-    pekerjaan_dikerjakan: number;
+    total_unit: number; 
+    unit_selesai: number;  
+    unit_sisa: number;  
 }
 
 export interface LaporanKaryawanDetail {
@@ -65,6 +65,12 @@ export interface LaporanUpahDetail {
     tanggal_pembayaran: Date | null;
 }
 
+export interface LaporanPolaProduksi {
+    total_pola: number;
+    pola_selesai: number;
+    pola_belum_selesai: number;
+}
+
 export async function getLaporanProduksiPerBulan(params: {
     tahun?: number;
     bulan?: number;
@@ -73,9 +79,9 @@ export async function getLaporanProduksiPerBulan(params: {
         let query = `
             SELECT 
                 DATE_FORMAT(tanggal_mulai, '%Y-%m') as bulan,
-                COUNT(*) as total_produksi,
-                SUM(CASE WHEN status = 'selesai' THEN 1 ELSE 0 END) as selesai,
-                SUM(CASE WHEN status = 'diproses' THEN 1 ELSE 0 END) as diproses
+                CAST(COUNT(*) AS UNSIGNED) as total_produksi,
+                CAST(SUM(CASE WHEN status = 'selesai' THEN 1 ELSE 0 END) AS UNSIGNED) as selesai,
+                CAST(SUM(CASE WHEN status = 'diproses' THEN 1 ELSE 0 END) AS UNSIGNED) as diproses
             FROM produksi
             WHERE 1=1
         `;
@@ -164,10 +170,10 @@ export async function getLaporanKaryawan(params: {
             SELECT 
                 k.id_karyawan,
                 k.nama_karyawan,
-                COUNT(DISTINCT pk.id_pekerjaan_karyawan) as total_pekerjaan,
-                SUM(pk.unit_dikerjakan) as total_unit,
-                SUM(CASE WHEN pk.status = 'selesai' THEN 1 ELSE 0 END) as pekerjaan_selesai,
-                SUM(CASE WHEN pk.status = 'dikerjakan' THEN 1 ELSE 0 END) as pekerjaan_dikerjakan
+                CAST(COUNT(DISTINCT pk.id_pekerjaan_karyawan) AS UNSIGNED) as total_pekerjaan,
+                CAST(COALESCE(SUM(pk.target_unit), 0) AS UNSIGNED) as total_unit,
+                CAST(COALESCE(SUM(pk.unit_dikerjakan), 0) AS UNSIGNED) as unit_selesai,
+                CAST(COALESCE(SUM(pk.target_unit - pk.unit_dikerjakan), 0) AS UNSIGNED) as unit_sisa
             FROM karyawan k
             LEFT JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
             LEFT JOIN produksi p ON pk.id_produk = p.id_produk
@@ -177,15 +183,16 @@ export async function getLaporanKaryawan(params: {
         const queryParams: any[] = [];
 
         if (params.tahun) {
-            query += ` AND YEAR(tanggal_mulai) = ?`;
+            query += ` AND YEAR(p.tanggal_mulai) = ?`;
             queryParams.push(params.tahun);
         }
 
         if (params.bulan) {
-            query += ` AND MONTH(tanggal_mulai) = ?`;
+            query += ` AND MONTH(p.tanggal_mulai) = ?`;
             queryParams.push(params.bulan);
         }
-        query += ` GROUP BY k.id_karyawan ORDER BY total_unit DESC`;
+        
+        query += ` GROUP BY k.id_karyawan ORDER BY unit_selesai DESC`;
 
         const [rows] = await pool.query(query, queryParams);
 
@@ -338,6 +345,41 @@ export async function getLaporanUpahPerProduk(params: {
         return rows;
     } catch (error) {
         console.error('Error getting laporan upah per produk:', error);
+        throw error;
+    }
+}
+
+export async function getLaporanPolaProduksi(params: {
+    tahun?: number;
+    bulan?: number;
+}) {
+    try {
+        let query = `
+            SELECT 
+                CAST(COALESCE(SUM(pk.target_unit), 0) AS UNSIGNED) as total_pola,
+                CAST(COALESCE(SUM(pk.unit_dikerjakan), 0) AS UNSIGNED) as pola_selesai,
+                CAST(COALESCE(SUM(pk.target_unit - pk.unit_dikerjakan), 0) AS UNSIGNED) as pola_belum_selesai
+            FROM produksi p
+            LEFT JOIN pekerjaan_karyawan pk ON p.id_produk = pk.id_produk
+            WHERE 1=1
+        `;
+
+        const queryParams: any[] = [];
+
+        if (params.tahun) {
+            query += ` AND YEAR(p.tanggal_mulai) = ?`;
+            queryParams.push(params.tahun);
+        }
+
+        if (params.bulan) {
+            query += ` AND MONTH(p.tanggal_mulai) = ?`;
+            queryParams.push(params.bulan);
+        }
+
+        const [rows] = await pool.query(query, queryParams);
+        return (rows as any)[0] as LaporanPolaProduksi;
+    } catch (error) {
+        console.error('Error getting laporan pola produksi:', error);
         throw error;
     }
 }
