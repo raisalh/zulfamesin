@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createMultipleProgress } from "@/lib/progressPekerjaan";
 import { getProduksiById } from "@/lib/produk";
+import { recalculateUpah } from "@/lib/upahKaryawan";
 
 export async function POST(request: NextRequest) {
     try {
@@ -63,10 +64,12 @@ export async function POST(request: NextRequest) {
 
         await createMultipleProgress(validProgressList);
 
+        await recalculateUpah(id_produk);
+
         return NextResponse.json(
             {
                 success: true,
-                message: "Progress berhasil disimpan",
+                message: "Progress dan upah berhasil diperbarui",
                 data: {
                     total_updates: validProgressList.length
                 }

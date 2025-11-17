@@ -3,6 +3,7 @@ import { createMultiplePekerjaanKaryawan, deletePekerjaanByJenis } from "@/lib/p
 import { createJenisPekerjaan, getJenisPekerjaanById } from "@/lib/jenisPekerjaan";
 import { getProduksiById } from "@/lib/produk";
 import { getTotalPolaByProduk } from "@/lib/gulungan";
+import { calculateAndSaveUpahFromPekerjaan } from "@/lib/upahKaryawan";
 
 export async function POST(request: NextRequest) {
     try {
@@ -109,10 +110,12 @@ export async function POST(request: NextRequest) {
 
         await createMultiplePekerjaanKaryawan(allPekerjaanData);
 
+        await calculateAndSaveUpahFromPekerjaan(parseInt(id_produk.toString()));
+
         return NextResponse.json(
             {
                 success: true,
-                message: "Pekerjaan berhasil disimpan",
+                message: "Pekerjaan dan upah berhasil disimpan",
                 data: {
                     total_assignments: allPekerjaanData.length,
                     total_pola: totalPola

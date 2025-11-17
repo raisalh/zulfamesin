@@ -6,7 +6,6 @@ export interface Produksi {
   warna: string | null;
   ukuran: string | null;
   gulungan: number | null;
-  progress: number | null;
   deadline: Date | null;
   status: "diproses" | "selesai" | null;
   id_user: number;
@@ -89,14 +88,13 @@ export async function createProduksi(data: Omit<Produksi, "id_produk">) {
   try {
     const [result] = await pool.query(
       `INSERT INTO produksi 
-      (nama_produk, warna, ukuran, gulungan, progress, deadline, status, id_user, tanggal_mulai, tanggal_selesai)  
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (nama_produk, warna, ukuran, gulungan, deadline, status, id_user, tanggal_mulai, tanggal_selesai)  
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         data.nama_produk,
         data.warna,
         data.ukuran,
         data.gulungan,
-        data.progress,
         data.deadline,
         data.status,
         data.id_user,

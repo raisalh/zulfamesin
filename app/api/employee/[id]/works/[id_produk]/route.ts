@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
 import { getKaryawanById } from "@/lib/karyawan";
 import { getProduksiById } from "@/lib/produk";
+import { getUpahByKaryawanAndProduk, createUpahKaryawan } from "@/lib/upahKaryawan";
 
 export async function GET(
     request: NextRequest,
@@ -49,15 +50,6 @@ export async function GET(
             [id_karyawan, id_produk]
         );
 
-        const [upahResult] = await pool.query(
-            `SELECT status_pembayaran, tanggal_pembayaran
-            FROM upah_karyawan
-            WHERE id_karyawan = ? AND id_produk = ?`,
-            [id_karyawan, id_produk]
-        );
-
-        const upahData = (upahResult as any[])[0] || { status_pembayaran: "belum" };
-
         const pekerjaanList = pekerjaan as any[];
         const totalKategori = pekerjaanList.length;
         const totalUnit = pekerjaanList.reduce((sum, p) => sum + p.unit_dikerjakan, 0);
@@ -65,6 +57,35 @@ export async function GET(
             (sum, p) => sum + p.unit_dikerjakan * p.upah_per_unit,
             0
         );
+
+        let upahData = await getUpahByKaryawanAndProduk(id_karyawan, id_produk);
+
+        if (!upahData) {
+            console.log('Creating upah_karyawan record for karyawan:', id_karyawan, 'produk:', id_produk);
+            await createUpahKaryawan({
+                id_karyawan,
+                id_produk,
+                total_pekerjaan: totalKategori,
+                total_unit: totalUnit,
+                total_upah: totalUpah,
+                status_pembayaran: 'belum',
+                tanggal_pembayaran: null
+            });
+            
+            upahData = await getUpahByKaryawanAndProduk(id_karyawan, id_produk);
+        } else {
+            if (upahData.total_upah !== totalUpah || upahData.total_unit !== totalUnit) {
+                console.log('Updating upah_karyawan with new totals');
+                await pool.query(
+                    `UPDATE upah_karyawan 
+                    SET total_pekerjaan = ?, total_unit = ?, total_upah = ?
+                    WHERE id_karyawan = ? AND id_produk = ?`,
+                    [totalKategori, totalUnit, totalUpah, id_karyawan, id_produk]
+                );
+                
+                upahData = await getUpahByKaryawanAndProduk(id_karyawan, id_produk);
+            }
+        }
 
         return NextResponse.json({
             success: true,
@@ -86,8 +107,8 @@ export async function GET(
                     total_unit: totalUnit,
                     total_upah: totalUpah,
                 },
-                status_pembayaran: upahData.status_pembayaran,
-                tanggal_pembayaran: upahData.tanggal_pembayaran,
+                status_pembayaran: upahData?.status_pembayaran || 'belum',
+                tanggal_pembayaran: upahData?.tanggal_pembayaran || null,
             },
         });
     } catch (error) {
@@ -98,8 +119,6 @@ export async function GET(
             { status: 500 }
         );
     }
-
-
 }
 
 export async function PUT(
@@ -126,11 +145,13 @@ export async function PUT(
             );
         }
 
+        const tanggal = status_pembayaran === 'dibayar' ? new Date() : null;
+
         await pool.query(
             `UPDATE upah_karyawan 
-            SET status_pembayaran = ?, tanggal_pembayaran = NOW()
+            SET status_pembayaran = ?, tanggal_pembayaran = ?
             WHERE id_karyawan = ? AND id_produk = ?`,
-            [status_pembayaran, id_karyawan, id_produk]
+            [status_pembayaran, tanggal, id_karyawan, id_produk]
         );
 
         return NextResponse.json({

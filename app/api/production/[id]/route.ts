@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getProduksiById, updateProduksi, deleteProduksi, updateStatusBasedOnProgress } from "@/lib/produk";
 import { getGulunganByProduk, deleteGulunganByProduk, createMultipleGulungan, getTotalPolaByProduk } from "@/lib/gulungan";
+import { deleteUpahByProduk } from "@/lib/upahKaryawan";
 
 export async function GET(
   request: NextRequest,
@@ -155,6 +156,13 @@ export async function DELETE(
         { success: false, message: "Produksi not found" },
         { status: 404 },
       );
+    }
+
+    try {
+      await deleteUpahByProduk(id);
+      console.log('Deleted upah_karyawan records for produk:', id);
+    } catch (error) {
+      console.error('Error deleting upah_karyawan, continuing with produksi delete:', error);
     }
 
     await deleteProduksi(id);

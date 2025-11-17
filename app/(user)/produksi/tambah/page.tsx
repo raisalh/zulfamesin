@@ -39,7 +39,7 @@ export default function TambahProdukPage() {
   const [loading, setLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
-  
+
   // Autocomplete states
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<ProdukSuggestion[]>([]);
@@ -112,15 +112,15 @@ export default function TambahProdukPage() {
     setNamaProduk(suggestion.nama_produk);
     setWarna(suggestion.warna);
     setUkuran(suggestion.ukuran);
-    
+
     // Auto-fill jumlah gulungan berdasarkan nomor_gulungan terakhir
     if (suggestion.nomor_gulungan && suggestion.nomor_gulungan > 0) {
       handleJumlahGulunganChange(suggestion.nomor_gulungan);
     }
-    
+
     setShowSuggestions(false);
     setSelectedIndex(-1);
-    
+
     const newErrors = { ...errors };
     delete newErrors.namaProduk;
     delete newErrors.warna;
@@ -347,9 +347,8 @@ export default function TambahProdukPage() {
                   Tanggal Mulai Pengerjaan
                 </label>
                 <input
-                  className={`w-full px-4 py-3 border ${
-                    errors.tanggalMulai ? "border-red-500" : "border-gray-300"
-                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                  className={`w-full px-4 py-3 border ${errors.tanggalMulai ? "border-red-500" : "border-gray-300"
+                    } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                   id="tanggal_mulai"
                   type="date"
                   value={tanggalMulai}
@@ -373,11 +372,10 @@ export default function TambahProdukPage() {
                   Estimasi Selesai Pengerjaan
                 </label>
                 <input
-                  className={`w-full px-4 py-3 border ${
-                    errors.estimasiSelesai
+                  className={`w-full px-4 py-3 border ${errors.estimasiSelesai
                       ? "border-red-500"
                       : "border-gray-300"
-                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                    } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                   id="estimasi_selesai"
                   type="date"
                   value={estimasiSelesai}
@@ -408,9 +406,8 @@ export default function TambahProdukPage() {
                 Tanggal Selesai Pengerjaan
               </label>
               <input
-                className={`w-full px-4 py-3 border ${
-                  errors.tanggalSelesai ? "border-red-500" : "border-gray-300"
-                } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                className={`w-full px-4 py-3 border ${errors.tanggalSelesai ? "border-red-500" : "border-gray-300"
+                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                 id="tanggal_selesai"
                 type="date"
                 value={tanggalSelesai}
@@ -446,9 +443,8 @@ export default function TambahProdukPage() {
                 <div className="relative">
                   <input
                     ref={inputRef}
-                    className={`w-full px-4 py-3 pr-10 border ${
-                      errors.namaProduk ? "border-red-500" : "border-gray-300"
-                    } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                    className={`w-full px-4 py-3 pr-10 border ${errors.namaProduk ? "border-red-500" : "border-gray-300"
+                      } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                     id="nama_produk"
                     placeholder="Ketik nama produk (min. 2 karakter untuk pencarian)"
                     type="text"
@@ -473,7 +469,7 @@ export default function TambahProdukPage() {
                     )}
                   </div>
                 </div>
-                
+
                 {errors.namaProduk && (
                   <p className="text-red-500 text-sm mt-1">
                     {errors.namaProduk}
@@ -493,11 +489,10 @@ export default function TambahProdukPage() {
                     {suggestions.map((suggestion, index) => (
                       <div
                         key={suggestion.id_produk}
-                        className={`px-4 py-3 cursor-pointer transition-colors ${
-                          index === selectedIndex
+                        className={`px-4 py-3 cursor-pointer transition-colors ${index === selectedIndex
                             ? "bg-blue-50 border-l-4 border-blue-500"
                             : "hover:bg-gray-50 border-l-4 border-transparent"
-                        }`}
+                          }`}
                         onClick={() => handleSelectSuggestion(suggestion)}
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -548,9 +543,8 @@ export default function TambahProdukPage() {
                   Ukuran <span className="text-red-500">*</span>
                 </label>
                 <input
-                  className={`w-full px-4 py-3 border ${
-                    errors.ukuran ? "border-red-500" : "border-gray-300"
-                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                  className={`w-full px-4 py-3 border ${errors.ukuran ? "border-red-500" : "border-gray-300"
+                    } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                   id="ukuran"
                   placeholder="Masukkan ukuran produk"
                   type="text"
@@ -573,9 +567,8 @@ export default function TambahProdukPage() {
                   Warna <span className="text-red-500">*</span>
                 </label>
                 <input
-                  className={`w-full px-4 py-3 border ${
-                    errors.warna ? "border-red-500" : "border-gray-300"
-                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                  className={`w-full px-4 py-3 border ${errors.warna ? "border-red-500" : "border-gray-300"
+                    } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                   id="warna"
                   placeholder="Masukkan warna produk"
                   type="text"
@@ -598,17 +591,28 @@ export default function TambahProdukPage() {
                   Jumlah Gulungan <span className="text-red-500">*</span>
                 </label>
                 <input
-                  className={`w-full px-4 py-3 border ${
-                    errors.jumlahGulungan ? "border-red-500" : "border-gray-300"
-                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                  className={`w-full px-4 py-3 border ${errors.jumlahGulungan ? "border-red-500" : "border-gray-300"
+                    } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                   id="jumlah_gulungan"
                   min="1"
                   type="number"
                   value={jumlahGulungan}
                   onChange={(e) => {
-                    handleJumlahGulunganChange(parseInt(e.target.value));
+                    const val = e.target.value;
+
+                    if (val === "") {
+                      setJumlahGulungan("" as any);
+                      return;
+                    }
+
+                    const num = parseInt(val);
+                    if (!isNaN(num) && num > 0) {
+                      handleJumlahGulunganChange(num);
+                    }
+
                     clearError("jumlahGulungan");
                   }}
+
                 />
                 {errors.jumlahGulungan && (
                   <p className="text-red-500 text-sm mt-1">
@@ -638,11 +642,10 @@ export default function TambahProdukPage() {
                       Gulungan {item.gulungan}
                     </label>
                     <input
-                      className={`w-full px-4 py-3 border ${
-                        errors.polaGulungan && errors.polaGulungan[index]
+                      className={`w-full px-4 py-3 border ${errors.polaGulungan && errors.polaGulungan[index]
                           ? "border-red-500"
                           : "border-gray-300"
-                      } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                        } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                       id={`pola-gulungan-${index}`}
                       min="1"
                       placeholder={`Masukkan pola untuk gulungan ${item.gulungan}`}

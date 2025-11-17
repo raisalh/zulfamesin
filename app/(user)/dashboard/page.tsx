@@ -232,32 +232,40 @@ export default function BerandaPage() {
                     </div>
                 </div>
             </div>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-xl font-semibold text-gray-800 mb-4">
                         Distribusi Upah Karyawan
                     </h2>
                     <div className="flex flex-col items-center">
-                        <ResponsiveContainer width="100%" height={250}>
-                            <PieChart>
-                                <Pie
-                                    data={chartData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={90}
-                                    fill="#8884d8"
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
-                                    {chartData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                            </PieChart>
-                        </ResponsiveContainer>
+                        {chartData.every(item => item.value === 0) ? (
+                            <div className="flex items-center justify-center h-[250px]">
+                                <p className="text-gray-500 text-center">Tidak ada data upah</p>
+                            </div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={250}>
+                                <PieChart>
+                                    <Pie
+                                        data={chartData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={90}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {chartData.map((entry, index) => (
+                                            <Cell
+                                                key={`cell-${index}`}
+                                                fill={COLORS[index % COLORS.length]}
+                                            />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        )}
                         <div className="mt-4 text-center">
                         </div>
                         <div className="mt-4 space-y-2 w-full">
@@ -275,7 +283,7 @@ export default function BerandaPage() {
                             ))}
                         </div>
                     </div>
-                </div>
+                </div >
 
                 <div className="bg-white rounded-lg shadow-md p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -323,54 +331,56 @@ export default function BerandaPage() {
                         )}
                     </div>
                 </div>
-            </div>
+            </div >
 
-            {data.deadlineMendekat.length > 0 && (
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <div className="flex items-center space-x-2 mb-4">
-                        <IconAlertCircle className="w-6 h-6 text-red-600" />
-                        <h2 className="text-xl font-semibold text-gray-800">
-                            Produk Deadline Mendekat ({"<"} 7 Hari)
-                        </h2>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {data.deadlineMendekat.map((produk) => (
-                            <div
-                                key={produk.id_produk}
-                                className="border border-red-200 rounded-lg p-4 bg-red-50 hover:shadow-md transition"
-                            >
-                                <div className="flex items-start justify-between mb-2">
-                                    <div>
-                                        <p className="font-semibold text-gray-800">
-                                            {produk.nama_produk}
-                                        </p>
-                                        <p className="text-sm text-gray-600">
-                                            Warna: {produk.warna}
-                                        </p>
+            {
+                data.deadlineMendekat.length > 0 && (
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                        <div className="flex items-center space-x-2 mb-4">
+                            <IconAlertCircle className="w-6 h-6 text-red-600" />
+                            <h2 className="text-xl font-semibold text-gray-800">
+                                Produk Deadline Mendekat ({"<"} 7 Hari)
+                            </h2>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {data.deadlineMendekat.map((produk) => (
+                                <div
+                                    key={produk.id_produk}
+                                    className="border border-red-200 rounded-lg p-4 bg-red-50 hover:shadow-md transition"
+                                >
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div>
+                                            <p className="font-semibold text-gray-800">
+                                                {produk.nama_produk}
+                                            </p>
+                                            <p className="text-sm text-gray-600">
+                                                Warna: {produk.warna}
+                                            </p>
+                                        </div>
+                                        <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-semibold">
+                                            {produk.hariTersisa} hari
+                                        </span>
                                     </div>
-                                    <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-semibold">
-                                        {produk.hariTersisa} hari
-                                    </span>
+                                    <div className="mt-3">
+                                        <div className="flex items-center justify-between text-sm mb-1">
+                                            <span className="text-gray-600">Progress</span>
+                                            <span className="font-semibold">{produk.progress}%</span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-2">
+                                            <div
+                                                className="bg-red-600 h-2 rounded-full transition-all"
+                                                style={{ width: `${produk.progress}%` }}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="mt-3">
-                                    <div className="flex items-center justify-between text-sm mb-1">
-                                        <span className="text-gray-600">Progress</span>
-                                        <span className="font-semibold">{produk.progress}%</span>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2">
-                                        <div
-                                            className="bg-red-600 h-2 rounded-full transition-all"
-                                            style={{ width: `${produk.progress}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
-            <div className="bg-white rounded-lg shadow-md p-6">
+            < div className="bg-white rounded-lg shadow-md p-6" >
                 <div className="flex items-center space-x-2 mb-4">
                     <IconTrendingUp className="w-6 h-6 text-blue-600" />
                     <h2 className="text-xl font-semibold text-gray-800">
@@ -414,7 +424,7 @@ export default function BerandaPage() {
                         </p>
                     )}
                 </div>
-            </div>
+            </div >
 
             <div className="bg-white rounded-lg shadow-md p-6">
                 <div className="flex items-center space-x-2 mb-4">
@@ -474,6 +484,6 @@ export default function BerandaPage() {
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
