@@ -109,7 +109,7 @@ export async function getDistribusiUpah(): Promise<DistribusiUpah> {
         `);
 
         const result = (rows as any)?.[0];
-        
+
         return {
             upahTinggi: Number(result?.upah_tinggi) || 0,
             upahMenengah: Number(result?.upah_menengah) || 0,
@@ -197,25 +197,21 @@ export async function getProdukProgress(): Promise<ProdukProgress[]> {
                 p.nama_produk,
                 p.warna,
                 p.ukuran,
-                COALESCE(
-                    CASE 
-                        WHEN SUM(pk.target_unit) > 0 
-                        THEN LEAST(ROUND((SUM(pk.unit_dikerjakan) / SUM(pk.target_unit)) * 100, 2), 100)
-                        ELSE 0 
-                    END, 
-                    0
-                ) as progress,
-                COALESCE(SUM(pk.target_unit), 0) as totalPola,
-                COALESCE(SUM(pk.unit_dikerjakan), 0) as polaSelesai
+                COALESCE(SUM(pk.target_unit), 0) AS totalPola,
+                COALESCE(SUM(pk.unit_dikerjakan), 0) AS polaSelesai,
+                CASE 
+                    WHEN SUM(pk.target_unit) > 0 
+                        THEN ROUND((SUM(pk.unit_dikerjakan) / SUM(pk.target_unit)) * 100, 2)
+                    ELSE 0
+                END AS progress
             FROM produksi p
-            LEFT JOIN pekerjaan_karyawan pk ON p.id_produk = pk.id_produk
+            LEFT JOIN pekerjaan_karyawan pk 
+                ON p.id_produk = pk.id_produk
             WHERE p.status = 'diproses'
-            AND MONTH(p.tanggal_mulai) = MONTH(CURRENT_DATE())
-            AND YEAR(p.tanggal_mulai) = YEAR(CURRENT_DATE())
-            GROUP BY p.id_produk, p.nama_produk, p.warna, p.ukuran
-            ORDER BY p.id_produk DESC
+            AND DATE_FORMAT(p.tanggal_mulai, '%Y-%m') = DATE_FORMAT(CURRENT_DATE(), '%Y-%m')
+            GROUP BY p.id_produk
+            ORDER BY p.id_produk DESC;
         `);
-
         return rows as ProdukProgress[];
     } catch (error) {
         console.error('Error getting produk progress:', error);
@@ -223,22 +219,25 @@ export async function getProdukProgress(): Promise<ProdukProgress[]> {
     }
 }
 
-export async function getAbsensiKaryawan(hari: number = 7): Promise<AbsensiKaryawan[]> {
+export async function getAbsensiKaryawan(): Promise<AbsensiKaryawan[]> {
     try {
         const [rows] = await pool.query(`
             SELECT 
                 k.id_karyawan,
                 k.nama_karyawan,
-                MAX(pp.tanggal_update) as tanggal_terakhir,
-                COUNT(DISTINCT DATE(pp.tanggal_update)) as jumlah_kehadiran
+                MAX(pp.tanggal_update) AS tanggal_terakhir,
+                COUNT(DISTINCT DATE(pp.tanggal_update)) AS jumlah_kehadiran
             FROM karyawan k
-            INNER JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
-            INNER JOIN progress_pekerjaan pp ON pk.id_pekerjaan_karyawan = pp.id_pekerjaan_karyawan
-            WHERE pp.tanggal_update >= DATE_SUB(CURRENT_DATE(), INTERVAL ? DAY)
+            INNER JOIN pekerjaan_karyawan pk 
+                ON k.id_karyawan = pk.id_karyawan
+            INNER JOIN progress_pekerjaan pp 
+                ON pk.id_pekerjaan_karyawan = pp.id_pekerjaan_karyawan
+            WHERE MONTH(pp.tanggal_update) = MONTH(CURRENT_DATE())
+            AND YEAR(pp.tanggal_update) = YEAR(CURRENT_DATE())
             GROUP BY k.id_karyawan, k.nama_karyawan
             HAVING jumlah_kehadiran > 0
-            ORDER BY tanggal_terakhir DESC
-        `, [hari]);
+            ORDER BY tanggal_terakhir DESC;
+        `,);
 
         return rows as AbsensiKaryawan[];
     } catch (error) {

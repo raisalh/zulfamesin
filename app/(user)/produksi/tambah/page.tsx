@@ -395,40 +395,6 @@ export default function TambahProdukPage() {
 
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="text-base font-semibold text-gray-900 mb-4">
-              Informasi Selesai Pengerjaan
-            </h3>
-
-            <div>
-              <label
-                className="block text-sm font-medium text-gray-700 mb-2"
-                htmlFor="tanggal_selesai"
-              >
-                Tanggal Selesai Pengerjaan
-              </label>
-              <input
-                className={`w-full px-4 py-3 border ${errors.tanggalSelesai ? "border-red-500" : "border-gray-300"
-                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
-                id="tanggal_selesai"
-                type="date"
-                value={tanggalSelesai}
-                onChange={(e) => {
-                  setTanggalSelesai(e.target.value);
-                  clearError("tanggalSelesai");
-                }}
-              />
-              {errors.tanggalSelesai && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.tanggalSelesai}
-                </p>
-              )}
-              <p className="text-xs text-gray-500 mt-1">
-                Status akan otomatis menjadi Selesai jika tanggal selesai diisi
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-base font-semibold text-gray-900 mb-4">
               Informasi Produk
             </h3>
 

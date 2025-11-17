@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
             getProdukTerbaru(5),
             getProdukDeadlineMendekat(),
             getProdukProgress(),
-            getAbsensiKaryawan(7),
+            getAbsensiKaryawan(),
             getCountProductionLastMonth(),
             getCountProductionThisMonth(),
             getCountPolaThisMonth(),

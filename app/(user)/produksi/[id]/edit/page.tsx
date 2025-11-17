@@ -65,26 +65,30 @@ export default function EditProdukPage() {
         setStatus(data.status || "diproses");
         setJumlahGulungan(data.gulungan || 1);
 
-        if (data.deadline) {
-          const date = new Date(data.deadline);
-          const formattedDate = date.toISOString().split("T")[0];
-
-          setDeadline(formattedDate);
-        }
-
         if (data.tanggal_mulai) {
           const date = new Date(data.tanggal_mulai);
-          const formattedDate = date.toISOString().split("T")[0];
-
+          
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0'); 
+          const day = String(date.getDate()).padStart(2, '0');
+          
+          const formattedDate = `${year}-${month}-${day}`;
+          
           setTanggalMulai(formattedDate);
         }
 
-        if (data.tanggal_selesai) {
-          const date = new Date(data.tanggal_selesai);
-          const formattedDate = date.toISOString().split("T")[0];
-
-          setEstimasiSelesai(formattedDate);
-        }
+        
+        if (data.deadline) {
+          const date = new Date(data.deadline);
+          
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0'); 
+          const day = String(date.getDate()).padStart(2, '0');
+          
+          const formattedDate = `${year}-${month}-${day}`;
+          
+          setDeadline(formattedDate);
+        }        
 
         if (data.gulungan_data && Array.isArray(data.gulungan_data)) {
           const newPola = data.gulungan_data.map((g: any) => ({
@@ -314,9 +318,8 @@ export default function EditProdukPage() {
                   Tanggal Mulai Pengerjaan
                 </label>
                 <input
-                  className={`w-full px-4 py-3 border ${
-                    errors.tanggalMulai ? "border-red-500" : "border-gray-300"
-                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                  className={`w-full px-4 py-3 border ${errors.tanggalMulai ? "border-red-500" : "border-gray-300"
+                    } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                   id="tanggal_mulai"
                   type="date"
                   value={tanggalMulai}
@@ -335,32 +338,24 @@ export default function EditProdukPage() {
               <div>
                 <label
                   className="block text-sm font-medium text-gray-700 mb-2"
-                  htmlFor="estimasi_selesai"
+                  htmlFor="deadline"
                 >
-                Tanggal Selesai Pengerjaan
+                  Estimasi Selesai Pengerjaan
                 </label>
                 <input
-                  className={`w-full px-4 py-3 border ${
-                    errors.estimasiSelesai
-                      ? "border-red-500"
-                      : "border-gray-300"
-                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
-                  id="estimasi_selesai"
+                  className={`w-full px-4 py-3 border ${errors.deadline ? "border-red-500" : "border-gray-300"
+                    } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                  id="deadline"
                   type="date"
-                  value={estimasiSelesai}
+                  value={deadline}
                   onChange={(e) => {
-                    setEstimasiSelesai(e.target.value);
-                    clearError("estimasiSelesai");
+                    setDeadline(e.target.value);
+                    clearError("deadline");
                   }}
                 />
-                {errors.estimasiSelesai && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.estimasiSelesai}
-                  </p>
+                {errors.deadline && (
+                  <p className="text-red-500 text-sm mt-1">{errors.deadline}</p>
                 )}
-                <p className="text-xs text-gray-500 mt-1">
-                Status akan otomatis menjadi Selesai jika tanggal selesai diisi
-              </p>
               </div>
             </div>
           </div>
@@ -379,9 +374,8 @@ export default function EditProdukPage() {
                   Nama Produk <span className="text-red-500">*</span>
                 </label>
                 <input
-                  className={`w-full px-4 py-3 border ${
-                    errors.namaProduk ? "border-red-500" : "border-gray-300"
-                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                  className={`w-full px-4 py-3 border ${errors.namaProduk ? "border-red-500" : "border-gray-300"
+                    } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                   id="nama_produk"
                   placeholder="Masukkan nama produk"
                   type="text"
@@ -406,9 +400,8 @@ export default function EditProdukPage() {
                   Ukuran <span className="text-red-500">*</span>
                 </label>
                 <input
-                  className={`w-full px-4 py-3 border ${
-                    errors.ukuran ? "border-red-500" : "border-gray-300"
-                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                  className={`w-full px-4 py-3 border ${errors.ukuran ? "border-red-500" : "border-gray-300"
+                    } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                   id="ukuran"
                   placeholder="Masukkan ukuran produk"
                   type="text"
@@ -431,9 +424,8 @@ export default function EditProdukPage() {
                   Warna <span className="text-red-500">*</span>
                 </label>
                 <input
-                  className={`w-full px-4 py-3 border ${
-                    errors.warna ? "border-red-500" : "border-gray-300"
-                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                  className={`w-full px-4 py-3 border ${errors.warna ? "border-red-500" : "border-gray-300"
+                    } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                   id="warna"
                   placeholder="Masukkan warna produk"
                   type="text"
@@ -451,38 +443,13 @@ export default function EditProdukPage() {
               <div>
                 <label
                   className="block text-sm font-medium text-gray-700 mb-2"
-                  htmlFor="deadline"
-                >
-                  Deadline
-                </label>
-                <input
-                  className={`w-full px-4 py-3 border ${
-                    errors.deadline ? "border-red-500" : "border-gray-300"
-                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
-                  id="deadline"
-                  type="date"
-                  value={deadline}
-                  onChange={(e) => {
-                    setDeadline(e.target.value);
-                    clearError("deadline");
-                  }}
-                />
-                {errors.deadline && (
-                  <p className="text-red-500 text-sm mt-1">{errors.deadline}</p>
-                )}
-              </div>
-
-              <div>
-                <label
-                  className="block text-sm font-medium text-gray-700 mb-2"
                   htmlFor="jumlah_gulungan"
                 >
                   Jumlah Gulungan <span className="text-red-500">*</span>
                 </label>
                 <input
-                  className={`w-full px-4 py-3 border ${
-                    errors.jumlahGulungan ? "border-red-500" : "border-gray-300"
-                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                  className={`w-full px-4 py-3 border ${errors.jumlahGulungan ? "border-red-500" : "border-gray-300"
+                    } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                   id="jumlah_gulungan"
                   min="1"
                   type="number"
@@ -520,11 +487,10 @@ export default function EditProdukPage() {
                       Gulungan {item.gulungan}
                     </label>
                     <input
-                      className={`w-full px-4 py-3 border ${
-                        errors.polaGulungan && errors.polaGulungan[index]
+                      className={`w-full px-4 py-3 border ${errors.polaGulungan && errors.polaGulungan[index]
                           ? "border-red-500"
                           : "border-gray-300"
-                      } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                        } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                       id={`pola-gulungan-${index}`}
                       min="1"
                       placeholder={`Masukkan pola untuk gulungan ${item.gulungan}`}

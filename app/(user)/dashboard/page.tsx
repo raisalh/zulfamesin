@@ -430,7 +430,7 @@ export default function BerandaPage() {
                 <div className="flex items-center space-x-2 mb-4">
                     <IconCalendar className="w-6 h-6 text-purple-600" />
                     <h2 className="text-xl font-semibold text-gray-800">
-                        Absensi Karyawan (7 Hari Terakhir)
+                        Absensi Karyawan
                     </h2>
                 </div>
                 <div className="overflow-x-auto">
