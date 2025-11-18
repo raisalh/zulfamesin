@@ -427,11 +427,20 @@ export default function BerandaPage() {
             </div >
 
             <div className="bg-white rounded-lg shadow-md p-6">
-                <div className="flex items-center space-x-2 mb-4">
-                    <IconCalendar className="w-6 h-6 text-purple-600" />
-                    <h2 className="text-xl font-semibold text-gray-800">
-                        Absensi Karyawan
-                    </h2>
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-2">
+                        <IconCalendar className="w-6 h-6 text-purple-600" />
+                        <h2 className="text-xl font-semibold text-gray-800">
+                            Absensi Karyawan
+                        </h2>
+                    </div>
+
+                    <button
+                        onClick={() => router.push('/absensi')}
+                        className="text-sm text-purple-600 hover:underline"
+                    >
+                        Lihat semua
+                    </button>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
