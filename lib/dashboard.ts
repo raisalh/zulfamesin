@@ -59,21 +59,21 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         const produkBulanIni = (produkRows as any)[0].total || 0;
 
         const [upahTerbayarRows] = await pool.query(`
-            SELECT COALESCE(SUM(total_upah), 0) as total 
-            FROM upah_karyawan 
+            SELECT COALESCE(SUM(total_upah), 0) AS total 
+            FROM upah_karyawan
             WHERE status_pembayaran = 'dibayar'
+            AND tanggal_pembayaran IS NOT NULL
             AND MONTH(tanggal_pembayaran) = MONTH(CURRENT_DATE())
             AND YEAR(tanggal_pembayaran) = YEAR(CURRENT_DATE())
         `);
         const upahTerbayar = (upahTerbayarRows as any)[0].total || 0;
 
         const [upahBelumRows] = await pool.query(`
-            SELECT COALESCE(SUM(uk.total_upah), 0) as total 
+            SELECT COALESCE(SUM(uk.total_upah), 0) AS total
             FROM upah_karyawan uk
             INNER JOIN produksi p ON uk.id_produk = p.id_produk
             WHERE uk.status_pembayaran = 'belum'
-            AND MONTH(p.tanggal_mulai) = MONTH(CURRENT_DATE())
-            AND YEAR(p.tanggal_mulai) = YEAR(CURRENT_DATE())
+            AND uk.tanggal_pembayaran IS NULL
         `);
         const upahBelumDibayar = (upahBelumRows as any)[0].total || 0;
 
@@ -98,14 +98,19 @@ export async function getDistribusiUpah(): Promise<DistribusiUpah> {
     try {
         const [rows] = await pool.query(`
             SELECT 
-                SUM(CASE WHEN uk.total_upah > 100000 THEN 1 ELSE 0 END) as upah_tinggi,
-                SUM(CASE WHEN uk.total_upah BETWEEN 50000 AND 100000 THEN 1 ELSE 0 END) as upah_menengah,
-                SUM(CASE WHEN uk.total_upah < 50000 THEN 1 ELSE 0 END) as upah_rendah
-            FROM upah_karyawan uk
-            INNER JOIN produksi p ON uk.id_produk = p.id_produk
-            WHERE uk.status_pembayaran = 'belum'
-            AND MONTH(p.tanggal_mulai) = MONTH(CURRENT_DATE())
-            AND YEAR(p.tanggal_mulai) = YEAR(CURRENT_DATE())
+                SUM(CASE WHEN total_upah_karyawan > 100000 THEN 1 ELSE 0 END) AS upah_tinggi,
+                SUM(CASE WHEN total_upah_karyawan BETWEEN 50000 AND 100000 THEN 1 ELSE 0 END) AS upah_menengah,
+                SUM(CASE WHEN total_upah_karyawan < 50000 THEN 1 ELSE 0 END) AS upah_rendah
+            FROM (
+                SELECT 
+                    uk.id_karyawan,
+                    SUM(uk.total_upah) AS total_upah_karyawan
+                FROM upah_karyawan uk
+                JOIN produksi p ON uk.id_produk = p.id_produk
+                WHERE MONTH(p.tanggal_mulai) = MONTH(CURRENT_DATE())
+                AND YEAR(p.tanggal_mulai) = YEAR(CURRENT_DATE())
+                GROUP BY uk.id_karyawan
+            ) AS grouped;
         `);
 
         const result = (rows as any)?.[0];
