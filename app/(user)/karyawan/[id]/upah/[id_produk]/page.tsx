@@ -84,16 +84,16 @@ export default function DetailInformasiUpahKaryawan() {
             alert("Pembayaran hanya bisa diubah jika produk sudah selesai");
             return;
         }
-    
+
         try {
             const response = await fetch(`/api/employee/${params.id}/works/${params.id_produk}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status_pembayaran: newStatus })
             });
-    
+
             const result = await response.json();
-            
+
             if (result.success) {
                 setStatusPembayaran(newStatus);
             } else {
@@ -114,18 +114,23 @@ export default function DetailInformasiUpahKaryawan() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-6">
+        <div className="min-h-screen bg-gray-50 p-3 md:p-6">
             <div>
-                <div className="mb-6 flex items-center justify-between">
-                    <button
-                        onClick={() => router.back()}
-                        className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
-                    >
-                        <IconArrowLeft size={20} />
-                        <span className="text-lg font-semibold">
+                <div className="flex items-center justify-between mb-6">
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => router.back()}
+                            className="p-2 rounded-lg hover:bg-gray-200"
+                        >
+                            <IconArrowLeft size={20} />
+                        </button>
+
+                        <h1 className="text-xl font-semibold text-gray-800">
                             Detail Informasi Upah Karyawan
-                        </span>
-                    </button>
+                        </h1>
+                    </div>
+
                     <button
                         onClick={handleExport}
                         className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800"
@@ -164,24 +169,22 @@ export default function DetailInformasiUpahKaryawan() {
                                 {pekerjaanList.map((pekerjaan, index) => (
                                     <div
                                         key={pekerjaan.id_pekerjaan_karyawan}
-                                        className="flex items-start gap-4 pb-4 border-b last:border-b-0"
+                                        className="flex flex-col md:flex-row md:items-start gap-3 md:gap-4 pb-4 border-b last:border-b-0"
                                     >
                                         <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center flex-shrink-0">
                                             <IconUser size={20} className="text-gray-600" />
                                         </div>
+
                                         <div className="flex-1">
-                                            <h4 className="font-semibold text-gray-900">
-                                                {pekerjaan.nama_pekerjaan}
-                                            </h4>
+                                            <h4 className="font-semibold text-gray-900">{pekerjaan.nama_pekerjaan}</h4>
                                             <p className="text-sm text-gray-600">
                                                 {pekerjaan.unit_dikerjakan} buah × {formatRupiah(pekerjaan.upah_per_unit)}
                                             </p>
                                         </div>
-                                        <div className="text-right">
+
+                                        <div className="text-left md:text-right">
                                             <p className="font-semibold text-gray-900">
-                                                {formatRupiah(
-                                                    pekerjaan.unit_dikerjakan * pekerjaan.upah_per_unit
-                                                )}
+                                                {formatRupiah(pekerjaan.unit_dikerjakan * pekerjaan.upah_per_unit)}
                                             </p>
                                         </div>
                                     </div>
@@ -210,7 +213,7 @@ export default function DetailInformasiUpahKaryawan() {
                                     </span>
                                 </div>
                                 <div className="pt-3 border-t">
-                                    <div className="flex justify-between items-center">
+                                    <div className="flex justify-between items-center text-left md:text-right">
                                         <span className="text-lg font-semibold text-gray-900">
                                             Total Upah
                                         </span>
@@ -230,12 +233,11 @@ export default function DetailInformasiUpahKaryawan() {
                             <select
                                 value={statusPembayaran}
                                 onChange={(e) => handleStatusChange(e.target.value)}
-                                disabled={produk?.status !== "selesai"}  
-                                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                                    produk?.status !== "selesai" 
-                                        ? 'bg-gray-100 cursor-not-allowed text-gray-500' 
-                                        : ''
-                                }`}
+                                disabled={produk?.status !== "selesai"}
+                                className={`w-full px-3 py-2 md:px-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500  ${produk?.status !== "selesai"
+                                    ? 'bg-gray-100 cursor-not-allowed text-gray-500'
+                                    : ''
+                                    }`}
                             >
                                 <option value="dibayar">Dibayar</option>
                                 <option value="belum">Belum</option>

@@ -114,9 +114,8 @@ export default function TambahKaryawanPage() {
                 Nama Karyawan <span className="text-red-500">*</span>
               </label>
               <input
-                className={`w-full px-4 py-3 border ${
-                  errors.namaKaryawan ? "border-red-500" : "border-gray-300"
-                } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                className={`w-full px-4 py-3 border ${errors.namaKaryawan ? "border-red-500" : "border-gray-300"
+                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                 id="namaKaryawan"
                 placeholder="Masukkan nama karyawan"
                 type="text"
@@ -133,7 +132,7 @@ export default function TambahKaryawanPage() {
               )}
             </div>
 
-            <div>
+            <div className="space-y-1">
               <label
                 className="block text-sm font-medium text-gray-700 mb-2"
                 htmlFor="jenisKelamin"
@@ -141,9 +140,8 @@ export default function TambahKaryawanPage() {
                 Jenis Kelamin <span className="text-red-500">*</span>
               </label>
               <select
-                className={`w-full px-4 py-3 border ${
-                  errors.jenisKelamin ? "border-red-500" : "border-gray-300"
-                } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                className={`w-full px-4 py-3 border ${errors.jenisKelamin ? "border-red-500" : "border-gray-300"
+                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none text-sm`}
                 id="jenisKelamin"
                 value={jenisKelamin}
                 onChange={(e) => {
@@ -151,16 +149,12 @@ export default function TambahKaryawanPage() {
                   clearError("jenisKelamin");
                 }}
               >
-                <option value="">
-                  Pilih Jenis Kelamin yang Sesuai Untuk Karyawan Ini
-                </option>
+                <option value="">Pilih Jenis Kelamin</option>
                 <option value="perempuan">Perempuan</option>
                 <option value="laki-laki">Laki-Laki</option>
               </select>
               {errors.jenisKelamin && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.jenisKelamin}
-                </p>
+                <p className="text-red-500 text-sm mt-1">{errors.jenisKelamin}</p>
               )}
             </div>
 
@@ -213,20 +207,18 @@ export default function TambahKaryawanPage() {
               Data yang Anda masukkan akan hilang!
             </p>
 
-            <div className="flex gap-3 justify-center">
-              <button
-                className="px-8 py-3 border-2 border-gray-300 rounded-full text-gray-700 font-semibold hover:bg-gray-50 transition-colors min-w-[120px]"
-                onClick={cancelBatal}
-              >
-                Kembali
-              </button>
-              <button
-                className="px-8 py-3 bg-[#8EC3B3] rounded-full text-gray-900 font-semibold hover:bg-yellow-500 transition-colors min-w-[120px]"
-                onClick={confirmBatal}
-              >
-                Ya
-              </button>
-            </div>
+            <button
+              className="px-4 py-2 sm:px-8 sm:py-3 border-2 border-gray-300 rounded-full text-gray-700 font-medium sm:font-semibold hover:bg-gray-50 transition-colors min-w-[90px] sm:min-w-[120px]"
+              onClick={cancelBatal}
+            >
+              Kembali
+            </button>
+            <button
+              className="px-4 py-2 sm:px-8 sm:py-3 bg-[#8EC3B3] rounded-full text-gray-900 font-medium sm:font-semibold transition-colors min-w-[90px] sm:min-w-[120px]"
+              onClick={confirmBatal}
+            >
+              Ya
+            </button>
           </div>
         </div>
       )}

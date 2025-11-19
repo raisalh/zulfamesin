@@ -162,9 +162,8 @@ export default function EditKaryawanPage() {
                 Nama Karyawan <span className="text-red-500">*</span>
               </label>
               <input
-                className={`w-full px-4 py-3 border ${
-                  errors.namaKaryawan ? "border-red-500" : "border-gray-300"
-                } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                className={`w-full px-4 py-3 border ${errors.namaKaryawan ? "border-red-500" : "border-gray-300"
+                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                 id="namaKaryawan"
                 placeholder="Masukkan nama karyawan"
                 type="text"
@@ -181,30 +180,31 @@ export default function EditKaryawanPage() {
               )}
             </div>
 
-            <div>
+            <div className="w-full">
               <label
                 className="block text-sm font-medium text-gray-700 mb-2"
                 htmlFor="jenisKelamin"
               >
                 Jenis Kelamin <span className="text-red-500">*</span>
               </label>
-              <select
-                className={`w-full px-4 py-3 border ${
-                  errors.jenisKelamin ? "border-red-500" : "border-gray-300"
-                } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
-                id="jenisKelamin"
-                value={jenisKelamin}
-                onChange={(e) => {
-                  setJenisKelamin(e.target.value);
-                  clearError("jenisKelamin");
-                }}
-              >
-                <option value="">
-                  Pilih Jenis Kelamin yang Sesuai Untuk Karyawan Ini
-                </option>
-                <option value="perempuan">Perempuan</option>
-                <option value="laki-laki">Laki-Laki</option>
-              </select>
+              <div className="w-full max-w-full">
+                <select
+                  id="jenisKelamin"
+                  value={jenisKelamin}
+                  onChange={(e) => {
+                    setJenisKelamin(e.target.value);
+                    clearError("jenisKelamin");
+                  }}
+                  className={`w-full px-4 py-3 border text-sm truncate ${errors.jenisKelamin ? "border-red-500" : "border-gray-300"
+                    } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                >
+                  <option value="">
+                    Pilih Jenis Kelamin
+                  </option>
+                  <option value="perempuan">Perempuan</option>
+                  <option value="laki-laki">Laki-Laki</option>
+                </select>
+              </div>
               {errors.jenisKelamin && (
                 <p className="text-red-500 text-sm mt-1">
                   {errors.jenisKelamin}
@@ -223,18 +223,18 @@ export default function EditKaryawanPage() {
               </button>
 
               <button
-                className="px-6 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center gap-2"
+                className="w-full sm:w-auto px-5 py-2 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
                 disabled={loading}
                 type="submit"
               >
                 {loading ? (
                   <>
-                    <IconLoader2 className="animate-spin" size={18} />
+                    <IconLoader2 className="animate-spin" size={16} />
                     Menyimpan...
                   </>
                 ) : (
                   <>
-                    <IconPencil size={18} />
+                    <IconPencil size={16} />
                     Simpan Perubahan
                   </>
                 )}

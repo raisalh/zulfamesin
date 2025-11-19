@@ -156,10 +156,10 @@ export default function AbsensiPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
-            <div className="max-w-5xl mx-auto">
+        <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
+            <div className="max-w-5xl mx-auto w-full">
                 <div className="mb-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <div className="flex items-center gap-2">
                                 <button
@@ -177,7 +177,7 @@ export default function AbsensiPage() {
                             </p>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                             <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-1">
                                 <Button
                                     isIconOnly
@@ -224,7 +224,7 @@ export default function AbsensiPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                     <Card>
                         <CardBody className="p-4">
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-3">
                                 <div className="bg-blue-100 p-3 rounded-lg">
                                     <IconUsers className="h-6 w-6 text-blue-600" />
                                 </div>
@@ -240,7 +240,7 @@ export default function AbsensiPage() {
 
                     <Card>
                         <CardBody className="p-4">
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-3">
                                 <div className="bg-green-100 p-3 rounded-lg">
                                     <IconCalendar className="h-6 w-6 text-green-600" />
                                 </div>
@@ -256,7 +256,7 @@ export default function AbsensiPage() {
 
                     <Card>
                         <CardBody className="p-4">
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-3">
                                 <div className="bg-purple-100 p-3 rounded-lg">
                                     <IconBriefcase className="h-6 w-6 text-purple-600" />
                                 </div>
@@ -280,14 +280,14 @@ export default function AbsensiPage() {
                             {HARI_MINGGU.map((hari) => (
                                 <div
                                     key={hari}
-                                    className="text-center text-sm font-semibold text-gray-600 py-2"
+                                    className="text-center text-xs sm:text-sm font-semibold text-gray-600 py-1 sm:py-2"
                                 >
                                     {hari}
                                 </div>
                             ))}
                         </div>
 
-                        <div className="grid grid-cols-7 gap-2">
+                        <div className="grid grid-cols-7 gap-1 sm:gap-2">
                             {calendarDays.map((date, index) => {
                                 const dateString = formatDate(date);
                                 const attendanceCount = getAttendanceCount(date);
@@ -302,7 +302,7 @@ export default function AbsensiPage() {
                                             hasAttendance && handleDateClick(dateString)
                                         }
                                         disabled={!hasAttendance}
-                                        className={`relative aspect-square rounded-lg border-2 p-2transition-all duration-200  
+                                        className={`relative aspect-square rounded-lg border-2 p-1 sm:p-2 transition-all text-[10px] sm:text-sm 
                                             ${!isCurrentMonthDate
                                                 ? "bg-gray-50 text-gray-400 border-gray-200"
                                                 : isTodayDate
@@ -317,13 +317,13 @@ export default function AbsensiPage() {
                                     >
                                         <div className="flex flex-col h-full justify-between">
                                             <span
-                                                className={`
-                        text-sm font-medium
-                        ${isTodayDate ? "text-blue-600" : ""}
-                    `}
+                                                className={`text-[10px] sm:text-sm font-medium
+                                                ${isTodayDate ? "text-blue-600" : ""}
+                                                `}
                                             >
                                                 {date.getDate()}
                                             </span>
+
 
                                             {hasAttendance && (
                                                 <div className="mt-1">
@@ -360,6 +360,7 @@ export default function AbsensiPage() {
                     onClose={() => setIsModalOpen(false)}
                     size="2xl"
                     scrollBehavior="inside"
+                    className="max-w-full sm:max-w-2xl"
                 >
                     <ModalContent>
                         {(onClose) => (
@@ -402,7 +403,7 @@ export default function AbsensiPage() {
                                                 <Card key={karyawan.id_karyawan} className="border">
                                                     <CardBody className="p-4">
                                                         <div className="flex items-start justify-between mb-3">
-                                                            <div className="flex items-center gap-3">
+                                                            <div className="flex flex-wrap items-center gap-3">
                                                                 <div className="bg-blue-100 p-2 rounded-lg">
                                                                     <IconUser className="h-5 w-5 text-blue-600" />
                                                                 </div>
