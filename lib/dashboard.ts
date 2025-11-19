@@ -202,21 +202,43 @@ export async function getProdukProgress(): Promise<ProdukProgress[]> {
                 p.nama_produk,
                 p.warna,
                 p.ukuran,
-                COALESCE(SUM(pk.target_unit), 0) AS totalPola,
-                COALESCE(SUM(pk.unit_dikerjakan), 0) AS polaSelesai,
-                CASE 
-                    WHEN SUM(pk.target_unit) > 0 
-                        THEN ROUND((SUM(pk.unit_dikerjakan) / SUM(pk.target_unit)) * 100, 2)
-                    ELSE 0
-                END AS progress
+
+                COALESCE(g.totalPola, 0) AS totalPola,
+
+                COALESCE(
+                    CASE WHEN pk.sumTarget > 0 
+                        THEN ROUND((pk.sumSelesai / pk.sumTarget) * g.totalPola, 0)
+                    ELSE 0 END,
+                0) AS polaSelesai,
+
+                COALESCE(
+                    CASE WHEN pk.sumTarget > 0
+                        THEN LEAST(ROUND((pk.sumSelesai / pk.sumTarget) * 100, 2), 100)
+                    ELSE 0 END,
+                0) AS progress
+
             FROM produksi p
-            LEFT JOIN pekerjaan_karyawan pk 
-                ON p.id_produk = pk.id_produk
+
+            LEFT JOIN (
+                SELECT id_produk, SUM(jumlah_pola) AS totalPola
+                FROM gulungan
+                GROUP BY id_produk
+            ) g ON g.id_produk = p.id_produk
+
+            LEFT JOIN (
+                SELECT id_produk,
+                    SUM(unit_dikerjakan) AS sumSelesai,
+                    SUM(target_unit) AS sumTarget
+                FROM pekerjaan_karyawan
+                GROUP BY id_produk
+            ) pk ON pk.id_produk = p.id_produk
+
             WHERE p.status = 'diproses'
             AND DATE_FORMAT(p.tanggal_mulai, '%Y-%m') = DATE_FORMAT(CURRENT_DATE(), '%Y-%m')
-            GROUP BY p.id_produk
+
             ORDER BY p.id_produk DESC;
         `);
+
         return rows as ProdukProgress[];
     } catch (error) {
         console.error('Error getting produk progress:', error);
