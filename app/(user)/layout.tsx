@@ -147,7 +147,7 @@ export default function UserLayout({
                 isIconOnly={!isExpanded}
                 className={`
                   w-full
-                  ${isExpanded ? "h-12 justify-start" : "h-12"} 
+                  ${isExpanded ? "h-12 justify-start gap-x-3" : "h-12"} 
                   text-base font-medium
                   transition-all duration-200
                   ${isActive

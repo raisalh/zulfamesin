@@ -61,7 +61,7 @@ export default function TambahProgressPage() {
             if (result.success) {
                 setProduk(result.data.produk);
                 setPekerjaanList(result.data.pekerjaan_list);
-                
+
                 if (result.data.pekerjaan_list.length > 0) {
                     setSelectedPekerjaan(result.data.pekerjaan_list[0].id_jenis_pekerjaan);
                 }
@@ -79,7 +79,7 @@ export default function TambahProgressPage() {
             ...prev,
             [idPekerjaanKaryawan]: value
         }));
-        
+
         if (errors.progress_data?.[idPekerjaanKaryawan]) {
             setErrors(prev => ({
                 ...prev,
@@ -93,41 +93,57 @@ export default function TambahProgressPage() {
 
     const validateForm = (): boolean => {
         const newErrors: FormErrors = {};
+        const progressErrors: { [key: number]: string } = {};
 
         if (!tanggalProgress) {
             newErrors.tanggal_progress = "Tanggal progress harus diisi";
         }
 
-        const selectedPekerjaanData = pekerjaanList.find(
+        const selected = pekerjaanList.find(
             p => p.id_jenis_pekerjaan === selectedPekerjaan
         );
 
-        if (selectedPekerjaanData) {
-            const progressErrors: { [key: number]: string } = {};
-            let hasAnyProgress = false;
+        if (!selected) {
+            newErrors.progress_data = { 0: "Data pekerjaan tidak ditemukan" };
+            setErrors(newErrors);
+            return false;
+        }
 
-            selectedPekerjaanData.karyawan.forEach((karyawan) => {
-                if (karyawan.status !== 'selesai') {
-                    const progress = parseInt(progressData[karyawan.id_pekerjaan_karyawan] || '0');
-                    const sisa = karyawan.target_unit - karyawan.unit_dikerjakan;
+        let hasAnyProgress = false;
 
-                    if (progress < 0) {
-                        progressErrors[karyawan.id_pekerjaan_karyawan] = "Progress tidak boleh negatif";
-                    } else if (progress > sisa) {
-                        progressErrors[karyawan.id_pekerjaan_karyawan] = `Progress tidak boleh lebih dari sisa (${sisa} unit)`;
-                    }
+        selected.karyawan.forEach((k) => {
+            if (k.status === "selesai") return;
 
-                    if (progress > 0) {
-                        hasAnyProgress = true;
-                    }
-                }
-            });
+            const rawValue = progressData[k.id_pekerjaan_karyawan];
 
-            if (!hasAnyProgress) {
-                newErrors.progress_data = { 0: "Minimal satu karyawan harus memiliki progress" };
-            } else if (Object.keys(progressErrors).length > 0) {
-                newErrors.progress_data = progressErrors;
+            if (rawValue === "" || rawValue === undefined) {
+                progressErrors[k.id_pekerjaan_karyawan] = "Isi progress atau tulis 0";
+                return;
             }
+
+            const progress = parseInt(rawValue);
+            const sisa = k.target_unit - k.unit_dikerjakan;
+
+            if (isNaN(progress)) {
+                progressErrors[k.id_pekerjaan_karyawan] = "Nilai tidak valid";
+            } else if (progress < 0) {
+                progressErrors[k.id_pekerjaan_karyawan] = "Progress tidak boleh negatif";
+            } else if (progress > sisa) {
+                progressErrors[k.id_pekerjaan_karyawan] =
+                    `Progress tidak boleh lebih dari sisa (${sisa} unit)`;
+            }
+
+            if (progress > 0) {
+                hasAnyProgress = true;
+            }
+        });
+
+        if (!hasAnyProgress) {
+            newErrors.progress_data = {
+                0: "Minimal satu karyawan harus memiliki progress"
+            };
+        } else if (Object.keys(progressErrors).length > 0) {
+            newErrors.progress_data = progressErrors;
         }
 
         setErrors(newErrors);
@@ -247,8 +263,8 @@ export default function TambahProgressPage() {
                             required
                         >
                             {pekerjaanList.map((pekerjaan) => (
-                                <option 
-                                    key={pekerjaan.id_jenis_pekerjaan} 
+                                <option
+                                    key={pekerjaan.id_jenis_pekerjaan}
                                     value={pekerjaan.id_jenis_pekerjaan}
                                 >
                                     {pekerjaan.nama_pekerjaan}
@@ -266,16 +282,16 @@ export default function TambahProgressPage() {
                                 type="date"
                                 value={tanggalProgress}
                                 onChange={(e) => {
-                                    setTanggalProgress(e.target.value);
-                                    if (errors.tanggal_progress) {
+                                    const val = e.target.value;
+                                    setTanggalProgress(val);
+
+                                    if (val && errors.tanggal_progress) {
                                         setErrors(prev => ({ ...prev, tanggal_progress: '' }));
                                     }
                                 }}
                                 placeholder="Pilih Tanggal Progress Pengerjaan"
-                                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                                    errors.tanggal_progress ? 'border-red-500' : 'border-gray-300'
-                                }`}
-                                required
+                                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.tanggal_progress ? 'border-red-500' : 'border-gray-300'
+                                    }`}
                             />
                         </div>
                         {errors.tanggal_progress && (
@@ -286,7 +302,7 @@ export default function TambahProgressPage() {
                     {selectedPekerjaanData && (
                         <div className="bg-white rounded-lg shadow p-6">
                             <h3 className="text-sm font-medium text-gray-900 mb-4">Karyawan</h3>
-                            
+
                             {allFinished ? (
                                 <div className="text-center py-8">
                                     <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
@@ -314,8 +330,8 @@ export default function TambahProgressPage() {
                                                         {karyawan.nama_karyawan}
                                                     </div>
                                                     <div className="text-sm text-gray-500 mb-2">
-                                                        Target: {karyawan.target_unit} unit | 
-                                                        Dikerjakan: {karyawan.unit_dikerjakan} unit | 
+                                                        Target: {karyawan.target_unit} unit |
+                                                        Dikerjakan: {karyawan.unit_dikerjakan} unit |
                                                         Sisa: {karyawan.target_unit - karyawan.unit_dikerjakan} unit
                                                     </div>
                                                     {karyawan.status === 'selesai' ? (
@@ -334,11 +350,10 @@ export default function TambahProgressPage() {
                                                                 value={progressData[karyawan.id_pekerjaan_karyawan] || ''}
                                                                 onChange={(e) => handleProgressChange(karyawan.id_pekerjaan_karyawan, e.target.value)}
                                                                 placeholder="Masukkan jumlah unit"
-                                                                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                                                                    errors.progress_data?.[karyawan.id_pekerjaan_karyawan] 
-                                                                        ? 'border-red-500' 
+                                                                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.progress_data?.[karyawan.id_pekerjaan_karyawan]
+                                                                        ? 'border-red-500'
                                                                         : 'border-gray-300'
-                                                                }`}
+                                                                    }`}
                                                             />
                                                             {errors.progress_data?.[karyawan.id_pekerjaan_karyawan] && (
                                                                 <p className="text-red-500 text-sm mt-1">

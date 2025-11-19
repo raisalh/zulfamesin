@@ -25,6 +25,7 @@ interface AssignmentDetail {
 interface FormErrors {
     nama_pekerjaan?: string;
     upah_per_unit?: string;
+    karyawan_ids?: string;
 }
 
 export default function WorkAssignmentPage() {
@@ -162,6 +163,12 @@ export default function WorkAssignmentPage() {
 
             if (!String(p.upah_per_unit).trim()) {
                 fieldErrors.upah_per_unit = "Upah per unit harus diisi";
+            } else if (parseFloat(String(p.upah_per_unit)) <= 0) {
+                fieldErrors.upah_per_unit = "Upah per unit harus lebih dari 0";
+            }
+
+            if (p.karyawan_ids.length === 0) {
+                fieldErrors.karyawan_ids = "Pilih minimal 1 karyawan";
             }
 
             if (Object.keys(fieldErrors).length > 0) {
@@ -172,6 +179,7 @@ export default function WorkAssignmentPage() {
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
+
 
     const handleBatal = () => {
         setShowCancelModal(true);
@@ -314,7 +322,8 @@ export default function WorkAssignmentPage() {
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Pilih Karyawan
                                     </label>
-                                    <div className="flex flex-wrap gap-2 mb-4 max-h-40 overflow-y-auto pr-1">
+
+                                    <div className="flex flex-wrap gap-2 mb-1 max-h-40 overflow-y-auto pr-1">
                                         {karyawanList.map(karyawan => {
                                             const isSelected = pekerjaan.karyawan_ids.includes(karyawan.id_karyawan);
                                             return (
@@ -322,8 +331,8 @@ export default function WorkAssignmentPage() {
                                                     key={karyawan.id_karyawan}
                                                     onClick={() => handleKaryawanToggle(pekerjaan.id, karyawan.id_karyawan)}
                                                     className={`px-4 py-2 rounded-lg border-2 transition-all ${isSelected
-                                                        ? 'bg-teal-600 text-white border-teal-600'
-                                                        : 'bg-white text-gray-700 border-gray-300 hover:border-teal-600'
+                                                            ? 'bg-teal-600 text-white border-teal-600'
+                                                            : 'bg-white text-gray-700 border-gray-300 hover:border-teal-600'
                                                         }`}
                                                 >
                                                     {karyawan.nama_karyawan}
@@ -331,6 +340,10 @@ export default function WorkAssignmentPage() {
                                             );
                                         })}
                                     </div>
+
+                                    {errors[pekerjaan.id]?.karyawan_ids && (
+                                        <p className="text-red-500 text-sm mt-1">{errors[pekerjaan.id]?.karyawan_ids}</p>
+                                    )}
                                 </div>
 
                                 {pekerjaan.karyawan_ids.length > 0 && pekerjaan.upah_per_unit && (

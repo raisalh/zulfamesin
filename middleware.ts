@@ -3,6 +3,13 @@ import { NextResponse } from "next/server";
 
 export default withAuth(
   function middleware(req) {
+    const token = req.nextauth.token;
+
+    if (token?.exp && Date.now() >= Number(token.exp) * 1000) {
+      const url = new URL("/", req.url);
+      return NextResponse.redirect(url);
+    }
+
     return NextResponse.next();
   },
   {
@@ -10,13 +17,7 @@ export default withAuth(
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl;
 
-        const publicRoutes = ["/", "/login"];
-
-        if (publicRoutes.includes(pathname)) {
-          return true;
-        }
-
-        if (pathname.startsWith("/api/auth")) {
+        if (pathname === "/" || pathname === "/login") {
           return true;
         }
 
@@ -24,7 +25,7 @@ export default withAuth(
       },
     },
     pages: {
-      signIn: "/login",
+      signIn: "/",
     },
   },
 );
