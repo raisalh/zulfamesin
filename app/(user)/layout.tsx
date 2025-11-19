@@ -28,28 +28,48 @@ export default function UserLayout({
 }) {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState<null | boolean>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const pagesWithSidebar = ["/dashboard", "/produksi", "/karyawan", "/laporan"];
-
   const showSidebar = pagesWithSidebar.some((page) => pathname === page);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebar-expanded");
+    if (saved !== null) {
+      setIsExpanded(saved === "true");
+    } else {
+      setIsExpanded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isExpanded !== null) {
+      localStorage.setItem("sidebar-expanded", String(isExpanded));
+    }
+  }, [isExpanded]);
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         const response = await fetch("/api/auth/session");
         const data = await response.json();
-
-        if (data.user) {
-          setUser(data.user);
-        }
+        if (data.user) setUser(data.user);
       } catch (error) {
         console.error("Error fetching user data:", error);
       }
     };
-
     fetchUserData();
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   useEffect(() => {
@@ -57,73 +77,60 @@ export default function UserLayout({
   }, [pathname]);
 
   const menuItems = [
-    {
-      title: "Beranda",
-      href: "/dashboard",
-      icon: IconHome,
-    },
-    {
-      title: "Produksi",
-      href: "/produksi",
-      icon: IconShirt,
-    },
-    {
-      title: "Karyawan",
-      href: "/karyawan",
-      icon: IconUsersGroup,
-    },
-    {
-      title: "Laporan",
-      href: "/laporan",
-      icon: IconChartPie2,
-    },
+    { title: "Beranda", href: "/dashboard", icon: IconHome },
+    { title: "Produksi", href: "/produksi", icon: IconShirt },
+    { title: "Karyawan", href: "/karyawan", icon: IconUsersGroup },
+    { title: "Laporan", href: "/laporan", icon: IconChartPie2 },
   ];
 
   const currentPage = menuItems.find((item) => item.href === pathname);
   const pageTitle = currentPage?.title || "Dashboard";
 
-  if (!showSidebar) {
-    return <>{children}</>;
-  }
+  if (!showSidebar) return <>{children}</>;
+  if (isExpanded === null) return null;
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <button
-        aria-label="Close mobile menu"
-        className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-        type="button"
-        onClick={() => setIsMobileMenuOpen(false)}
-      />
+    <div className="flex h-screen bg-gray-50 relative">
+      {isMobileMenuOpen && (
+        <button
+          aria-label="Close mobile menu"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
 
       <aside
-        className={`${
-          isExpanded ? "w-64" : "w-20"
-        } bg-slate-800 text-white flex flex-col transition-all duration-300 
-                fixed lg:relative h-full z-50
-                ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-                lg:transition-all`}
+        className={`
+          bg-slate-800 text-white flex flex-col h-full z-50
+          transition-all duration-300
+          fixed top-0 left-0
+          ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
+          lg:relative lg:translate-x-0
+          ${isExpanded ? "lg:w-64" : "lg:w-20"}
+        `}
       >
         <div className="p-6">
-          <div
-            className={`flex items-center gap-3 ${!isExpanded && "justify-center"}`}
-          >
+          <div className={`flex items-center gap-3 ${!isExpanded ? "lg:justify-center" : ""}`}>
             <Image
               alt="Zulfa Mesin Logo"
-              className="flex-shrink-0 object-contain"
               height={40}
-              src="/assets/Logo.svg"
               width={40}
+              src="/assets/Logo.svg"
+              className="flex-shrink-0 object-contain"
             />
-            {isExpanded && (
-              <div className="overflow-hidden">
-                <h1 className="text-lg font-bold whitespace-nowrap">
-                  Zulfa Mesin
-                </h1>
-                <p className="text-xs text-slate-400 whitespace-nowrap">
-                  Produksi Garmen
-                </p>
-              </div>
-            )}
+            <div className="hidden lg:block overflow-hidden">
+              {isExpanded && (
+                <>
+                  <h1 className="text-lg font-bold whitespace-nowrap">Zulfa Mesin</h1>
+                  <p className="text-xs text-slate-400 whitespace-nowrap">Produksi Garmen</p>
+                </>
+              )}
+            </div>
+
+            <div className="lg:hidden overflow-hidden">
+              <h1 className="text-lg font-bold whitespace-nowrap">Zulfa Mesin</h1>
+              <p className="text-xs text-slate-400 whitespace-nowrap">Produksi Garmen</p>
+            </div>
           </div>
         </div>
 
@@ -136,18 +143,25 @@ export default function UserLayout({
               <Button
                 key={item.href}
                 as="a"
-                className={`w-full ${
-                  isExpanded ? "justify-start" : "justify-center"
-                } gap-3 h-12 text-base font-medium ${
-                  isActive
-                    ? "bg-teal-600 text-black hover:bg-teal-700"
-                    : "bg-transparent text-slate-300 hover:bg-slate-700"
-                }`}
                 href={item.href}
                 isIconOnly={!isExpanded}
-                startContent={<Icon size={20} />}
+                className={`
+                  w-full
+                  ${isExpanded ? "h-12 justify-start" : "h-12"} 
+                  text-base font-medium
+                  transition-all duration-200
+                  ${isActive
+                    ? "bg-teal-600 text-black hover:bg-teal-700"
+                    : "bg-transparent text-slate-300 hover:bg-slate-700"
+                  }
+                `}
+                startContent={isExpanded ? <Icon size={20} /> : undefined}
               >
-                {isExpanded && item.title}
+                {isExpanded ? (
+                  <span className="hidden lg:inline">{item.title}</span>
+                ) : (
+                  <Icon size={20} />
+                )}
               </Button>
             );
           })}
@@ -155,17 +169,11 @@ export default function UserLayout({
 
         <div className="p-4 border-t border-slate-700">
           {isExpanded ? (
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                <IconUserCircle size={35} />
-              </div>
+            <div className="hidden lg:flex items-center gap-3 mb-3">
+              <IconUserCircle size={35} className="flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
-                  {user?.name || "Loading..."}
-                </p>
-                <p className="text-xs text-slate-400 truncate">
-                  {user?.email || ""}
-                </p>
+                <p className="text-sm font-medium truncate">{user?.name || "Memuat..."}</p>
+                <p className="text-xs text-slate-400 truncate">{user?.email || ""}</p>
               </div>
               <Button
                 isIconOnly
@@ -176,12 +184,12 @@ export default function UserLayout({
               </Button>
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-2">
+            <div className="hidden lg:flex flex-col items-center gap-2">
               <Button
                 isIconOnly
                 as="a"
-                className="bg-transparent text-slate-300 hover:bg-slate-700"
                 href="/profile"
+                className="bg-transparent text-slate-300 hover:bg-slate-700"
               >
                 <IconUserCircle size={24} />
               </Button>
@@ -194,6 +202,17 @@ export default function UserLayout({
               </Button>
             </div>
           )}
+
+          <div className="flex lg:hidden items-center justify-between mt-2">
+            <span className="text-sm">{user?.name}</span>
+            <Button
+              isIconOnly
+              className="bg-transparent text-slate-300 hover:bg-slate-700"
+              onClick={() => signOut({ callbackUrl: "/" })}
+            >
+              <IconLogout size={20} />
+            </Button>
+          </div>
         </div>
       </aside>
 
@@ -212,9 +231,7 @@ export default function UserLayout({
           >
             <IconMenu2 size={20} />
           </Button>
-          <h2 className="text-lg lg:text-xl font-bold text-gray-800">
-            {pageTitle}
-          </h2>
+          <h2 className="text-lg lg:text-xl font-bold text-gray-800">{pageTitle}</h2>
         </div>
 
         <div className="p-4 lg:p-8">{children}</div>
