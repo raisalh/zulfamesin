@@ -187,8 +187,6 @@ export default function UserLayout({
             <div className="hidden lg:flex flex-col items-center gap-2">
               <Button
                 isIconOnly
-                as="a"
-                href="/profile"
                 className="bg-transparent text-slate-300 hover:bg-slate-700"
               >
                 <IconUserCircle size={24} />
