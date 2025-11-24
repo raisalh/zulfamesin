@@ -216,7 +216,7 @@ export default function ZulfaMesinLanding() {
             </h1>
             <p className="text-base sm:text-lg lg:text-xl text-gray-600">
               Dengan pengalaman lebih dari 20 tahun, kami menghadirkan produk
-              tekstil terbaik untuk kebutuhan industri dan konsumen di seluruh
+              garmen terbaik untuk kebutuhan industri dan konsumen di seluruh
               Indonesia.
             </p>
             <div className="flex gap-3 sm:gap-4 flex-wrap">
@@ -261,7 +261,7 @@ export default function ZulfaMesinLanding() {
               Tentang Kami
             </h2>
             <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-3xl mx-auto px-4">
-              Perusahaan tekstil terdepan yang berkomitmen menghadirkan produk
+              Perusahaan garmen terdepan yang berkomitmen menghadirkan produk
               berkualitas tinggi dengan teknologi modern dan proses produksi
               yang berkelanjutan.
             </p>
@@ -349,7 +349,7 @@ export default function ZulfaMesinLanding() {
                 <li className="flex items-start gap-3">
                   <span className="text-gray-500 mt-1">✓</span>
                   <span className="text-sm sm:text-base text-gray-500">
-                    Menghasilkan produk tekstil berkualitas tinggi dengan
+                    Menghasilkan produk garmen berkualitas tinggi dengan
                     teknologi terdepan
                   </span>
                 </li>
@@ -486,7 +486,7 @@ export default function ZulfaMesinLanding() {
               </span>
             </div>
             <p className="text-sm leading-relaxed">
-              Perusahaan tekstil terdepan dengan komitmen pada kualitas dan
+              Perusahaan garmen terdepan dengan komitmen pada kualitas dan
               keberlanjutan.
             </p>
           </div>
