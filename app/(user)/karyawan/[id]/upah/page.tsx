@@ -18,7 +18,7 @@ interface ProdukItem {
     total_upah: number;
     status_pembayaran: "dibayar" | "belum" | null;
     status_kerjaan: "selesai" | "diproses" | null;
-    tanggal_pembayaran: string | null;
+    tanggal_pembayaran: string;
 }
 
 export default function DetailUpahKaryawan() {
@@ -57,6 +57,16 @@ export default function DetailUpahKaryawan() {
             currency: "IDR",
             minimumFractionDigits: 0,
         }).format(amount);
+    };
+
+    const formatDate = (dateString: string) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
     };
 
     const totalPages = Math.ceil(produkList.length / itemsPerPage);
@@ -133,6 +143,9 @@ export default function DetailUpahKaryawan() {
                                     <th className="px-3 py-2 md:px-6 md:py-3 text-[10px] md:text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
                                         Status Pembayaran
                                     </th>
+                                    <th className="px-3 py-2 md:px-6 md:py-3 text-[10px] md:text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
+                                        Tanggal Pembayaran
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200 border-t border-gray-200">
@@ -164,7 +177,7 @@ export default function DetailUpahKaryawan() {
                                                     {formatRupiah(item.total_upah || 0)}
                                                 </div>
                                             </td>
-                                            <td className="px-3 py-2 md:px-6 md:py-4 text-xs md:text-sm min-w-[140px]">
+                                            <td className="px-3 py-2 md:px-6 md:py-4 text-xs md:text-sm min-w-[140px] text-center">
                                                 <span
                                                     className={`inline-flex px-2 py-0.5 text-[10px] md:text-xs font-medium rounded-full ${item.status_kerjaan === "selesai"
                                                         ? "bg-green-100 text-green-800"
@@ -174,7 +187,7 @@ export default function DetailUpahKaryawan() {
                                                     {item.status_kerjaan === "selesai" ? "Selesai" : "Diproses"}
                                                 </span>
                                             </td>
-                                            <td className="px-3 py-2 md:px-6 md:py-4 text-xs md:text-sm min-w-[140px]">
+                                            <td className="px-3 py-2 md:px-6 md:py-4 text-xs md:text-sm min-w-[140px] text-center">
                                                 <span
                                                     className={`inline-flex px-2 py-0.5 text-[10px] md:text-xs font-medium rounded-full ${item.status_pembayaran === "dibayar"
                                                         ? "bg-green-100 text-green-800"
@@ -182,6 +195,12 @@ export default function DetailUpahKaryawan() {
                                                         }`}
                                                 >
                                                     {item.status_pembayaran === "dibayar" ? "Dibayar" : "Belum"}
+                                                </span>
+                                            </td>
+                                            <td className="px-3 py-2 md:px-6 md:py-4 text-xs md:text-sm min-w-[140px] text-center">
+                                                <span>
+                                                    {item.status_pembayaran === "dibayar"
+                                                        ? (formatDate(item.tanggal_pembayaran)) : "-"}
                                                 </span>
                                             </td>
                                         </tr>

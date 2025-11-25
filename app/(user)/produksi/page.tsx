@@ -24,6 +24,7 @@ interface Produksi {
   deadline: string | null;
   status: "diproses" | "selesai" | null;
   hasPekerjaan: boolean;
+  tanggal_selesai: string;
 }
 
 interface Stats {
@@ -117,6 +118,16 @@ export default function ProduksiPage() {
         text: `${diffDays} Hari`
       };
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
 
   const handleDelete = async (id: number) => {
@@ -236,6 +247,9 @@ export default function ProduksiPage() {
                     <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Status
                     </th>
+                    <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      Tanggal Selesai
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -353,6 +367,12 @@ export default function ProduksiPage() {
                               {produk.status === "selesai"
                                 ? "Selesai"
                                 : "Diproses"}
+                            </span>
+                          </td>
+                          <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
+                            <span>
+                              {produk.status === "selesai"
+                                ? (formatDate(produk.tanggal_selesai)) : "-"}
                             </span>
                           </td>
                         </tr>
