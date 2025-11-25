@@ -4,6 +4,9 @@ export interface Karyawan {
   id_karyawan: number;
   nama_karyawan: string;
   jenis_kelamin: "perempuan" | "laki-laki" | null;
+  no_telp: string | null;
+  email: string | null;
+  alamat: string | null;
 }
 export async function getAllKaryawan() {
   try {
@@ -47,9 +50,9 @@ export async function createKaryawan(data: Omit<Karyawan, "id_karyawan">) {
   try {
     const [result] = await pool.query(
       `INSERT INTO karyawan 
-            (nama_karyawan, jenis_kelamin) 
-            VALUES (?, ?)`,
-      [data.nama_karyawan, data.jenis_kelamin],
+            (nama_karyawan, jenis_kelamin, no_telp, email, alamat) 
+            VALUES (?, ?, ?, ?, ?)`,
+      [data.nama_karyawan, data.jenis_kelamin, data.no_telp, data.email, data.alamat],
     );
 
     return result;

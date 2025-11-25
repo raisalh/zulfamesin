@@ -7,10 +7,14 @@ import {
   IconAlertTriangle,
   IconPencil,
 } from "@tabler/icons-react";
+import { set } from "zod";
 
 interface FormErrors {
   namaKaryawan?: string;
   jenisKelamin?: string;
+  noTelp?: string;
+  email?: string;
+  alamat?: string;
 }
 
 export default function EditKaryawanPage() {
@@ -25,6 +29,9 @@ export default function EditKaryawanPage() {
 
   const [namaKaryawan, setNamaKaryawan] = useState("");
   const [jenisKelamin, setJenisKelamin] = useState("");
+  const [noTelp, setNoTelp] = useState("");
+  const [email, setEmail] = useState("");
+  const [alamat, setAlamat] = useState("");
 
   useEffect(() => {
     fetchKaryawanData();
@@ -39,6 +46,9 @@ export default function EditKaryawanPage() {
       if (result.success && result.data) {
         setNamaKaryawan(result.data.nama_karyawan);
         setJenisKelamin(result.data.jenis_kelamin || "");
+        setNoTelp(result.data.no_telp || "");
+        setEmail(result.data.email || "");
+        setAlamat(result.data.alamat || "");
       } else {
         alert("Gagal memuat data karyawan");
         router.push("/karyawan");
@@ -65,6 +75,31 @@ export default function EditKaryawanPage() {
     // Validasi Jenis Kelamin
     if (!jenisKelamin) {
       newErrors.jenisKelamin = "Jenis kelamin harus dipilih";
+    }
+
+    // Validasi Nomor Telepon
+    if (noTelp.trim() !== "") {
+      if (!/^[0-9]+$/.test(noTelp)) {
+        newErrors.noTelp = "Nomor telepon hanya boleh berisi angka";
+      } else if (noTelp.length < 10) {
+        newErrors.noTelp = "Nomor telepon minimal 10 digit";
+      }
+    }
+
+    // Validasi Email
+    if (email.trim() !== "") {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        newErrors.email = "Format email tidak valid";
+      } else if (!/(gmail\.com|yahoo\.com|outlook\.com|hotmail\.com|[\w.-]+\.\w{2,})$/.test(email)) {
+        newErrors.email = "Email harus mengandung domain valid seperti @gmail.com";
+      }
+    }
+
+    // Validasi Alamat
+    if (alamat.trim() !== "") {
+      if (alamat.trim().split(/\s+/).length < 5) {
+        newErrors.alamat = "Alamat harus minimal 5 kata";
+      }
     }
 
     setErrors(newErrors);
@@ -99,6 +134,9 @@ export default function EditKaryawanPage() {
         body: JSON.stringify({
           nama_karyawan: namaKaryawan,
           jenis_kelamin: jenisKelamin,
+          no_telp: noTelp,
+          email: email,
+          alamat: alamat,
         }),
       });
 
@@ -150,9 +188,12 @@ export default function EditKaryawanPage() {
       <div className="max-w-5xl mx-auto px-6 py-8">
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
-            <h3 className="text-sm font-bold text-gray-900 mb-5">
+            <h3 className="text-sm font-bold text-gray-900 mb-1">
               Informasi Karyawan
             </h3>
+            <p className="text-sm text-red-600">
+              * Wajib diisi
+            </p>
 
             <div>
               <label
@@ -208,6 +249,84 @@ export default function EditKaryawanPage() {
               {errors.jenisKelamin && (
                 <p className="text-red-500 text-sm mt-1">
                   {errors.jenisKelamin}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label
+                className="block text-sm font-medium text-gray-700 mb-2"
+                htmlFor="noTelp"
+              >
+                Nomor Telepon
+              </label>
+              <input
+                className={`w-full px-4 py-3 border border-gray-300
+                  rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                id="noTelp"
+                placeholder="Masukkan nomor telepon karyawan"
+                type="text"
+                value={noTelp}
+                onChange={(e) => {
+                  setNoTelp(e.target.value);
+                  clearError("noTelp");
+                }}
+              />
+              {errors.noTelp && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.noTelp}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label
+                className="block text-sm font-medium text-gray-700 mb-2"
+                htmlFor="email"
+              >
+                Email
+              </label>
+              <input
+                className={`w-full px-4 py-3 border border-gray-300
+                  rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                id="email"
+                placeholder="Masukkan email karyawan"
+                type="text"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  clearError("email");
+                }}
+              />
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.email}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label
+                className="block text-sm font-medium text-gray-700 mb-2"
+                htmlFor="alamat"
+              >
+                Alamat
+              </label>
+              <input
+                className={`w-full px-4 py-3 border border-gray-300
+                  rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                id="alamat"
+                placeholder="Masukkan alamat karyawan"
+                type="text"
+                value={alamat}
+                onChange={(e) => {
+                  setAlamat(e.target.value);
+                  clearError("alamat");
+                }}
+              />
+              {errors.alamat && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.alamat}
                 </p>
               )}
             </div>

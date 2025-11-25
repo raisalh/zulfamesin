@@ -34,6 +34,9 @@ export async function POST(request: NextRequest) {
     const result = await createKaryawan({
       nama_karyawan: body.nama_karyawan,
       jenis_kelamin: body.jenis_kelamin || null,
+      no_telp: body.no_telp || null,
+      email: body.email || null,
+      alamat: body.alamat || null,
     });
 
     return NextResponse.json(

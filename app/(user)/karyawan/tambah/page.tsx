@@ -3,10 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { IconLoader2, IconAlertTriangle, IconPlus } from "@tabler/icons-react";
+import { no } from "zod/v4/locales";
 
 interface FormErrors {
   namaKaryawan?: string;
   jenisKelamin?: string;
+  noTelp?: string;
+  email?: string;
+  alamat?: string;
 }
 
 export default function TambahKaryawanPage() {
@@ -17,6 +21,9 @@ export default function TambahKaryawanPage() {
 
   const [namaKaryawan, setNamaKaryawan] = useState("");
   const [jenisKelamin, setJenisKelamin] = useState("");
+  const [noTelp, setNoTelp] = useState("");
+  const [email, setEmail] = useState("");
+  const [alamat, setAlamat] = useState("");
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -31,6 +38,31 @@ export default function TambahKaryawanPage() {
     // Validasi Jenis Kelamin
     if (!jenisKelamin) {
       newErrors.jenisKelamin = "Jenis kelamin harus dipilih";
+    }
+
+    // Validasi Nomor Telepon
+    if (noTelp.trim() !== "") {
+      if (!/^[0-9]+$/.test(noTelp)) {
+        newErrors.noTelp = "Nomor telepon hanya boleh berisi angka";
+      } else if (noTelp.length < 10) {
+        newErrors.noTelp = "Nomor telepon minimal 10 digit";
+      }
+    }
+
+    // Validasi Email
+    if (email.trim() !== "") {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        newErrors.email = "Format email tidak valid";
+      } else if (!/(gmail\.com|yahoo\.com|outlook\.com|hotmail\.com|[\w.-]+\.\w{2,})$/.test(email)) {
+        newErrors.email = "Email harus mengandung domain valid seperti @gmail.com";
+      }
+    }
+
+    // Validasi Alamat
+    if (alamat.trim() !== "") {
+      if (alamat.trim().split(/\s+/).length < 5) {
+        newErrors.alamat = "Alamat harus minimal 5 kata";
+      }
     }
 
     setErrors(newErrors);
@@ -64,7 +96,10 @@ export default function TambahKaryawanPage() {
         },
         body: JSON.stringify({
           nama_karyawan: namaKaryawan,
-          jenis_kelamin: jenisKelamin || null,
+          jenis_kelamin: jenisKelamin,
+          no_telp: noTelp || null,
+          email: email || null,
+          alamat: alamat || null,
         }),
       });
 
@@ -102,9 +137,12 @@ export default function TambahKaryawanPage() {
       <div className="max-w-5xl mx-auto px-6 py-8">
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
-            <h3 className="text-sm font-bold text-gray-900 mb-5">
+            <h3 className="text-sm font-bold text-gray-900 mb-1">
               Informasi Karyawan
             </h3>
+            <p className="text-sm text-red-600">
+              * Wajib diisi
+            </p>
 
             <div>
               <label
@@ -158,6 +196,84 @@ export default function TambahKaryawanPage() {
               )}
             </div>
 
+            <div>
+              <label
+                className="block text-sm font-medium text-gray-700 mb-2"
+                htmlFor="noTelp"
+              >
+                Nomor Telepon
+              </label>
+              <input
+                className={`w-full px-4 py-3 border border-gray-300
+                  rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                id="noTelp"
+                placeholder="Masukkan nomor telepon karyawan"
+                type="text"
+                value={noTelp}
+                onChange={(e) => {
+                  setNoTelp(e.target.value);
+                  clearError("noTelp");
+                }}
+              />
+              {errors.noTelp && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.noTelp}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label
+                className="block text-sm font-medium text-gray-700 mb-2"
+                htmlFor="email"
+              >
+                Email
+              </label>
+              <input
+                className={`w-full px-4 py-3 border border-gray-300
+                  rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                id="email"
+                placeholder="Masukkan email karyawan"
+                type="text"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  clearError("email");
+                }}
+              />
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.email}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label
+                className="block text-sm font-medium text-gray-700 mb-2"
+                htmlFor="alamat"
+              >
+                Alamat
+              </label>
+              <input
+                className={`w-full px-4 py-3 border border-gray-300
+                  rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                id="alamat"
+                placeholder="Masukkan alamat karyawan"
+                type="text"
+                value={alamat}
+                onChange={(e) => {
+                  setAlamat(e.target.value);
+                  clearError("alamat");
+                }}
+              />
+              {errors.alamat && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.alamat}
+                </p>
+              )}
+            </div>
+
             <div className="flex justify-end gap-3 pt-4">
               <button
                 className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
@@ -207,18 +323,20 @@ export default function TambahKaryawanPage() {
               Data yang Anda masukkan akan hilang!
             </p>
 
-            <button
-              className="px-4 py-2 sm:px-8 sm:py-3 border-2 border-gray-300 rounded-full text-gray-700 font-medium sm:font-semibold hover:bg-gray-50 transition-colors min-w-[90px] sm:min-w-[120px]"
-              onClick={cancelBatal}
-            >
-              Kembali
-            </button>
-            <button
-              className="px-4 py-2 sm:px-8 sm:py-3 bg-[#8EC3B3] rounded-full text-gray-900 font-medium sm:font-semibold transition-colors min-w-[90px] sm:min-w-[120px]"
-              onClick={confirmBatal}
-            >
-              Ya
-            </button>
+            <div className="flex gap-3 justify-center">
+              <button
+                className="px-8 py-3 border-2 border-gray-300 rounded-full text-gray-700 font-semibold hover:bg-gray-50 transition-colors min-w-[120px]"
+                onClick={cancelBatal}
+              >
+                Kembali
+              </button>
+              <button
+                className="px-8 py-3 bg-[#8EC3B3] rounded-full text-gray-900 font-semibold hover:bg-[#7AB9A8] transition-colors min-w-[120px]"
+                onClick={confirmBatal}
+              >
+                Ya
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -14,6 +14,9 @@ interface Karyawan {
   id_karyawan: number;
   nama_karyawan: string;
   jenis_kelamin: "perempuan" | "laki-laki" | null;
+  no_telp: string | null;
+  email: string | null;
+  alamat: string | null;
 }
 
 export default function KaryawanPage() {
@@ -114,6 +117,15 @@ export default function KaryawanPage() {
                   <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     Jenis Kelamin
                   </th>
+                  <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Nomor Telepon
+                  </th>
+                  <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Email
+                  </th>
+                  <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Alamat
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -194,6 +206,15 @@ export default function KaryawanPage() {
                             ? "Perempuan"
                             : "Laki-Laki"
                           : "-"}
+                      </td>
+                      <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
+                        {karyawan.no_telp || "-"}
+                      </td>
+                      <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
+                        {karyawan.email || "-"}
+                      </td>
+                      <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
+                        {karyawan.alamat || "-"}
                       </td>
                     </tr>
                   ))
