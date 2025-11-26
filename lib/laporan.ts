@@ -25,9 +25,9 @@ export interface LaporanKaryawan {
     id_karyawan: number;
     nama_karyawan: string;
     total_pekerjaan: number;
-    total_unit: number; 
-    unit_selesai: number;  
-    unit_sisa: number;  
+    total_unit: number;
+    unit_selesai: number;
+    unit_sisa: number;
 }
 
 export interface LaporanKaryawanDetail {
@@ -69,6 +69,82 @@ export interface LaporanPolaProduksi {
     total_pola: number;
     pola_selesai: number;
     pola_belum_selesai: number;
+}
+
+export interface OnTimeDelivery {
+    total: number;
+    tepat_waktu: number;
+    terlambat: number;
+    sedang_diproses: number;
+}
+
+export interface DurasiPengerjaan {
+    nama_produk: string;
+    rata_rata_hari: number;
+    total_produksi: number;
+}
+
+export interface DistribusiJenisPekerjaan {
+    nama_pekerjaan: string;
+    total_assignment: number;
+    unit_selesai: number;
+    total_target: number;
+    persentase_selesai: number;
+}
+
+export interface CompletionRate {
+    id_karyawan: number;
+    nama_karyawan: string;
+    selesai: number;
+    dikerjakan: number;
+    total_pekerjaan: number;
+    completion_rate: number;
+}
+
+export interface TingkatKehadiran {
+    id_karyawan: number;
+    nama_karyawan: string;
+    hari_aktif: number;
+    terakhir_aktif: Date | null;
+    total_unit: number;
+}
+
+export interface WorkloadBalance {
+    id_karyawan: number;
+    nama_karyawan: string;
+    total_target: number;
+    unit_selesai: number;
+    unit_sisa: number;
+    persentase_selesai: number;
+}
+
+export interface UpahBelumDibayar {
+    id_karyawan: number;
+    nama_karyawan: string;
+    belum_dibayar_dikerjakan: number;
+    belum_dibayar_selesai: number;
+    total_belum_dibayar: number;
+}
+
+export interface PerbandinganUpahBulanan {
+    bulan_ini: {
+        total_upah: number;
+        dibayar: number;
+        belum_dibayar: number;
+        jumlah_karyawan: number;
+    };
+    bulan_lalu: {
+        total_upah: number;
+        dibayar: number;
+        belum_dibayar: number;
+        jumlah_karyawan: number;
+    };
+    perubahan: {
+        total_upah_persen: number;
+        dibayar_persen: number;
+        belum_dibayar_persen: number;
+        karyawan_persen: number;
+    };
 }
 
 export async function getLaporanProduksiPerBulan(params: {
@@ -122,26 +198,34 @@ export async function getLaporanProduksiDetail(params: {
                 p.warna,
                 p.ukuran,
                 p.status,
-                p.progress,
                 p.deadline,
                 p.tanggal_mulai,
                 p.tanggal_selesai,
                 p.gulungan as total_gulungan,
-                COALESCE(SUM(g.jumlah_pola), 0) as total_pola
+                COALESCE(SUM(g.jumlah_pola), 0) as total_pola,
+                COALESCE(
+                    CASE 
+                        WHEN SUM(pk.target_unit) > 0 
+                        THEN LEAST(ROUND((SUM(pk.unit_dikerjakan) / SUM(pk.target_unit)) * 100, 2), 100)
+                        ELSE 0 
+                    END, 
+                    0
+                ) as progress
             FROM produksi p
             LEFT JOIN gulungan g ON p.id_produk = g.id_produk
+            LEFT JOIN pekerjaan_karyawan pk ON p.id_produk = pk.id_produk
             WHERE 1=1
         `;
 
         const queryParams: any[] = [];
 
         if (params.tahun) {
-            query += ` AND YEAR(tanggal_mulai) = ?`;
+            query += ` AND YEAR(p.tanggal_mulai) = ?`;
             queryParams.push(params.tahun);
         }
 
         if (params.bulan) {
-            query += ` AND MONTH(tanggal_mulai) = ?`;
+            query += ` AND MONTH(p.tanggal_mulai) = ?`;
             queryParams.push(params.bulan);
         }
 
@@ -191,7 +275,7 @@ export async function getLaporanKaryawan(params: {
             query += ` AND MONTH(p.tanggal_mulai) = ?`;
             queryParams.push(params.bulan);
         }
-        
+
         query += ` GROUP BY k.id_karyawan ORDER BY unit_selesai DESC`;
 
         const [rows] = await pool.query(query, queryParams);
@@ -232,12 +316,12 @@ export async function getLaporanKaryawanDetail(
         const queryParams: any[] = [id_karyawan];
 
         if (params.tahun) {
-            query += ` AND YEAR(tanggal_mulai) = ?`;
+            query += ` AND YEAR(p.tanggal_mulai) = ?`;
             queryParams.push(params.tahun);
         }
 
         if (params.bulan) {
-            query += ` AND MONTH(tanggal_mulai) = ?`;
+            query += ` AND MONTH(p.tanggal_mulai) = ?`;
             queryParams.push(params.bulan);
         }
         query += ` ORDER BY p.tanggal_mulai DESC`;
@@ -264,8 +348,34 @@ export async function getLaporanUpah(params: {
                 COUNT(DISTINCT pk.id_pekerjaan_karyawan) as total_pekerjaan,
                 SUM(pk.unit_dikerjakan) as total_unit,
                 SUM(pk.unit_dikerjakan * jp.upah_per_unit) as total_upah,
-                SUM(CASE WHEN pk.status = 'selesai' THEN pk.unit_dikerjakan * jp.upah_per_unit ELSE 0 END) as dibayar,
-                SUM(CASE WHEN pk.status = 'dikerjakan' THEN pk.unit_dikerjakan * jp.upah_per_unit ELSE 0 END) as belum_dibayar
+                
+                -- FIX: Hitung dibayar dari status selesai yang sudah dibayar
+                SUM(CASE 
+                    WHEN pk.status = 'selesai' 
+                    AND EXISTS (
+                        SELECT 1 FROM upah_karyawan uk 
+                        WHERE uk.id_karyawan = k.id_karyawan 
+                        AND uk.id_produk = pk.id_produk 
+                        AND uk.status_pembayaran = 'dibayar'
+                    )
+                    THEN pk.unit_dikerjakan * jp.upah_per_unit 
+                    ELSE 0 
+                END) as dibayar,
+                
+                -- FIX: Hitung belum dibayar = total - dibayar
+                SUM(pk.unit_dikerjakan * jp.upah_per_unit) - 
+                SUM(CASE 
+                    WHEN pk.status = 'selesai' 
+                    AND EXISTS (
+                        SELECT 1 FROM upah_karyawan uk 
+                        WHERE uk.id_karyawan = k.id_karyawan 
+                        AND uk.id_produk = pk.id_produk 
+                        AND uk.status_pembayaran = 'dibayar'
+                    )
+                    THEN pk.unit_dikerjakan * jp.upah_per_unit 
+                    ELSE 0 
+                END) as belum_dibayar
+                
             FROM karyawan k
             LEFT JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
             LEFT JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
@@ -275,12 +385,12 @@ export async function getLaporanUpah(params: {
 
         const queryParams: any[] = [];
         if (params.tahun) {
-            query += ` AND YEAR(tanggal_mulai) = ?`;
+            query += ` AND YEAR(p.tanggal_mulai) = ?`;
             queryParams.push(params.tahun);
         }
 
         if (params.bulan) {
-            query += ` AND MONTH(tanggal_mulai) = ?`;
+            query += ` AND MONTH(p.tanggal_mulai) = ?`;
             queryParams.push(params.bulan);
         }
 
@@ -324,15 +434,15 @@ export async function getLaporanUpahPerProduk(params: {
 
         const queryParams: any[] = [];
         if (params.tahun) {
-            query += ` AND YEAR(tanggal_mulai) = ?`;
+            query += ` AND YEAR(p.tanggal_mulai) = ?`;
             queryParams.push(params.tahun);
         }
 
         if (params.bulan) {
-            query += ` AND MONTH(tanggal_mulai) = ?`;
+            query += ` AND MONTH(p.tanggal_mulai) = ?`;
             queryParams.push(params.bulan);
         }
-        
+
         if (params.id_karyawan) {
             query += ` AND k.id_karyawan = ?`;
             queryParams.push(params.id_karyawan);
@@ -380,6 +490,469 @@ export async function getLaporanPolaProduksi(params: {
         return (rows as any)[0] as LaporanPolaProduksi;
     } catch (error) {
         console.error('Error getting laporan pola produksi:', error);
+        throw error;
+    }
+}
+
+
+export async function getOnTimeDelivery(params: {
+    tahun?: number;
+    bulan?: number;
+}): Promise<OnTimeDelivery> {
+    try {
+        let query = `
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE 
+                    WHEN status = 'selesai' AND tanggal_selesai <= deadline 
+                    THEN 1 ELSE 0 
+                END) as tepat_waktu,
+                SUM(CASE 
+                    WHEN status = 'selesai' AND tanggal_selesai > deadline 
+                    THEN 1 ELSE 0 
+                END) as terlambat,
+                SUM(CASE 
+                    WHEN status = 'diproses' 
+                    THEN 1 ELSE 0 
+                END) as sedang_diproses
+            FROM produksi
+            WHERE 1=1
+        `;
+
+        const queryParams: any[] = [];
+
+        if (params.tahun) {
+            query += ` AND YEAR(tanggal_mulai) = ?`;
+            queryParams.push(params.tahun);
+        }
+
+        if (params.bulan) {
+            query += ` AND MONTH(tanggal_mulai) = ?`;
+            queryParams.push(params.bulan);
+        }
+
+        const [rows] = await pool.query(query, queryParams);
+        return (rows as any)[0] as OnTimeDelivery;
+    } catch (error) {
+        console.error('Error getting on time delivery:', error);
+        throw error;
+    }
+}
+
+export async function getDurasiPengerjaan(params: {
+    tahun?: number;
+    bulan?: number;
+    limit?: number;
+}): Promise<DurasiPengerjaan[]> {
+    try {
+        let query = `
+            SELECT 
+                nama_produk,
+                ROUND(AVG(DATEDIFF(tanggal_selesai, tanggal_mulai)), 1) as rata_rata_hari,
+                COUNT(*) as total_produksi
+            FROM produksi
+            WHERE status = 'selesai' 
+                AND tanggal_mulai IS NOT NULL 
+                AND tanggal_selesai IS NOT NULL
+        `;
+
+        const queryParams: any[] = [];
+
+        if (params.tahun) {
+            query += ` AND YEAR(tanggal_mulai) = ?`;
+            queryParams.push(params.tahun);
+        }
+
+        if (params.bulan) {
+            query += ` AND MONTH(tanggal_mulai) = ?`;
+            queryParams.push(params.bulan);
+        }
+
+        query += ` GROUP BY nama_produk ORDER BY rata_rata_hari DESC LIMIT ?`;
+        queryParams.push(params.limit || 10);
+
+        const [rows] = await pool.query(query, queryParams);
+        return rows as DurasiPengerjaan[];
+    } catch (error) {
+        console.error('Error getting durasi pengerjaan:', error);
+        throw error;
+    }
+}
+
+
+
+export async function getDistribusiJenisPekerjaan(params: {
+    tahun?: number;
+    bulan?: number;
+}): Promise<DistribusiJenisPekerjaan[]> {
+    try {
+        let query = `
+            SELECT 
+                jp.nama_pekerjaan,
+                COUNT(pk.id_pekerjaan_karyawan) as total_assignment,
+                SUM(pk.unit_dikerjakan) as unit_selesai,
+                SUM(pk.target_unit) as total_target,
+                CASE 
+                    WHEN SUM(pk.target_unit) > 0 
+                    THEN ROUND((SUM(pk.unit_dikerjakan) / SUM(pk.target_unit)) * 100, 2)
+                    ELSE 0 
+                END as persentase_selesai
+            FROM pekerjaan_karyawan pk
+            INNER JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
+            INNER JOIN produksi p ON pk.id_produk = p.id_produk
+            WHERE 1=1
+        `;
+
+        const queryParams: any[] = [];
+
+        if (params.tahun) {
+            query += ` AND YEAR(p.tanggal_mulai) = ?`;
+            queryParams.push(params.tahun);
+        }
+
+        if (params.bulan) {
+            query += ` AND MONTH(p.tanggal_mulai) = ?`;
+            queryParams.push(params.bulan);
+        }
+
+        query += ` GROUP BY jp.id_jenis_pekerjaan ORDER BY total_assignment DESC`;
+
+        const [rows] = await pool.query(query, queryParams);
+        return rows as DistribusiJenisPekerjaan[];
+    } catch (error) {
+        console.error('Error getting distribusi jenis pekerjaan:', error);
+        throw error;
+    }
+}
+export async function getCompletionRate(params: {
+    tahun?: number;
+    bulan?: number;
+}): Promise<CompletionRate[]> {
+    try {
+        let query = `
+            SELECT 
+                k.id_karyawan,
+                k.nama_karyawan,
+                COUNT(CASE WHEN pk.status = 'selesai' THEN 1 END) as selesai,
+                COUNT(CASE WHEN pk.status = 'dikerjakan' THEN 1 END) as dikerjakan,
+                COUNT(*) as total_pekerjaan,
+                ROUND((COUNT(CASE WHEN pk.status = 'selesai' THEN 1 END) / COUNT(*)) * 100, 2) as completion_rate
+            FROM karyawan k
+            INNER JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
+            INNER JOIN produksi p ON pk.id_produk = p.id_produk
+            WHERE 1=1
+        `;
+
+        const queryParams: any[] = [];
+
+        if (params.tahun) {
+            query += ` AND YEAR(p.tanggal_mulai) = ?`;
+            queryParams.push(params.tahun);
+        }
+
+        if (params.bulan) {
+            query += ` AND MONTH(p.tanggal_mulai) = ?`;
+            queryParams.push(params.bulan);
+        }
+
+        query += ` GROUP BY k.id_karyawan, k.nama_karyawan ORDER BY completion_rate DESC`;
+
+        const [rows] = await pool.query(query, queryParams);
+        return rows as CompletionRate[];
+    } catch (error) {
+        console.error('Error getting completion rate:', error);
+        throw error;
+    }
+}
+
+export async function getTingkatKehadiran(params: {
+    tahun?: number;
+    bulan?: number;
+}): Promise<TingkatKehadiran[]> {
+    try {
+        let query = `
+            SELECT 
+                k.id_karyawan,
+                k.nama_karyawan,
+                COUNT(DISTINCT DATE(pp.tanggal_update)) as hari_aktif,
+                MAX(DATE(pp.tanggal_update)) as terakhir_aktif,
+                SUM(pp.unit_progress) as total_unit
+            FROM karyawan k
+            LEFT JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
+            LEFT JOIN progress_pekerjaan pp ON pk.id_pekerjaan_karyawan = pp.id_pekerjaan_karyawan
+            WHERE 1=1
+        `;
+
+        const queryParams: any[] = [];
+
+        if (params.tahun) {
+            query += ` AND YEAR(pp.tanggal_update) = ?`;
+            queryParams.push(params.tahun);
+        }
+
+        if (params.bulan) {
+            query += ` AND MONTH(pp.tanggal_update) = ?`;
+            queryParams.push(params.bulan);
+        }
+
+        query += ` 
+            GROUP BY k.id_karyawan, k.nama_karyawan 
+            HAVING hari_aktif > 0
+            ORDER BY hari_aktif DESC
+        `;
+
+        const [rows] = await pool.query(query, queryParams);
+        return rows as TingkatKehadiran[];
+    } catch (error) {
+        console.error('Error getting tingkat kehadiran:', error);
+        throw error;
+    }
+}
+
+export async function getWorkloadBalance(params: {
+    tahun?: number;
+    bulan?: number;
+}): Promise<WorkloadBalance[]> {
+    try {
+        let query = `
+            SELECT 
+                k.id_karyawan,
+                k.nama_karyawan,
+                COALESCE(SUM(pk.target_unit), 0) as total_target,
+                COALESCE(SUM(pk.unit_dikerjakan), 0) as unit_selesai,
+                COALESCE(SUM(pk.target_unit - pk.unit_dikerjakan), 0) as unit_sisa,
+                CASE 
+                    WHEN SUM(pk.target_unit) > 0 
+                    THEN ROUND((SUM(pk.unit_dikerjakan) / SUM(pk.target_unit)) * 100, 2)
+                    ELSE 0 
+                END as persentase_selesai
+            FROM karyawan k
+            LEFT JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
+            LEFT JOIN produksi p ON pk.id_produk = p.id_produk
+            WHERE 1=1
+        `;
+
+        const queryParams: any[] = [];
+
+        if (params.tahun) {
+            query += ` AND YEAR(p.tanggal_mulai) = ?`;
+            queryParams.push(params.tahun);
+        }
+
+        if (params.bulan) {
+            query += ` AND MONTH(p.tanggal_mulai) = ?`;
+            queryParams.push(params.bulan);
+        }
+
+        query += ` 
+            GROUP BY k.id_karyawan, k.nama_karyawan 
+            HAVING total_target > 0
+            ORDER BY total_target DESC
+        `;
+
+        const [rows] = await pool.query(query, queryParams);
+        return rows as WorkloadBalance[];
+    } catch (error) {
+        console.error('Error getting workload balance:', error);
+        throw error;
+    }
+}
+
+export async function getUpahBelumDibayar(params: {
+    tahun?: number;
+    bulan?: number;
+}): Promise<UpahBelumDibayar[]> {
+    try {
+        let query = `
+            SELECT 
+                k.id_karyawan,
+                k.nama_karyawan,
+                
+                -- Upah belum dibayar karena pekerjaan masih dikerjakan
+                SUM(CASE 
+                    WHEN pk.status = 'dikerjakan' 
+                    THEN pk.unit_dikerjakan * jp.upah_per_unit 
+                    ELSE 0 
+                END) as belum_dibayar_dikerjakan,
+                
+                -- Upah belum dibayar karena selesai tapi belum dibayar
+                SUM(CASE 
+                    WHEN pk.status = 'selesai' 
+                    AND NOT EXISTS (
+                        SELECT 1 FROM upah_karyawan uk 
+                        WHERE uk.id_karyawan = k.id_karyawan 
+                        AND uk.id_produk = pk.id_produk 
+                        AND uk.status_pembayaran = 'dibayar'
+                    )
+                    THEN pk.unit_dikerjakan * jp.upah_per_unit 
+                    ELSE 0 
+                END) as belum_dibayar_selesai,
+                
+                -- Total belum dibayar
+                SUM(CASE 
+                    WHEN pk.status = 'dikerjakan' 
+                    OR (pk.status = 'selesai' 
+                        AND NOT EXISTS (
+                            SELECT 1 FROM upah_karyawan uk 
+                            WHERE uk.id_karyawan = k.id_karyawan 
+                            AND uk.id_produk = pk.id_produk 
+                            AND uk.status_pembayaran = 'dibayar'
+                        ))
+                    THEN pk.unit_dikerjakan * jp.upah_per_unit 
+                    ELSE 0 
+                END) as total_belum_dibayar
+                
+            FROM karyawan k
+            LEFT JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
+            LEFT JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
+            LEFT JOIN produksi p ON pk.id_produk = p.id_produk
+            WHERE 1=1
+        `;
+
+        const queryParams: any[] = [];
+
+        if (params.tahun) {
+            query += ` AND YEAR(p.tanggal_mulai) = ?`;
+            queryParams.push(params.tahun);
+        }
+
+        if (params.bulan) {
+            query += ` AND MONTH(p.tanggal_mulai) = ?`;
+            queryParams.push(params.bulan);
+        }
+
+        query += ` 
+            GROUP BY k.id_karyawan, k.nama_karyawan 
+            HAVING total_belum_dibayar > 0
+            ORDER BY total_belum_dibayar DESC
+            LIMIT 10
+        `;
+
+        const [rows] = await pool.query(query, queryParams);
+        return rows as UpahBelumDibayar[];
+    } catch (error) {
+        console.error('Error getting upah belum dibayar:', error);
+        throw error;
+    }
+}
+
+export async function getPerbandinganUpahBulanan(params: {
+    tahun: number;
+    bulan: number;
+}): Promise<PerbandinganUpahBulanan> {
+    try {
+        let bulanLalu = params.bulan - 1;
+        let tahunLalu = params.tahun;
+
+        if (bulanLalu === 0) {
+            bulanLalu = 12;
+            tahunLalu = params.tahun - 1;
+        }
+
+        const [rowsBulanIni] = await pool.query(`
+            SELECT 
+                COALESCE(SUM(pk.unit_dikerjakan * jp.upah_per_unit), 0) as total_upah,
+                
+                COALESCE(SUM(
+                    CASE 
+                        WHEN uk.status_pembayaran = 'dibayar' 
+                        THEN uk.total_upah 
+                        ELSE 0 
+                    END
+                ), 0) as dibayar,
+                
+                COALESCE(SUM(pk.unit_dikerjakan * jp.upah_per_unit), 0) - COALESCE(SUM(
+                    CASE 
+                        WHEN uk.status_pembayaran = 'dibayar' 
+                        THEN uk.total_upah 
+                        ELSE 0 
+                    END
+                ), 0) as belum_dibayar,
+                
+                COUNT(DISTINCT k.id_karyawan) as jumlah_karyawan
+                
+            FROM karyawan k
+            LEFT JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
+            LEFT JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
+            LEFT JOIN produksi p ON pk.id_produk = p.id_produk
+            LEFT JOIN upah_karyawan uk ON k.id_karyawan = uk.id_karyawan AND pk.id_produk = uk.id_produk
+            WHERE YEAR(p.tanggal_mulai) = ? AND MONTH(p.tanggal_mulai) = ?
+        `, [params.tahun, params.bulan]);
+
+        const [rowsBulanLalu] = await pool.query(`
+            SELECT 
+                COALESCE(SUM(pk.unit_dikerjakan * jp.upah_per_unit), 0) as total_upah,
+                
+                COALESCE(SUM(
+                    CASE 
+                        WHEN uk.status_pembayaran = 'dibayar' 
+                        THEN uk.total_upah 
+                        ELSE 0 
+                    END
+                ), 0) as dibayar,
+                
+                COALESCE(SUM(pk.unit_dikerjakan * jp.upah_per_unit), 0) - COALESCE(SUM(
+                    CASE 
+                        WHEN uk.status_pembayaran = 'dibayar' 
+                        THEN uk.total_upah 
+                        ELSE 0 
+                    END
+                ), 0) as belum_dibayar,
+                
+                COUNT(DISTINCT k.id_karyawan) as jumlah_karyawan
+                
+            FROM karyawan k
+            LEFT JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
+            LEFT JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
+            LEFT JOIN produksi p ON pk.id_produk = p.id_produk
+            LEFT JOIN upah_karyawan uk ON k.id_karyawan = uk.id_karyawan AND pk.id_produk = uk.id_produk
+            WHERE YEAR(p.tanggal_mulai) = ? AND MONTH(p.tanggal_mulai) = ?
+        `, [tahunLalu, bulanLalu]);
+
+        const dataBulanIni = (rowsBulanIni as any)[0];
+        const dataBulanLalu = (rowsBulanLalu as any)[0];
+
+        const hitungPersentase = (nilaiSekarang: number, nilaiSebelumnya: number): number => {
+            if (nilaiSebelumnya === 0) {
+                return nilaiSekarang > 0 ? 100 : 0;
+            }
+            return Number(((nilaiSekarang - nilaiSebelumnya) / nilaiSebelumnya * 100).toFixed(2));
+        };
+
+        return {
+            bulan_ini: {
+                total_upah: Number(dataBulanIni.total_upah) || 0,
+                dibayar: Number(dataBulanIni.dibayar) || 0,
+                belum_dibayar: Number(dataBulanIni.belum_dibayar) || 0,
+                jumlah_karyawan: Number(dataBulanIni.jumlah_karyawan) || 0,
+            },
+            bulan_lalu: {
+                total_upah: Number(dataBulanLalu.total_upah) || 0,
+                dibayar: Number(dataBulanLalu.dibayar) || 0,
+                belum_dibayar: Number(dataBulanLalu.belum_dibayar) || 0,
+                jumlah_karyawan: Number(dataBulanLalu.jumlah_karyawan) || 0,
+            },
+            perubahan: {
+                total_upah_persen: hitungPersentase(
+                    Number(dataBulanIni.total_upah) || 0,
+                    Number(dataBulanLalu.total_upah) || 0
+                ),
+                dibayar_persen: hitungPersentase(
+                    Number(dataBulanIni.dibayar) || 0,
+                    Number(dataBulanLalu.dibayar) || 0
+                ),
+                belum_dibayar_persen: hitungPersentase(
+                    Number(dataBulanIni.belum_dibayar) || 0,
+                    Number(dataBulanLalu.belum_dibayar) || 0
+                ),
+                karyawan_persen: hitungPersentase(
+                    Number(dataBulanIni.jumlah_karyawan) || 0,
+                    Number(dataBulanLalu.jumlah_karyawan) || 0
+                ),
+            }
+        };
+    } catch (error) {
+        console.error('Error getting perbandingan upah bulanan:', error);
         throw error;
     }
 }

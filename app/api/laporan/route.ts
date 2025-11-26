@@ -5,8 +5,16 @@ import {
     getLaporanKaryawan,
     getLaporanKaryawanDetail,
     getLaporanUpah,
-    getLaporanUpahPerProduk, 
-    getLaporanPolaProduksi
+    getLaporanUpahPerProduk,
+    getLaporanPolaProduksi,
+    getOnTimeDelivery,
+    getDurasiPengerjaan,
+    getDistribusiJenisPekerjaan,
+    getCompletionRate,
+    getTingkatKehadiran,
+    getWorkloadBalance,
+    getUpahBelumDibayar,
+    getPerbandinganUpahBulanan
 } from '@/lib/laporan';
 
 export async function GET(request: NextRequest) {
@@ -42,6 +50,24 @@ export async function GET(request: NextRequest) {
                 const data = await getLaporanPolaProduksi({ tahun, bulan });
                 return NextResponse.json({ success: true, data });
             }
+
+            if (type === 'on-time-delivery') {
+                const data = await getOnTimeDelivery({ tahun, bulan });
+                return NextResponse.json({ success: true, data });
+            }
+
+            if (type === 'durasi-pengerjaan') {
+                const limit = searchParams.get('limit')
+                    ? parseInt(searchParams.get('limit')!)
+                    : 10;
+                const data = await getDurasiPengerjaan({ tahun, bulan, limit });
+                return NextResponse.json({ success: true, data });
+            }
+
+            if (type === 'distribusi-jenis-pekerjaan') {
+                const data = await getDistribusiJenisPekerjaan({ tahun, bulan });
+                return NextResponse.json({ success: true, data });
+            }
         }
 
         if (category === 'karyawan') {
@@ -68,6 +94,21 @@ export async function GET(request: NextRequest) {
                 });
                 return NextResponse.json({ success: true, data });
             }
+
+            if (type === 'completion-rate') {
+                const data = await getCompletionRate({ tahun, bulan });
+                return NextResponse.json({ success: true, data });
+            }
+
+            if (type === 'tingkat-kehadiran') {
+                const data = await getTingkatKehadiran({ tahun, bulan });
+                return NextResponse.json({ success: true, data });
+            }
+
+            if (type === 'workload-balance') {
+                const data = await getWorkloadBalance({ tahun, bulan });
+                return NextResponse.json({ success: true, data });
+            }
         }
 
         if (category === 'upah') {
@@ -89,8 +130,24 @@ export async function GET(request: NextRequest) {
                 });
                 return NextResponse.json({ success: true, data });
             }
-        }
 
+            if (type === 'belum-dibayar') {
+                const data = await getUpahBelumDibayar({ tahun, bulan });
+                return NextResponse.json({ success: true, data });
+            }
+
+            if (type === 'perbandingan-bulanan') {
+                if (!tahun || !bulan) {
+                    return NextResponse.json(
+                        { success: false, message: 'Tahun dan bulan harus diisi' },
+                        { status: 400 }
+                    );
+                }
+                const data = await getPerbandinganUpahBulanan({ tahun, bulan });
+                return NextResponse.json({ success: true, data });
+            }
+
+        }
         return NextResponse.json(
             { success: false, message: 'Invalid parameters' },
             { status: 400 }
@@ -98,7 +155,7 @@ export async function GET(request: NextRequest) {
     } catch (error) {
         console.error('Error in laporan API:', error);
         return NextResponse.json(
-            { success: false, message: 'Internal server error' },
+            { success: false, message: 'Internal server error', error: String(error) },
             { status: 500 }
         );
     }
