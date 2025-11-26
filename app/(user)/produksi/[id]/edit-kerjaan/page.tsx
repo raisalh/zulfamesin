@@ -42,7 +42,7 @@ interface FormErrors {
     manual_assignments?: string;
 }
 
-export default function WorkAssignmentPage() {
+export default function EditWorkAssignmentPage() {
     const [karyawanList, setKaryawanList] = useState<Karyawan[]>([]);
     const [pekerjaanList, setPekerjaanList] = useState<PekerjaanItem[]>([
         {
@@ -68,21 +68,47 @@ export default function WorkAssignmentPage() {
     );
 
     useEffect(() => {
-        fetchData();
+        if (id) {
+            fetchExistingData(); 
+        }
     }, [id]);
 
-    const fetchData = async () => {
+    const fetchExistingData = async () => {
         setLoadingData(true);
         try {
             const karyawanResponse = await axios.get("/api/employee");
             if (karyawanResponse.data.success) {
                 setKaryawanList(karyawanResponse.data.data);
             }
-
-            const gulunganResponse = await axios.get(`/api/production/${id}`);
-            if (gulunganResponse.data.success && gulunganResponse.data.data) {
-                const totalPolaValue = gulunganResponse.data.data.jumlah_pola || 0;
+    
+            const produksiResponse = await axios.get(`/api/production/${id}`);
+            if (produksiResponse.data.success && produksiResponse.data.data) {
+                const totalPolaValue = produksiResponse.data.data.jumlah_pola || 0;
                 setTotalPola(totalPolaValue);
+            }
+    
+            const pekerjaanResponse = await axios.get(`/api/work-assignment/${id}`);
+            if (pekerjaanResponse.data.success) {
+                const existingData = pekerjaanResponse.data.data.pekerjaan_list;
+                const transformedPekerjaan = existingData.map((pekerjaan: any) => {
+                    const karyawanIds = pekerjaan.karyawan.map((k: any) => k.id_karyawan);
+                    const isManual = checkIfManualAssignment(pekerjaan.karyawan, totalPola);
+                    return {
+                        id: Date.now().toString() + Math.random(),
+                        nama_pekerjaan: pekerjaan.nama_pekerjaan,
+                        upah_per_unit: parseFloat(pekerjaan.upah_per_unit).toString(),
+                        assignment_type: isManual ? "manual" : "sistem",
+                        karyawan_ids: karyawanIds,
+                        manual_assignments: isManual 
+                            ? pekerjaan.karyawan.map((k: any) => ({
+                                id_karyawan: k.id_karyawan,
+                                unit: k.target_unit
+                            }))
+                            : []
+                    };
+                });
+                
+                setPekerjaanList(transformedPekerjaan);
             }
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -90,6 +116,22 @@ export default function WorkAssignmentPage() {
         } finally {
             setLoadingData(false);
         }
+    };
+    
+    const checkIfManualAssignment = (karyawanList: any[], totalPola: number) => {
+        if (karyawanList.length === 0) return false;
+        
+        const totalKaryawan = karyawanList.length;
+        const baseUnit = Math.floor(totalPola / totalKaryawan);
+        const remainder = totalPola % totalKaryawan;
+        const isAutomatic = karyawanList.every((k: any, index: number) => {
+            const expectedUnit = index === totalKaryawan - 1 
+                ? baseUnit + remainder 
+                : baseUnit;
+            return k.target_unit === expectedUnit;
+        });
+        
+        return !isAutomatic; 
     };
 
     const handleAddPekerjaan = () => {
@@ -314,8 +356,8 @@ export default function WorkAssignmentPage() {
                     (sum, ma) => sum + (ma.unit || 0),
                     0
                 );
+            
                 const hasInvalidUnit = p.manual_assignments.some((ma) => !ma.unit || ma.unit <= 0);
-                
                 if (hasInvalidUnit) {
                     fieldErrors.manual_assignments = "Semua karyawan harus memiliki pola lebih dari 0";
                     toast.error("Semua karyawan harus memiliki pola lebih dari 0");
@@ -347,7 +389,7 @@ export default function WorkAssignmentPage() {
     };
 
     const confirmBatal = () => {
-        router.push("/produksi");
+        router.push(`/produksi/${id}/lihat-progress`);
     };
 
     const cancelBatal = () => {
@@ -404,7 +446,7 @@ export default function WorkAssignmentPage() {
         };
 
         try {
-            const response = await axios.post("/api/work-assignment", payload);
+            const response = await axios.put("/api/work-assignment", payload);
 
             if (response.data.success) {
                 toast.success("Pekerjaan berhasil disimpan!");
@@ -870,7 +912,7 @@ export default function WorkAssignmentPage() {
                         className="flex items-center gap-2 px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
                         <IconCheck size={18} />
-                        {loading ? 'Menyimpan...' : 'Simpan Pekerjaan'}
+                        {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
                     </button>
                 </div>
             </div>
@@ -886,10 +928,10 @@ export default function WorkAssignmentPage() {
                             PERINGATAN
                         </h3>
                         <p className="text-gray-600 mb-2">
-                            Anda yakin ingin membatalkan penambahan pekerjaan?
+                            Anda yakin ingin membatalkan proses mengubah pekerjaan?
                         </p>
                         <p className="text-gray-500 text-sm mb-8">
-                            Penambahan yang Anda buat akan hilang!
+                            Perubahan yang Anda buat akan hilang!
                         </p>
 
                         <div className="flex gap-3 justify-center">

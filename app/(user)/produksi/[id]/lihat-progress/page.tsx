@@ -35,7 +35,6 @@ export default function InformasiPengerjaanPage() {
     const params = useParams();
     const idProduk = params.id as string;
 
-    const [showCancelModal, setShowCancelModal] = useState(false);
     const [loading, setLoading] = useState(true);
     const [produk, setProduk] = useState<ProdukData | null>(null);
     const [pekerjaanList, setPekerjaanList] = useState<Pekerjaan[]>([]);
@@ -127,7 +126,7 @@ export default function InformasiPengerjaanPage() {
 
                     <div className="flex items-center gap-3">
                         <button
-                            onClick={() => router.back()}
+                            onClick={() => router.push(`/produksi`)}
                             className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
                         >
                             <IconArrowLeft size={24} />
@@ -138,6 +137,13 @@ export default function InformasiPengerjaanPage() {
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                        <button
+                            onClick={() => router.push(`/produksi/${idProduk}/edit-kerjaan`)}
+                            className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                            Edit Pekerjaan
+                        </button>
+
                         <button
                             onClick={() => router.push(`/produksi/${idProduk}/tambah-progress`)}
                             disabled={produk?.status === "selesai"}

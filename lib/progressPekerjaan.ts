@@ -30,7 +30,7 @@ export async function getProgressByPekerjaanKaryawan(id_pekerjaan_karyawan: numb
 
 export async function createProgressPekerjaan(data: ProgressPekerjaanInput) {
     const connection = await pool.getConnection();
-    
+
     try {
         await connection.beginTransaction();
 
@@ -60,7 +60,7 @@ export async function createProgressPekerjaan(data: ProgressPekerjaanInput) {
         );
 
         const pekerjaan = (pekerjaanRows as any)[0];
-        
+
         if (pekerjaan.unit_dikerjakan >= pekerjaan.target_unit) {
             await connection.query(
                 `UPDATE pekerjaan_karyawan 
@@ -71,10 +71,10 @@ export async function createProgressPekerjaan(data: ProgressPekerjaanInput) {
         }
 
         await connection.commit();
-        
+
         const id_produk = pekerjaan.id_produk;
         await updateStatusBasedOnProgress(id_produk);
-        
+
         return result;
     } catch (error) {
         await connection.rollback();
@@ -87,7 +87,7 @@ export async function createProgressPekerjaan(data: ProgressPekerjaanInput) {
 
 export async function createMultipleProgress(progressList: ProgressPekerjaanInput[]) {
     const connection = await pool.getConnection();
-    
+
     try {
         await connection.beginTransaction();
 
@@ -120,7 +120,7 @@ export async function createMultipleProgress(progressList: ProgressPekerjaanInpu
             );
 
             const pekerjaan = (pekerjaanRows as any)[0];
-            
+
             if (pekerjaan.unit_dikerjakan >= pekerjaan.target_unit) {
                 await connection.query(
                     `UPDATE pekerjaan_karyawan 
@@ -160,6 +160,28 @@ export async function deleteProgressPekerjaan(id_progress: number) {
         return result;
     } catch (error) {
         console.error('Error deleting progress pekerjaan:', error);
+        throw error;
+    }
+}
+
+export async function deleteProgressByProduk(id_produk: number) {
+    try {
+        const [result] = await pool.query(
+            `DELETE FROM progress_pekerjaan 
+                WHERE id_pekerjaan_karyawan IN (
+                    SELECT id_pekerjaan_karyawan 
+                    FROM pekerjaan_karyawan 
+                    WHERE id_produk = ?
+                )`,
+            [id_produk]
+        );
+
+        const affectedRows = (result as any).affectedRows || 0;
+        console.log(`Deleted ${affectedRows} progress_pekerjaan rows for produk ${id_produk}`);
+        
+        return result;
+    } catch (error) {
+        console.error('Error deleting progress by produk:', error);
         throw error;
     }
 }
