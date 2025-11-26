@@ -94,13 +94,21 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     }
 }
 
-export async function getDistribusiUpah(): Promise<DistribusiUpah> {
+export async function getDistribusiUpah(params?: {
+    minUpahTinggi?: number;
+    minUpahMenengah?: number;
+    maxUpahMenengah?: number;
+}): Promise<DistribusiUpah> {
     try {
+        const minUpahTinggi = params?.minUpahTinggi || 100000;
+        const minUpahMenengah = params?.minUpahMenengah || 50000;
+        const maxUpahMenengah = params?.maxUpahMenengah || 99999;
+
         const [rows] = await pool.query(`
             SELECT 
-                SUM(CASE WHEN total_upah_karyawan > 100000 THEN 1 ELSE 0 END) AS upah_tinggi,
-                SUM(CASE WHEN total_upah_karyawan BETWEEN 50000 AND 100000 THEN 1 ELSE 0 END) AS upah_menengah,
-                SUM(CASE WHEN total_upah_karyawan < 50000 THEN 1 ELSE 0 END) AS upah_rendah
+                SUM(CASE WHEN total_upah_karyawan >= ? THEN 1 ELSE 0 END) AS upah_tinggi,
+                SUM(CASE WHEN total_upah_karyawan >= ? AND total_upah_karyawan <= ? THEN 1 ELSE 0 END) AS upah_menengah,
+                SUM(CASE WHEN total_upah_karyawan < ? THEN 1 ELSE 0 END) AS upah_rendah
             FROM (
                 SELECT 
                     uk.id_karyawan,
@@ -111,7 +119,7 @@ export async function getDistribusiUpah(): Promise<DistribusiUpah> {
                 AND YEAR(p.tanggal_mulai) = YEAR(CURRENT_DATE())
                 GROUP BY uk.id_karyawan
             ) AS grouped;
-        `);
+        `, [minUpahTinggi, minUpahMenengah, maxUpahMenengah, minUpahMenengah]);
 
         const result = (rows as any)?.[0];
 

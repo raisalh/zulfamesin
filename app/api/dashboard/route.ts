@@ -25,6 +25,17 @@ export async function GET(request: NextRequest) {
             );
         }
 
+        const searchParams = request.nextUrl.searchParams;
+        const minUpahTinggi = searchParams.get('minUpahTinggi');
+        const minUpahMenengah = searchParams.get('minUpahMenengah');
+        const maxUpahMenengah = searchParams.get('maxUpahMenengah');
+
+        const distribusiParams = {
+            minUpahTinggi: minUpahTinggi ? Number(minUpahTinggi) : undefined,
+            minUpahMenengah: minUpahMenengah ? Number(minUpahMenengah) : undefined,
+            maxUpahMenengah: maxUpahMenengah ? Number(maxUpahMenengah) : undefined,
+        };
+
         const [
             stats,
             distribusiUpah,
@@ -38,7 +49,7 @@ export async function GET(request: NextRequest) {
             countPolaLastMonth
         ] = await Promise.all([
             getDashboardStats(),
-            getDistribusiUpah(),
+            getDistribusiUpah(distribusiParams),
             getProdukTerbaru(5),
             getProdukDeadlineMendekat(),
             getProdukProgress(),

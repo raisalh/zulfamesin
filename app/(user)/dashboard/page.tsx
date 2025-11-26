@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { IconShirt, IconCurrencyDollar, IconAlertCircle, IconUsers, IconCalendar, IconTrendingUp, IconChartBar } from '@tabler/icons-react';
+import { IconShirt, IconCurrencyDollar, IconAlertCircle, IconUsers, IconCalendar, IconTrendingUp, IconChartBar, IconSettings } from '@tabler/icons-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input } from "@heroui/react";
+import axios from 'axios';
+import { toast } from 'sonner';
 
 interface DashboardData {
     stats: {
@@ -66,27 +69,133 @@ interface DashboardData {
     };
 }
 
+interface DistribusiUpahConfig {
+    batasBawah: string;
+    batasAtas: string;
+}
+
+interface FormErrors {
+    batasBawah?: string;
+    batasAtas?: string;
+}
+
 const COLORS = ['#10b981', '#3b82f6', '#94a3b8'];
 
 export default function BerandaPage() {
     const [data, setData] = useState<DashboardData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const router = useRouter();
+
+    const [distribusiConfig, setDistribusiConfig] = useState<DistribusiUpahConfig>({
+        batasBawah: '50000',
+        batasAtas: '100000',
+    });
+
+    const [formErrors, setFormErrors] = useState<FormErrors>({});
 
     useEffect(() => {
         fetchDashboardData();
     }, []);
 
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = async (config?: DistribusiUpahConfig) => {
         try {
-            const response = await fetch('/api/dashboard');
-            const result = await response.json();
-            setData(result);
+            setLoading(true);
+            const params = new URLSearchParams();
+            
+            if (config) {
+                params.append('minUpahTinggi', config.batasAtas);
+                params.append('minUpahMenengah', config.batasBawah);
+                params.append('maxUpahMenengah', String(Number(config.batasAtas) - 1));
+            }
+
+            const response = await axios.get(`/api/dashboard?${params.toString()}`);
+            setData(response.data);
         } catch (error) {
             console.error('Error fetching dashboard:', error);
+            toast.error('Gagal memuat data dashboard');
         } finally {
             setLoading(false);
         }
+    };
+
+    const validateForm = (): boolean => {
+        const errors: FormErrors = {};
+        let isValid = true;
+
+        if (!distribusiConfig.batasBawah || distribusiConfig.batasBawah.trim() === '') {
+            errors.batasBawah = 'Batas bawah harus diisi';
+            isValid = false;
+        } else if (isNaN(Number(distribusiConfig.batasBawah)) || Number(distribusiConfig.batasBawah) <= 0) {
+            errors.batasBawah = 'Batas bawah harus berupa angka positif';
+            isValid = false;
+        }
+
+        if (!distribusiConfig.batasAtas || distribusiConfig.batasAtas.trim() === '') {
+            errors.batasAtas = 'Batas atas harus diisi';
+            isValid = false;
+        } else if (isNaN(Number(distribusiConfig.batasAtas)) || Number(distribusiConfig.batasAtas) <= 0) {
+            errors.batasAtas = 'Batas atas harus berupa angka positif';
+            isValid = false;
+        }
+
+        if (isValid) {
+            const bawah = Number(distribusiConfig.batasBawah);
+            const atas = Number(distribusiConfig.batasAtas);
+
+            if (atas <= bawah) {
+                errors.batasAtas = 'Batas atas harus lebih besar dari batas bawah';
+                isValid = false;
+            }
+        }
+
+        setFormErrors(errors);
+        return isValid;
+    };
+
+    const handleInputChange = (field: keyof DistribusiUpahConfig, value: string) => {
+        const numericValue = value.replace(/[^0-9]/g, '');
+        
+        setDistribusiConfig(prev => ({
+            ...prev,
+            [field]: numericValue
+        }));
+
+        if (formErrors[field]) {
+            setFormErrors(prev => ({
+                ...prev,
+                [field]: undefined
+            }));
+        }
+    };
+
+    const handleSubmit = async () => {
+        if (!validateForm()) {
+            toast.error('Mohon periksa kembali form Anda');
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            await fetchDashboardData(distribusiConfig);
+            setIsModalOpen(false);
+            toast.success('Distribusi upah berhasil diperbarui');
+        } catch (error) {
+            console.error('Error updating distribution:', error);
+            toast.error('Gagal memperbarui distribusi upah');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleReset = () => {
+        const defaultConfig = {
+            batasBawah: '50000',
+            batasAtas: '100000',
+        };
+        setDistribusiConfig(defaultConfig);
+        setFormErrors({});
     };
 
     if (loading) {
@@ -106,18 +215,18 @@ export default function BerandaPage() {
     }
 
     const chartData = [
-        { name: 'Upah Tinggi (>100K)', value: data.distribusiUpah.upahTinggi || 0 },
-        { name: 'Upah Menengah (50K-100K)', value: data.distribusiUpah.upahMenengah || 0 },
-        { name: 'Upah Rendah (<50K)', value: data.distribusiUpah.upahRendah || 0 },
+        { name: `Upah Tinggi (≥${formatRupiah(Number(distribusiConfig.batasAtas))})`, value: data.distribusiUpah.upahTinggi || 0 },
+        { name: `Upah Menengah (${formatRupiah(Number(distribusiConfig.batasBawah))} - ${formatRupiah(Number(distribusiConfig.batasAtas) - 1)})`, value: data.distribusiUpah.upahMenengah || 0 },
+        { name: `Upah Rendah (<${formatRupiah(Number(distribusiConfig.batasBawah))})`, value: data.distribusiUpah.upahRendah || 0 },
     ];
 
-    const formatRupiah = (amount: number) => {
+    function formatRupiah(amount: number): string {
         return new Intl.NumberFormat('id-ID', {
             style: 'currency',
             currency: 'IDR',
             minimumFractionDigits: 0
         }).format(amount);
-    };
+    }
 
     const renderPercentageText = (growth: { bulanIni: number; bulanLalu: number; persen: number }) => {
         if (growth.persen > 0) {
@@ -147,7 +256,7 @@ export default function BerandaPage() {
                 <div className="bg-white rounded-lg shadow-md p-6">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-gray-600">Produk Bulan Ini</p>
+                            <p className="text-sm text-gray-600">Order Bulan Ini</p>
                             <p className="text-3xl font-bold text-gray-800 mt-2">
                                 {data.stats.produkBulanIni}
                             </p>
@@ -205,9 +314,9 @@ export default function BerandaPage() {
                 <div className="bg-white rounded-lg shadow-md p-6">
                     <div className="flex items-center justify-between">
                         <div className="flex-1">
-                            <p className="text-sm text-gray-600">Perbandingan Produk</p>
+                            <p className="text-sm text-gray-600">Perbandingan Jumlah Order</p>
                             <p className="text-3xl font-bold text-gray-800 mt-2">
-                                {data.produkGrowth.bulanIni} Produk
+                                {data.produkGrowth.bulanIni} Order
                             </p>
                             {renderPercentageText(data.produkGrowth)}
                         </div>
@@ -220,7 +329,7 @@ export default function BerandaPage() {
                 <div className="bg-white rounded-lg shadow-md p-6">
                     <div className="flex items-center justify-between">
                         <div className="flex-1">
-                            <p className="text-sm text-gray-600">Perbandingan Total Pola</p>
+                            <p className="text-sm text-gray-600">Perbandingan Jumlah Pola</p>
                             <p className="text-3xl font-bold text-gray-800 mt-2">
                                 {data.polaGrowth.bulanIni} Pola
                             </p>
@@ -235,9 +344,18 @@ export default function BerandaPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                        Distribusi Upah Karyawan
-                    </h2>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-semibold text-gray-800">
+                            Distribusi Upah Karyawan
+                        </h2>
+                        <Button
+                            className="bg-teal-500 hover:bg-teal-600 text-white text-sm"
+                            onPress={() => setIsModalOpen(true)}
+                        >
+                            <IconSettings className="w-4 h-4" />
+                            Atur Distribusi
+                        </Button>
+                    </div>
                     <div className="flex flex-col items-center">
                         {chartData.every(item => item.value === 0) ? (
                             <div className="flex items-center justify-center h-[250px]">
@@ -266,8 +384,6 @@ export default function BerandaPage() {
                                 </PieChart>
                             </ResponsiveContainer>
                         )}
-                        <div className="mt-4 text-center">
-                        </div>
                         <div className="mt-4 space-y-2 w-full">
                             {chartData.map((item, index) => (
                                 <div key={index} className="flex items-center justify-between text-sm">
@@ -283,7 +399,7 @@ export default function BerandaPage() {
                             ))}
                         </div>
                     </div>
-                </div >
+                </div>
 
                 <div className="bg-white rounded-lg shadow-md p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -292,7 +408,7 @@ export default function BerandaPage() {
                             onClick={() => router.push('/produksi')}
                             className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 text-sm font-medium transition"
                         >
-                            <span><u>Lihat Semua</u></span>
+                            <span>Lihat Semua</span>
                         </button>
                     </div>
                     <div className="space-y-3">
@@ -326,65 +442,64 @@ export default function BerandaPage() {
                         ))}
                         {data.produkTerbaru.length === 0 && (
                             <p className="text-center text-gray-500 py-4">
-                                Belum ada produk bulan ini
+                                Belum ada order bulan ini
                             </p>
                         )}
                     </div>
                 </div>
-            </div >
+            </div>
 
-            {
-                data.deadlineMendekat.length > 0 && (
-                    <div className="bg-white rounded-lg shadow-md p-6">
-                        <div className="flex items-center space-x-2 mb-4">
-                            <IconAlertCircle className="w-6 h-6 text-red-600" />
-                            <h2 className="text-xl font-semibold text-gray-800">
-                                Produk Deadline Mendekat ({"<"} 7 Hari)
-                            </h2>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {data.deadlineMendekat.map((produk) => (
-                                <div
-                                    key={produk.id_produk}
-                                    className="border border-red-200 rounded-lg p-4 bg-red-50 hover:shadow-md transition"
-                                >
-                                    <div className="flex items-start justify-between mb-2">
-                                        <div>
-                                            <p className="font-semibold text-gray-800">
-                                                {produk.nama_produk}
-                                            </p>
-                                            <p className="text-sm text-gray-600">
-                                                Warna: {produk.warna}
-                                            </p>
-                                        </div>
-                                        <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-semibold">
-                                            {produk.hariTersisa} hari
-                                        </span>
+            {data.deadlineMendekat.length > 0 && (
+                <div className="bg-white rounded-lg shadow-md p-6">
+                    <div className="flex items-center space-x-2 mb-4">
+                        <IconAlertCircle className="w-6 h-6 text-red-600" />
+                        <h2 className="text-xl font-semibold text-gray-800">
+                            Order Deadline Mendekat ({"<"} 7 Hari)
+                        </h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {data.deadlineMendekat.map((produk) => (
+                            <div
+                                key={produk.id_produk}
+                                className="border border-red-200 rounded-lg p-4 bg-red-50 hover:shadow-md transition"
+                            >
+                                <div className="flex items-start justify-between mb-2">
+                                    <div>
+                                        <p className="font-semibold text-gray-800">
+                                            {produk.nama_produk}
+                                        </p>
+                                        <p className="text-sm text-gray-600">
+                                            Warna: {produk.warna}
+                                        </p>
                                     </div>
-                                    <div className="mt-3">
-                                        <div className="flex items-center justify-between text-sm mb-1">
-                                            <span className="text-gray-600">Progress</span>
-                                            <span className="font-semibold">{produk.progress}%</span>
-                                        </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-2">
-                                            <div
-                                                className="bg-red-600 h-2 rounded-full transition-all"
-                                                style={{ width: `${produk.progress}%` }}
-                                            />
-                                        </div>
+                                    <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-semibold">
+                                        {produk.hariTersisa} hari
+                                    </span>
+                                </div>
+                                <div className="mt-3">
+                                    <div className="flex items-center justify-between text-sm mb-1">
+                                        <span className="text-gray-600">Progress</span>
+                                        <span className="font-semibold">{produk.progress}%</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div
+                                            className="bg-red-600 h-2 rounded-full transition-all"
+                                            style={{ width: `${produk.progress}%` }}
+                                        />
                                     </div>
                                 </div>
-                            ))}
-                        </div>
+                            </div>
+                        ))}
                     </div>
-                )
-            }
+                </div>
+            )}
 
-            < div className="bg-white rounded-lg shadow-md p-6" >
+            {/* Progress Products */}
+            <div className="bg-white rounded-lg shadow-md p-6">
                 <div className="flex items-center space-x-2 mb-4">
                     <IconTrendingUp className="w-6 h-6 text-blue-600" />
                     <h2 className="text-xl font-semibold text-gray-800">
-                        Progress Produk Sedang Dikerjakan
+                        Progress Order Bulan Ini
                     </h2>
                 </div>
                 <div className="space-y-4">
@@ -409,22 +524,25 @@ export default function BerandaPage() {
                             <div>
                                 <div className="flex items-center justify-between text-sm mb-2">
                                     <span className="text-gray-600">
-                                        Unit Selesai: {produk.polaSelesai} / {produk.totalPola}
+                                        Pola Selesai: {produk.polaSelesai} / {produk.totalPola}
                                     </span>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-3">
-                                    <div className={`h-3 rounded-full transition-all ${produk.progress === 100 ? 'bg-green-500' : 'bg-yellow-400'}`} style={{ width: `${produk.progress}%` }} />
+                                    <div 
+                                        className={`h-3 rounded-full transition-all ${produk.progress === 100 ? 'bg-green-500' : 'bg-yellow-400'}`} 
+                                        style={{ width: `${produk.progress}%` }} 
+                                    />
                                 </div>
                             </div>
                         </div>
                     ))}
                     {data.produkProgress.length === 0 && (
                         <p className="text-center text-gray-500 py-8">
-                            Tidak ada produk yang sedang dikerjakan bulan ini
+                            Tidak ada order yang sedang dikerjakan bulan ini
                         </p>
                     )}
                 </div>
-            </div >
+            </div>
 
             <div className="bg-white rounded-lg shadow-md p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -434,7 +552,6 @@ export default function BerandaPage() {
                             Absensi Karyawan
                         </h2>
                     </div>
-
                     <button
                         onClick={() => router.push('/absensi')}
                         className="text-sm text-purple-600 hover:underline"
@@ -493,6 +610,118 @@ export default function BerandaPage() {
                     )}
                 </div>
             </div>
-        </div >
+
+            <Modal 
+                isOpen={isModalOpen} 
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setFormErrors({});
+                }}
+                size="2xl"
+                scrollBehavior="inside"
+            >
+                <ModalContent>
+                    <ModalHeader className="flex flex-col gap-1">
+                        <h3 className="text-xl font-semibold">Atur Distribusi Upah</h3>
+                        <p className="text-sm text-gray-500 font-normal">
+                            Tentukan range upah untuk setiap kategori karyawan
+                        </p>
+                    </ModalHeader>
+                    <ModalBody>
+                        <div className="space-y-4">
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <p className="text-sm text-blue-800">
+                                    <strong>Cara Kerja:</strong> Masukkan 2 angka sebagai batas distribusi upah. 
+                                    Angka pertama memisahkan upah rendah dan menengah, angka kedua memisahkan upah menengah dan tinggi.
+                                </p>
+                            </div>
+
+                            <Input
+                                type="text"
+                                label="Batas Bawah"
+                                placeholder="Contoh: 50000"
+                                value={distribusiConfig.batasBawah}
+                                onChange={(e) => handleInputChange('batasBawah', e.target.value)}
+                                isInvalid={!!formErrors.batasBawah}
+                                errorMessage={formErrors.batasBawah}
+                                startContent={
+                                    <div className="pointer-events-none flex items-center">
+                                        <span className="text-default-400 text-small">Rp</span>
+                                    </div>
+                                }
+                                description="Batas antara upah rendah dan menengah"
+                            />
+
+                            <Input
+                                type="text"
+                                label="Batas Atas"
+                                placeholder="Contoh: 100000"
+                                value={distribusiConfig.batasAtas}
+                                onChange={(e) => handleInputChange('batasAtas', e.target.value)}
+                                isInvalid={!!formErrors.batasAtas}
+                                errorMessage={formErrors.batasAtas}
+                                startContent={
+                                    <div className="pointer-events-none flex items-center">
+                                        <span className="text-default-400 text-small">Rp</span>
+                                    </div>
+                                }
+                                description="Batas antara upah menengah dan tinggi"
+                            />
+
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
+                                <p className="text-sm font-semibold text-gray-700">Preview Kategori:</p>
+                                <div className="space-y-1 text-sm">
+                                    <div className="flex items-center space-x-2">
+                                        <div className="w-3 h-3 rounded-full bg-slate-400"></div>
+                                        <p className="text-gray-600">
+                                            Upah Rendah: {'<'} {formatRupiah(Number(distribusiConfig.batasBawah) || 0)}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                                        <p className="text-gray-600">
+                                            Upah Menengah: {formatRupiah(Number(distribusiConfig.batasBawah) || 0)} - {formatRupiah((Number(distribusiConfig.batasAtas) - 1) || 0)}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                        <p className="text-gray-600">
+                                            Upah Tinggi: ≥ {formatRupiah(Number(distribusiConfig.batasAtas) || 0)}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button
+                            color="default"
+                            variant="light"
+                            onPress={handleReset}
+                        >
+                            Reset ke Default
+                        </Button>
+                        <Button
+                            color="danger"
+                            variant="light"
+                            onPress={() => {
+                                setIsModalOpen(false);
+                                setFormErrors({});
+                            }}
+                        >
+                            Batal
+                        </Button>
+                        <Button
+                            className="bg-teal-500 hover:bg-teal-600 text-white text-sm"
+                            onPress={handleSubmit}
+                            isLoading={isSubmitting}
+                            isDisabled={isSubmitting}
+                        >
+                            Terapkan
+                        </Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
+        </div>
     );
 }
