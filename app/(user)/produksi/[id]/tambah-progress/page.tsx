@@ -130,7 +130,7 @@ export default function TambahProgressPage() {
                 progressErrors[k.id_pekerjaan_karyawan] = "Progress tidak boleh negatif";
             } else if (progress > sisa) {
                 progressErrors[k.id_pekerjaan_karyawan] =
-                    `Progress tidak boleh lebih dari sisa (${sisa} unit)`;
+                    `Progress tidak boleh lebih dari sisa (${sisa} pola)`;
             }
 
             if (progress > 0) {
@@ -330,9 +330,9 @@ export default function TambahProgressPage() {
                                                         {karyawan.nama_karyawan}
                                                     </div>
                                                     <div className="text-sm text-gray-500 mb-2">
-                                                        Target: {karyawan.target_unit} unit |
-                                                        Dikerjakan: {karyawan.unit_dikerjakan} unit |
-                                                        Sisa: {karyawan.target_unit - karyawan.unit_dikerjakan} unit
+                                                        Target: {karyawan.target_unit} pola |
+                                                        Dikerjakan: {karyawan.unit_dikerjakan} pola |
+                                                        Sisa: {karyawan.target_unit - karyawan.unit_dikerjakan} pola
                                                     </div>
                                                     {karyawan.status === 'selesai' ? (
                                                         <div className="flex items-center gap-2 text-green-600">
@@ -349,7 +349,7 @@ export default function TambahProgressPage() {
                                                                 max={karyawan.target_unit - karyawan.unit_dikerjakan}
                                                                 value={progressData[karyawan.id_pekerjaan_karyawan] || ''}
                                                                 onChange={(e) => handleProgressChange(karyawan.id_pekerjaan_karyawan, e.target.value)}
-                                                                placeholder="Masukkan jumlah unit"
+                                                                placeholder="Masukkan jumlah pola"
                                                                 className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.progress_data?.[karyawan.id_pekerjaan_karyawan]
                                                                         ? 'border-red-500'
                                                                         : 'border-gray-300'
