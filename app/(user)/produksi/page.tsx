@@ -369,7 +369,7 @@ export default function ProduksiPage() {
                                 : "Diproses"}
                             </span>
                           </td>
-                          <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900">
+                          <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-gray-900 text-center">
                             <span>
                               {produk.status === "selesai"
                                 ? (formatDate(produk.tanggal_selesai)) : "-"}
