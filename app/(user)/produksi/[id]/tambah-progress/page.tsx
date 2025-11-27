@@ -94,61 +94,68 @@ export default function TambahProgressPage() {
     const validateForm = (): boolean => {
         const newErrors: FormErrors = {};
         const progressErrors: { [key: number]: string } = {};
-
+    
         if (!tanggalProgress) {
             newErrors.tanggal_progress = "Tanggal progress harus diisi";
         }
-
+    
         const selected = pekerjaanList.find(
             p => p.id_jenis_pekerjaan === selectedPekerjaan
         );
-
+    
         if (!selected) {
             newErrors.progress_data = { 0: "Data pekerjaan tidak ditemukan" };
             setErrors(newErrors);
             return false;
         }
-
+    
         let hasAnyProgress = false;
-
+    
         selected.karyawan.forEach((k) => {
             if (k.status === "selesai") return;
-
+    
             const rawValue = progressData[k.id_pekerjaan_karyawan];
-
+    
             if (rawValue === "" || rawValue === undefined) {
                 progressErrors[k.id_pekerjaan_karyawan] = "Isi progress atau tulis 0";
                 return;
             }
-
+    
+            if (!/^[0-9]+$/.test(rawValue)) {
+                progressErrors[k.id_pekerjaan_karyawan] = "Progress hanya boleh berisi angka";
+                return;
+            }
+    
             const progress = parseInt(rawValue);
             const sisa = k.target_unit - k.unit_dikerjakan;
-
+    
             if (isNaN(progress)) {
                 progressErrors[k.id_pekerjaan_karyawan] = "Nilai tidak valid";
             } else if (progress < 0) {
                 progressErrors[k.id_pekerjaan_karyawan] = "Progress tidak boleh negatif";
             } else if (progress > sisa) {
                 progressErrors[k.id_pekerjaan_karyawan] =
-                    `Progress tidak boleh lebih dari sisa (${sisa} pola)`;
+                    `Progress tidak boleh lebih dari sisa (${sisa} pola)`; 
             }
-
+    
             if (progress > 0) {
                 hasAnyProgress = true;
             }
         });
-
-        if (!hasAnyProgress) {
+    
+        if (Object.keys(progressErrors).length > 0) {
+            newErrors.progress_data = progressErrors;
+        } 
+        else if (!hasAnyProgress) {
             newErrors.progress_data = {
                 0: "Minimal satu karyawan harus memiliki progress"
             };
-        } else if (Object.keys(progressErrors).length > 0) {
-            newErrors.progress_data = progressErrors;
         }
-
+    
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
+    
 
     const handleBatal = () => {
         setShowCancelModal(true);
@@ -344,7 +351,7 @@ export default function TambahProgressPage() {
                                                     ) : (
                                                         <>
                                                             <input
-                                                                type="number"
+                                                                type="text"
                                                                 min="0"
                                                                 max={karyawan.target_unit - karyawan.unit_dikerjakan}
                                                                 value={progressData[karyawan.id_pekerjaan_karyawan] || ''}
