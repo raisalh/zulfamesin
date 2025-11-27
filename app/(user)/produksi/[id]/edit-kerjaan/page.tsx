@@ -486,7 +486,7 @@ export default function EditWorkAssignmentPage() {
             <div className="max-w-7xl mx-auto">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
                     <h1 className="text-2xl font-semibold text-gray-900">
-                        Pengaturan Pekerjaan Karyawan
+                        Mengubah Pekerjaan Karyawan
                     </h1>
                 </div>
 
