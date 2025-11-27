@@ -117,7 +117,7 @@ export default function TambahProgressPage() {
             const rawValue = progressData[k.id_pekerjaan_karyawan];
     
             if (rawValue === "" || rawValue === undefined) {
-                progressErrors[k.id_pekerjaan_karyawan] = "Isi progress atau tulis 0";
+                progressErrors[k.id_pekerjaan_karyawan] = "Isi progress";
                 return;
             }
     
