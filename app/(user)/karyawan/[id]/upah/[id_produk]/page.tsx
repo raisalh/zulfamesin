@@ -27,6 +27,7 @@ interface PekerjaanDetail {
     unit_dikerjakan: number;
     upah_per_unit: number;
     target_unit: number | null;
+    tanggal: string | null;
 }
 
 interface Ringkasan {
@@ -43,6 +44,7 @@ export default function DetailInformasiUpahKaryawan() {
     const [pekerjaanList, setPekerjaanList] = useState<PekerjaanDetail[]>([]);
     const [ringkasan, setRingkasan] = useState<Ringkasan | null>(null);
     const [statusPembayaran, setStatusPembayaran] = useState<string>("belum");
+    const [tanggalPembayaran, setTanggalPembayaran] = useState<string>("");
     const [loading, setLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
 
@@ -56,13 +58,25 @@ export default function DetailInformasiUpahKaryawan() {
             const response = await axios.get(
                 `/api/employee/${params.id}/works/${params.id_produk}`
             );
-
+    
             if (response.data.success) {
                 setKaryawan(response.data.data.karyawan);
                 setProduk(response.data.data.produk);
                 setPekerjaanList(response.data.data.pekerjaan_list);
                 setRingkasan(response.data.data.ringkasan);
                 setStatusPembayaran(response.data.data.status_pembayaran);
+                
+                if (response.data.data.tanggal_pembayaran) {
+                    const date = new Date(response.data.data.tanggal_pembayaran);
+                    const formattedDate = date.toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric"
+                    });
+                    setTanggalPembayaran(formattedDate);
+                } else {
+                    setTanggalPembayaran("");
+                }
             } else {
                 toast.error("Gagal memuat data", {
                     description: response.data.message || "Terjadi kesalahan saat mengambil data"
@@ -101,49 +115,43 @@ export default function DetailInformasiUpahKaryawan() {
             });
 
             const doc = new jsPDF();
-            
+
             doc.setFont("helvetica");
-            
+
             doc.setFontSize(18);
             doc.setFont("helvetica", "bold");
             doc.text("LAPORAN UPAH KARYAWAN", 105, 20, { align: "center" });
-            
+
             doc.setLineWidth(0.5);
             doc.line(20, 25, 190, 25);
-            
+
             doc.setFontSize(11);
             doc.setFont("helvetica", "normal");
-            
+
             let yPos = 35;
             doc.setFont("helvetica", "bold");
             doc.text("Nama Karyawan:", 20, yPos);
             doc.setFont("helvetica", "normal");
             doc.text(karyawan.nama_karyawan, 65, yPos);
-            
+
             yPos += 7;
             doc.setFont("helvetica", "bold");
             doc.text("Nama Produk:", 20, yPos);
             doc.setFont("helvetica", "normal");
             doc.text(produk.nama_produk, 65, yPos);
-            
+
             yPos += 7;
             doc.setFont("helvetica", "bold");
             doc.text("Warna:", 20, yPos);
             doc.setFont("helvetica", "normal");
             doc.text(produk.warna, 65, yPos);
-            
+
             yPos += 7;
             doc.setFont("helvetica", "bold");
             doc.text("Ukuran:", 20, yPos);
             doc.setFont("helvetica", "normal");
             doc.text(produk.ukuran, 65, yPos);
-            
-            yPos += 7;
-            doc.setFont("helvetica", "bold");
-            doc.text("Status Pembayaran:", 20, yPos);
-            doc.setFont("helvetica", "normal");
-            doc.text(statusPembayaran === "dibayar" ? "Sudah Dibayar" : "Belum Dibayar", 65, yPos);
-            
+
             const tableData = pekerjaanList.map((pekerjaan, index) => [
                 (index + 1).toString(),
                 pekerjaan.nama_pekerjaan,
@@ -151,7 +159,7 @@ export default function DetailInformasiUpahKaryawan() {
                 formatRupiah(pekerjaan.upah_per_unit),
                 formatRupiah(pekerjaan.unit_dikerjakan * pekerjaan.upah_per_unit)
             ]);
-            
+
             autoTable(doc, {
                 startY: yPos + 10,
                 head: [["No", "Nama Pekerjaan", "Unit Dikerjakan", "Upah per Unit", "Total Upah"]],
@@ -162,7 +170,7 @@ export default function DetailInformasiUpahKaryawan() {
                     textColor: 255,
                     fontStyle: "bold",
                     halign: "center",
-                    lineWidth: 0.3,             
+                    lineWidth: 0.3,
                     lineColor: [255, 255, 255],
                 },
                 columnStyles: {
@@ -180,30 +188,57 @@ export default function DetailInformasiUpahKaryawan() {
                     fillColor: [245, 245, 245]
                 }
             });
-            
+
             const finalY = (doc as any).lastAutoTable.finalY || yPos + 60;
-            
+
             doc.setFontSize(11);
             doc.setFont("helvetica", "bold");
-            
             const summaryY = finalY + 15;
             doc.text("RINGKASAN", 20, summaryY);
-            
+
             doc.setFont("helvetica", "normal");
             doc.text("Total Pekerjaan:", 20, summaryY + 8);
             doc.text(`${ringkasan?.total_kategori || 0} Kategori`, 140, summaryY + 8, { align: "right" });
-            
+
             doc.text("Total Unit Dikerjakan:", 20, summaryY + 15);
             doc.text(`${ringkasan?.total_unit || 0} Unit`, 140, summaryY + 15, { align: "right" });
-            
+
             doc.setLineWidth(0.3);
             doc.line(20, summaryY + 20, 140, summaryY + 20);
-            
+
             doc.setFont("helvetica", "bold");
             doc.setFontSize(12);
             doc.text("TOTAL UPAH:", 20, summaryY + 27);
             doc.text(formatRupiah(ringkasan?.total_upah || 0), 140, summaryY + 27, { align: "right" });
-            
+
+            const signatureStartY = summaryY + 45;
+
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text("Karyawan,", 35, signatureStartY);
+
+            doc.setLineWidth(0.3);
+            doc.line(25, signatureStartY + 30, 75, signatureStartY + 30);
+
+            doc.setFont("helvetica", "bold");
+            doc.text(karyawan.nama_karyawan, 50, signatureStartY + 36, { align: "center" });
+
+            doc.setFont("helvetica", "normal");
+            doc.text("Pemilik,", 135, signatureStartY);
+
+            try {
+                const ttdImg = '/assets/ttd.jpg';
+                doc.addImage(ttdImg, 'JPEG', 115, signatureStartY + 5, 50, 25); 
+            } catch (error) {
+                console.error("Error loading signature image:", error);
+            }
+
+            doc.setLineWidth(0.3);
+            doc.line(115, signatureStartY + 30, 165, signatureStartY + 30);
+
+            doc.setFont("helvetica", "bold");
+            doc.text("Rahma Nuraeni", 140, signatureStartY + 36, { align: "center" });
+
             const pageHeight = doc.internal.pageSize.height;
             doc.setFontSize(9);
             doc.setFont("helvetica", "italic");
@@ -219,11 +254,11 @@ export default function DetailInformasiUpahKaryawan() {
                 pageHeight - 15,
                 { align: "center" }
             );
-            
+
             const fileName = `${karyawan.nama_karyawan.replace(/\s+/g, "_")}-${produk.nama_produk.replace(/\s+/g, "_")}.pdf`;
-            
+
             doc.save(fileName);
-            
+
             toast.success("PDF berhasil diunduh", {
                 description: `File ${fileName} telah tersimpan`
             });
@@ -250,9 +285,21 @@ export default function DetailInformasiUpahKaryawan() {
                 `/api/employee/${params.id}/works/${params.id_produk}`,
                 { status_pembayaran: newStatus }
             );
-
+    
             if (response.data.success) {
                 setStatusPembayaran(newStatus);
+                
+                if (newStatus === "dibayar") {
+                    const today = new Date().toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric"
+                    });
+                    setTanggalPembayaran(today);
+                } else {
+                    setTanggalPembayaran("");
+                }
+                
                 toast.success("Status berhasil diubah", {
                     description: `Status pembayaran telah diubah menjadi ${newStatus === "dibayar" ? "Sudah Dibayar" : "Belum Dibayar"}`
                 });
@@ -317,11 +364,10 @@ export default function DetailInformasiUpahKaryawan() {
                     <button
                         onClick={handleExport}
                         disabled={isExporting}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                            isExporting
-                                ? "bg-gray-400 cursor-not-allowed"
-                                : "bg-gray-900 hover:bg-gray-800 text-white"
-                        }`}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${isExporting
+                            ? "bg-gray-400 cursor-not-allowed"
+                            : "bg-gray-900 hover:bg-gray-800 text-white"
+                            }`}
                     >
                         <IconDownload size={18} />
                         {isExporting ? "Mengekspor..." : "Export"}
@@ -424,19 +470,20 @@ export default function DetailInformasiUpahKaryawan() {
                                 Status Pembayaran
                             </h3>
 
-                            <select
-                                value={statusPembayaran}
-                                onChange={(e) => handleStatusChange(e.target.value)}
-                                disabled={produk?.status !== "selesai"}
-                                className={`w-full px-3 py-2 md:px-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                                    produk?.status !== "selesai"
+                            {statusPembayaran !== "dibayar" && (
+                                <select
+                                    value={statusPembayaran}
+                                    onChange={(e) => handleStatusChange(e.target.value)}
+                                    disabled={produk?.status !== "selesai"}
+                                    className={`w-full px-3 py-2 md:px-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${produk?.status !== "selesai"
                                         ? "bg-gray-100 cursor-not-allowed text-gray-500"
                                         : "bg-white"
-                                }`}
-                            >
-                                <option value="dibayar">Dibayar</option>
-                                <option value="belum">Belum</option>
-                            </select>
+                                        }`}
+                                >
+                                    <option value="dibayar">Dibayar</option>
+                                    <option value="belum">Belum</option>
+                                </select>
+                            )}
 
                             {produk?.status !== "selesai" && (
                                 <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
@@ -450,6 +497,7 @@ export default function DetailInformasiUpahKaryawan() {
                                     <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
                                         ✓ Sudah Dibayar
                                     </span>
+                                    <p className="text-sm mt-3">Pembayaran dilakukan pada tanggal {tanggalPembayaran}</p>
                                 </div>
                             )}
                         </div>
