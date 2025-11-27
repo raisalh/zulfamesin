@@ -186,7 +186,7 @@ export default function DetailProgressPage() {
                                                         Nama Karyawan
                                                     </th>
                                                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                        Unit Dikerjakan
+                                                        Pola Dikerjakan
                                                     </th>
                                                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                         Target

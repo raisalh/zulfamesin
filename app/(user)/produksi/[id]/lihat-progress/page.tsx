@@ -174,7 +174,7 @@ export default function InformasiPengerjaanPage() {
                                 {produk.nama_produk}
                             </h2>
                             <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                                <span>Target: {produk.jumlah_pola} unit</span>
+                                <span>Target: {produk.jumlah_pola} pola</span>
                                 <span>•</span>
                                 <span>Deadline: {formatDate(produk.deadline)}</span>
                             </div>
@@ -225,7 +225,7 @@ export default function InformasiPengerjaanPage() {
                                                         {karyawan.nama_karyawan}
                                                     </span>
                                                     <span className="text-sm text-gray-600">
-                                                        {karyawan.unit_dikerjakan}/{karyawan.target_unit} unit
+                                                        {karyawan.unit_dikerjakan}/{karyawan.target_unit} pola
                                                     </span>
                                                 </div>
                                                 <div className="w-full bg-gray-200 rounded-full h-2.5">
