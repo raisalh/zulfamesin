@@ -110,6 +110,7 @@ export default function TambahProgressPage() {
         }
     
         let hasAnyProgress = false;
+        let hasAnyInput = false;
     
         selected.karyawan.forEach((k) => {
             if (k.status === "selesai") return;
@@ -117,9 +118,10 @@ export default function TambahProgressPage() {
             const rawValue = progressData[k.id_pekerjaan_karyawan];
     
             if (rawValue === "" || rawValue === undefined) {
-                progressErrors[k.id_pekerjaan_karyawan] = "Isi progress";
                 return;
             }
+    
+            hasAnyInput = true;
     
             if (!/^[0-9]+$/.test(rawValue)) {
                 progressErrors[k.id_pekerjaan_karyawan] = "Progress hanya boleh berisi angka";
@@ -135,18 +137,15 @@ export default function TambahProgressPage() {
                 progressErrors[k.id_pekerjaan_karyawan] = "Progress tidak boleh negatif";
             } else if (progress > sisa) {
                 progressErrors[k.id_pekerjaan_karyawan] =
-                    `Progress tidak boleh lebih dari sisa (${sisa} pola)`; 
-            }
-    
-            if (progress > 0) {
+                    `Progress tidak boleh lebih dari sisa (${sisa} pola)`;
+            } else if (progress > 0) {
                 hasAnyProgress = true;
             }
         });
     
         if (Object.keys(progressErrors).length > 0) {
             newErrors.progress_data = progressErrors;
-        } 
-        else if (!hasAnyProgress) {
+        } else if (!hasAnyProgress) {
             newErrors.progress_data = {
                 0: "Minimal satu karyawan harus memiliki progress"
             };
@@ -155,7 +154,6 @@ export default function TambahProgressPage() {
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
-    
 
     const handleBatal = () => {
         setShowCancelModal(true);
@@ -171,33 +169,43 @@ export default function TambahProgressPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
+    
         if (!selectedPekerjaan) {
             alert('Pilih jenis pekerjaan terlebih dahulu');
             return;
         }
-
+    
         if (!validateForm()) {
             return;
         }
-
+    
         const selectedPekerjaanData = pekerjaanList.find(
             p => p.id_jenis_pekerjaan === selectedPekerjaan
         );
-
+    
         if (!selectedPekerjaanData) {
             alert('Data pekerjaan tidak ditemukan');
             return;
         }
-
-        const progressList = selectedPekerjaanData.karyawan.map(karyawan => ({
-            id_pekerjaan_karyawan: karyawan.id_pekerjaan_karyawan,
-            unit_progress: parseInt(progressData[karyawan.id_pekerjaan_karyawan] || '0')
-        }));
-
+    
+        const progressList = selectedPekerjaanData.karyawan
+            .filter(karyawan => {
+                const progress = parseInt(progressData[karyawan.id_pekerjaan_karyawan] || '0');
+                return progress > 0;
+            })
+            .map(karyawan => ({
+                id_pekerjaan_karyawan: karyawan.id_pekerjaan_karyawan,
+                unit_progress: parseInt(progressData[karyawan.id_pekerjaan_karyawan])
+            }));
+    
+        if (progressList.length === 0) {
+            alert('Minimal satu karyawan harus memiliki progress');
+            return;
+        }
+    
         try {
             setLoading(true);
-
+    
             const response = await fetch('/api/progress', {
                 method: 'POST',
                 headers: {
@@ -210,9 +218,9 @@ export default function TambahProgressPage() {
                     progress_list: progressList
                 }),
             });
-
+    
             const result = await response.json();
-
+    
             if (result.success) {
                 alert('Progress berhasil disimpan');
                 router.push(`/produksi/${idProduk}/lihat-progress`);
