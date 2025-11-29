@@ -141,6 +141,7 @@ export async function getProdukTerbaru(limit: number = 3): Promise<ProdukTerbaru
                 p.id_produk,
                 p.nama_produk,
                 p.warna,
+                p.ukuran,
                 p.status,
                 COALESCE(
                     CASE 

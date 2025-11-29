@@ -26,6 +26,7 @@ interface DashboardData {
         id_produk: number;
         nama_produk: string;
         warna: string;
+        ukuran: string;
         status: string;
         progress: number;
     }>;
@@ -426,7 +427,7 @@ export default function BerandaPage() {
                                             {produk.nama_produk}
                                         </p>
                                         <p className="text-sm text-gray-600">
-                                            Warna: {produk.warna}
+                                            Detail: {produk.warna} - {produk.ukuran}
                                         </p>
                                     </div>
                                 </div>
