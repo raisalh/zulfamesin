@@ -159,12 +159,22 @@ export default function TambahProdukPage() {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
+    const onlyLetters = /^[A-Za-z\s]+$/; 
+
     if (!namaProduk.trim()) {
       newErrors.namaProduk = "Nama produk harus diisi";
+    } else if (namaProduk.trim().length < 2) {
+      newErrors.namaProduk = "Nama produk minimal 2 karakter";
+    } else if (!onlyLetters.test(namaProduk.trim())) {
+      newErrors.namaProduk = "Nama produk tidak boleh mengandung angka atau simbol";
     }
 
     if (!warna.trim()) {
       newErrors.warna = "Warna harus diisi";
+    } else if (warna.trim().length < 2) {
+      newErrors.warna = "Warna minimal 2 karakter";
+    } else if (!onlyLetters.test(warna.trim())) {
+      newErrors.warna = "Warna tidak boleh mengandung angka atau simbol";
     }
 
     if (!ukuran.trim()) {
@@ -373,8 +383,8 @@ export default function TambahProdukPage() {
                 </label>
                 <input
                   className={`w-full px-4 py-3 border ${errors.estimasiSelesai
-                      ? "border-red-500"
-                      : "border-gray-300"
+                    ? "border-red-500"
+                    : "border-gray-300"
                     } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                   id="estimasi_selesai"
                   type="date"
@@ -456,8 +466,8 @@ export default function TambahProdukPage() {
                       <div
                         key={suggestion.id_produk}
                         className={`px-4 py-3 cursor-pointer transition-colors ${index === selectedIndex
-                            ? "bg-blue-50 border-l-4 border-blue-500"
-                            : "hover:bg-gray-50 border-l-4 border-transparent"
+                          ? "bg-blue-50 border-l-4 border-blue-500"
+                          : "hover:bg-gray-50 border-l-4 border-transparent"
                           }`}
                         onClick={() => handleSelectSuggestion(suggestion)}
                       >
@@ -609,8 +619,8 @@ export default function TambahProdukPage() {
                     </label>
                     <input
                       className={`w-full px-4 py-3 border ${errors.polaGulungan && errors.polaGulungan[index]
-                          ? "border-red-500"
-                          : "border-gray-300"
+                        ? "border-red-500"
+                        : "border-gray-300"
                         } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                       id={`pola-gulungan-${index}`}
                       min="1"

@@ -124,12 +124,22 @@ export default function EditProdukPage() {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
+    const onlyLetters = /^[A-Za-z\s]+$/; 
+
     if (!namaProduk.trim()) {
       newErrors.namaProduk = "Nama produk harus diisi";
+    } else if (namaProduk.trim().length < 2) {
+      newErrors.namaProduk = "Nama produk minimal 2 karakter";
+    } else if (!onlyLetters.test(namaProduk.trim())) {
+      newErrors.namaProduk = "Nama produk tidak boleh mengandung angka atau simbol";
     }
 
     if (!warna.trim()) {
       newErrors.warna = "Warna harus diisi";
+    } else if (warna.trim().length < 2) {
+      newErrors.warna = "Warna minimal 2 karakter";
+    } else if (!onlyLetters.test(warna.trim())) {
+      newErrors.warna = "Warna tidak boleh mengandung angka atau simbol";
     }
 
     if (!ukuran.trim()) {
