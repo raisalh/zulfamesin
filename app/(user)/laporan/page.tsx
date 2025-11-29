@@ -638,8 +638,8 @@ function LaporanProduksiContent({
                             <YAxis />
                             <Tooltip />
                             <Legend />
-                            <Bar dataKey="unit_selesai" fill="#3b82f6" name="Unit Selesai" />
-                            <Bar dataKey="total_target" fill="#e5e7eb" name="Total Target" />
+                            <Bar dataKey="unit_selesai" fill="#10b981" name="Unit Selesai" />
+                            <Bar dataKey="total_target" fill="#9ca3af" name="Total Target" />
                         </BarChart>
                     </ResponsiveContainer>
                 )}
