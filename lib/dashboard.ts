@@ -174,6 +174,7 @@ export async function getProdukDeadlineMendekat(): Promise<ProdukDeadlineMendeka
                 p.id_produk,
                 p.nama_produk,
                 p.warna,
+                p.ukuran,
                 p.deadline,
                 p.status,
                 COALESCE(
