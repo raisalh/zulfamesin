@@ -33,6 +33,8 @@ export default function TambahKaryawanPage() {
       newErrors.namaKaryawan = "Nama karyawan harus diisi";
     } else if (namaKaryawan.trim().length < 3) {
       newErrors.namaKaryawan = "Nama karyawan minimal 3 huruf";
+    } else if (!/^[a-zA-Z\s]+$/.test(namaKaryawan.trim())) {
+      newErrors.namaKaryawan = "Nama karyawan hanya boleh berisi huruf";
     }
 
     // Validasi Jenis Kelamin
