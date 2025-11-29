@@ -176,7 +176,9 @@ export default function EditProdukPage() {
       const pola = parseInt(item.pola) || 0;
 
       if (pola === 0 || item.pola === "") {
-        polaErrors[index] = "Jumlah pola harus diisi dan tidak boleh 0";
+        polaErrors[index] = "Jumlah pola harus diisi";
+      } else if (pola === 0) {
+        polaErrors[index] = "Jumlah pola tidak boleh 0";
       }
     });
 
