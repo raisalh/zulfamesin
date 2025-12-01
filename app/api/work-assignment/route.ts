@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
             const { 
                 nama_pekerjaan, 
                 upah_per_unit, 
+                tipe,
                 karyawan_ids,
                 karyawan_assignments 
             } = pekerjaan;
@@ -75,7 +76,8 @@ export async function POST(request: NextRequest) {
                 try {
                     const result = await createJenisPekerjaan({
                         nama_pekerjaan: nama_pekerjaan.trim(),
-                        upah_per_unit: parseFloat(upah_per_unit.toString())
+                        upah_per_unit: parseFloat(upah_per_unit.toString()),
+                        tipe: tipe.trim() || 'sistem'
                     });
 
                     id_jenis_pekerjaan = (result as any).insertId;
@@ -103,7 +105,8 @@ export async function POST(request: NextRequest) {
                 try {
                     const result = await createJenisPekerjaan({
                         nama_pekerjaan: nama_pekerjaan.trim(),
-                        upah_per_unit: parseFloat(upah_per_unit.toString())
+                        upah_per_unit: parseFloat(upah_per_unit.toString()),
+                        tipe: tipe.trim() || 'sistem'
                     });
 
                     id_jenis_pekerjaan = (result as any).insertId;
@@ -259,6 +262,7 @@ export async function PUT(request: NextRequest) {
             const { 
                 nama_pekerjaan, 
                 upah_per_unit, 
+                tipe,
                 karyawan_ids,
                 karyawan_assignments 
             } = pekerjaan;
@@ -268,7 +272,8 @@ export async function PUT(request: NextRequest) {
             try {
                 const result = await createJenisPekerjaan({
                     nama_pekerjaan: nama_pekerjaan.trim(),
-                    upah_per_unit: parseFloat(upah_per_unit.toString())
+                    upah_per_unit: parseFloat(upah_per_unit.toString()),
+                    tipe: tipe.trim() || 'sistem'
                 });
 
                 id_jenis_pekerjaan = (result as any).insertId;

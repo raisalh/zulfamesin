@@ -25,10 +25,12 @@ export interface LaporanKaryawan {
     id_karyawan: number;
     nama_karyawan: string;
     total_pekerjaan: number;
-    total_unit: number;
-    unit_selesai: number;
+    total_unit: number; 
+    unit_selesai: number;  
     unit_sisa: number;
+    is_deleted: boolean; 
 }
+
 
 export interface LaporanKaryawanDetail {
     id_karyawan: number;
@@ -50,7 +52,9 @@ export interface LaporanUpah {
     total_upah: number;
     dibayar: number;
     belum_dibayar: number;
+    is_deleted: boolean; 
 }
+
 
 export interface LaporanUpahDetail {
     id_upah: number;
@@ -185,6 +189,7 @@ export async function getLaporanProduksiPerBulan(params: {
     }
 }
 
+
 export async function getLaporanProduksiDetail(params: {
     tahun?: number;
     bulan?: number;
@@ -254,6 +259,7 @@ export async function getLaporanKaryawan(params: {
             SELECT 
                 k.id_karyawan,
                 k.nama_karyawan,
+                k.deleted_at IS NOT NULL as is_deleted,
                 CAST(COUNT(DISTINCT pk.id_pekerjaan_karyawan) AS UNSIGNED) as total_pekerjaan,
                 CAST(COALESCE(SUM(pk.target_unit), 0) AS UNSIGNED) as total_unit,
                 CAST(COALESCE(SUM(pk.unit_dikerjakan), 0) AS UNSIGNED) as unit_selesai,
@@ -275,7 +281,7 @@ export async function getLaporanKaryawan(params: {
             query += ` AND MONTH(p.tanggal_mulai) = ?`;
             queryParams.push(params.bulan);
         }
-
+        
         query += ` GROUP BY k.id_karyawan ORDER BY unit_selesai DESC`;
 
         const [rows] = await pool.query(query, queryParams);
@@ -286,6 +292,7 @@ export async function getLaporanKaryawan(params: {
         throw error;
     }
 }
+
 
 export async function getLaporanKaryawanDetail(
     id_karyawan: number,
@@ -345,37 +352,12 @@ export async function getLaporanUpah(params: {
             SELECT 
                 k.id_karyawan,
                 k.nama_karyawan,
+                k.deleted_at IS NOT NULL as is_deleted,
                 COUNT(DISTINCT pk.id_pekerjaan_karyawan) as total_pekerjaan,
                 SUM(pk.unit_dikerjakan) as total_unit,
                 SUM(pk.unit_dikerjakan * jp.upah_per_unit) as total_upah,
-                
-                -- FIX: Hitung dibayar dari status selesai yang sudah dibayar
-                SUM(CASE 
-                    WHEN pk.status = 'selesai' 
-                    AND EXISTS (
-                        SELECT 1 FROM upah_karyawan uk 
-                        WHERE uk.id_karyawan = k.id_karyawan 
-                        AND uk.id_produk = pk.id_produk 
-                        AND uk.status_pembayaran = 'dibayar'
-                    )
-                    THEN pk.unit_dikerjakan * jp.upah_per_unit 
-                    ELSE 0 
-                END) as dibayar,
-                
-                -- FIX: Hitung belum dibayar = total - dibayar
-                SUM(pk.unit_dikerjakan * jp.upah_per_unit) - 
-                SUM(CASE 
-                    WHEN pk.status = 'selesai' 
-                    AND EXISTS (
-                        SELECT 1 FROM upah_karyawan uk 
-                        WHERE uk.id_karyawan = k.id_karyawan 
-                        AND uk.id_produk = pk.id_produk 
-                        AND uk.status_pembayaran = 'dibayar'
-                    )
-                    THEN pk.unit_dikerjakan * jp.upah_per_unit 
-                    ELSE 0 
-                END) as belum_dibayar
-                
+                SUM(CASE WHEN pk.status = 'selesai' THEN pk.unit_dikerjakan * jp.upah_per_unit ELSE 0 END) as dibayar,
+                SUM(CASE WHEN pk.status = 'dikerjakan' THEN pk.unit_dikerjakan * jp.upah_per_unit ELSE 0 END) as belum_dibayar
             FROM karyawan k
             LEFT JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
             LEFT JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
@@ -385,12 +367,12 @@ export async function getLaporanUpah(params: {
 
         const queryParams: any[] = [];
         if (params.tahun) {
-            query += ` AND YEAR(p.tanggal_mulai) = ?`;
+            query += ` AND YEAR(tanggal_mulai) = ?`;
             queryParams.push(params.tahun);
         }
 
         if (params.bulan) {
-            query += ` AND MONTH(p.tanggal_mulai) = ?`;
+            query += ` AND MONTH(tanggal_mulai) = ?`;
             queryParams.push(params.bulan);
         }
 
@@ -409,6 +391,7 @@ export async function getLaporanUpah(params: {
         throw error;
     }
 }
+
 
 export async function getLaporanUpahPerProduk(params: {
     tahun?: number;

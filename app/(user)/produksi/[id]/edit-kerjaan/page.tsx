@@ -92,14 +92,15 @@ export default function EditWorkAssignmentPage() {
                 const existingData = pekerjaanResponse.data.data.pekerjaan_list;
                 const transformedPekerjaan = existingData.map((pekerjaan: any) => {
                     const karyawanIds = pekerjaan.karyawan.map((k: any) => k.id_karyawan);
-                    const isManual = checkIfManualAssignment(pekerjaan.karyawan, totalPola);
+                    const assignmentType = pekerjaan.tipe; 
+                    
                     return {
                         id: Date.now().toString() + Math.random(),
                         nama_pekerjaan: pekerjaan.nama_pekerjaan,
                         upah_per_unit: parseFloat(pekerjaan.upah_per_unit).toString(),
-                        assignment_type: isManual ? "manual" : "sistem",
+                        assignment_type: assignmentType, 
                         karyawan_ids: karyawanIds,
-                        manual_assignments: isManual 
+                        manual_assignments: assignmentType === "manual" 
                             ? pekerjaan.karyawan.map((k: any) => ({
                                 id_karyawan: k.id_karyawan,
                                 unit: k.target_unit
@@ -116,22 +117,6 @@ export default function EditWorkAssignmentPage() {
         } finally {
             setLoadingData(false);
         }
-    };
-    
-    const checkIfManualAssignment = (karyawanList: any[], totalPola: number) => {
-        if (karyawanList.length === 0) return false;
-        
-        const totalKaryawan = karyawanList.length;
-        const baseUnit = Math.floor(totalPola / totalKaryawan);
-        const remainder = totalPola % totalKaryawan;
-        const isAutomatic = karyawanList.every((k: any, index: number) => {
-            const expectedUnit = index === totalKaryawan - 1 
-                ? baseUnit + remainder 
-                : baseUnit;
-            return k.target_unit === expectedUnit;
-        });
-        
-        return !isAutomatic; 
     };
 
     const handleAddPekerjaan = () => {

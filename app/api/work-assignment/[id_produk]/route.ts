@@ -40,6 +40,7 @@ export async function GET(
                     id_jenis_pekerjaan: item.id_jenis_pekerjaan,
                     nama_pekerjaan: item.nama_pekerjaan,
                     upah_per_unit: item.upah_per_unit,
+                    tipe: item.tipe,
                     karyawan: []
                 };
             }

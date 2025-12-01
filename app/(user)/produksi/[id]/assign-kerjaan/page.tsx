@@ -385,6 +385,7 @@ export default function WorkAssignmentPage() {
                             typeof p.upah_per_unit === "string"
                                 ? parseFloat(p.upah_per_unit)
                                 : p.upah_per_unit,
+                        tipe: "manual",
                         karyawan_assignments: p.manual_assignments.map((ma) => ({
                             id_karyawan: ma.id_karyawan,
                             target_unit: ma.unit,
@@ -397,6 +398,7 @@ export default function WorkAssignmentPage() {
                             typeof p.upah_per_unit === "string"
                                 ? parseFloat(p.upah_per_unit)
                                 : p.upah_per_unit,
+                        tipe: 'sistem',
                         karyawan_ids: p.karyawan_ids,
                     };
                 }

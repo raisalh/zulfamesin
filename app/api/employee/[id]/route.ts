@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getKaryawanById, deleteKaryawan, updateKaryawan } from "@/lib/karyawan";
-import pool from "@/lib/db";
 
 export async function GET(
   request: NextRequest,
@@ -95,12 +94,11 @@ export async function PUT(
   }
 }
 
+// SOFT DELETE - Hanya update deleted_at, tidak menghapus data
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const connection = await pool.getConnection();
-  
   try {
     const { id: idParam } = await params;
     const id = parseInt(idParam);
@@ -121,55 +119,22 @@ export async function DELETE(
       );
     }
 
-    await connection.beginTransaction();
-
-    const [upahDibayar] = await connection.query(
-      `SELECT COUNT(*) as count FROM upah_karyawan 
-        WHERE id_karyawan = ? AND status_pembayaran = 'dibayar'`,
-      [id]
-    );
-
-    if ((upahDibayar as any)[0].count > 0) {
-      await connection.rollback();
+    // Cek apakah sudah dihapus sebelumnya
+    if (existing.deleted_at !== null) {
       return NextResponse.json(
-        { 
-          success: false, 
-          message: "Karyawan tidak dapat dihapus karena memiliki riwayat pembayaran yang sudah diselesaikan" 
-        },
+        { success: false, message: "Karyawan sudah dihapus sebelumnya" },
         { status: 400 },
       );
     }
 
-    await connection.query(
-      `DELETE pp FROM progress_pekerjaan pp
-        INNER JOIN pekerjaan_karyawan pk ON pp.id_pekerjaan_karyawan = pk.id_pekerjaan_karyawan
-        WHERE pk.id_karyawan = ?`,
-      [id]
-    );
-
-    await connection.query(
-      'DELETE FROM upah_karyawan WHERE id_karyawan = ?',
-      [id]
-    );
-
-    await connection.query(
-      'DELETE FROM pekerjaan_karyawan WHERE id_karyawan = ?',
-      [id]
-    );
-
-    await connection.query(
-      'DELETE FROM karyawan WHERE id_karyawan = ?',
-      [id]
-    );
-
-    await connection.commit();
+    // Soft delete - hanya update deleted_at
+    await deleteKaryawan(id);
 
     return NextResponse.json({
       success: true,
       message: "Karyawan berhasil dihapus",
     });
   } catch (error) {
-    await connection.rollback();
     console.error("Error in DELETE /api/employee/[id]:", error);
 
     return NextResponse.json(
@@ -179,7 +144,5 @@ export async function DELETE(
       },
       { status: 500 },
     );
-  } finally {
-    connection.release();
   }
 }

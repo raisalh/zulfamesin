@@ -13,9 +13,12 @@ export interface PekerjaanKaryawan {
 
 export interface PekerjaanKaryawanWithDetails extends PekerjaanKaryawan {
     nama_karyawan?: string;
+    nama_produk?: string;
     nama_pekerjaan?: string;
     upah_per_unit?: number;
+    tipe?: 'sistem' | 'manual';
     tanggal_mulai?: Date | null; 
+    is_karyawan_deleted?: boolean; // Tambah info apakah karyawan sudah dihapus
 }
 
 export async function getPekerjaanByProduk(id_produk: number) {
@@ -24,8 +27,10 @@ export async function getPekerjaanByProduk(id_produk: number) {
             `SELECT 
                 pk.*,
                 k.nama_karyawan,
+                k.deleted_at IS NOT NULL as is_karyawan_deleted,
                 jp.nama_pekerjaan,
                 jp.upah_per_unit,
+                jp.tipe,
                 (SELECT MIN(tanggal_update) 
                 FROM progress_pekerjaan pp 
                 WHERE pp.id_pekerjaan_karyawan = pk.id_pekerjaan_karyawan) as tanggal_mulai
@@ -52,6 +57,7 @@ export async function getPekerjaanByKaryawan(id_karyawan: number) {
                 p.nama_produk,
                 jp.nama_pekerjaan,
                 jp.upah_per_unit,
+                jp.tipe,
                 (SELECT MIN(tanggal_update) 
                 FROM progress_pekerjaan pp 
                 WHERE pp.id_pekerjaan_karyawan = pk.id_pekerjaan_karyawan) as tanggal_mulai
@@ -72,6 +78,21 @@ export async function getPekerjaanByKaryawan(id_karyawan: number) {
 
 export async function createPekerjaanKaryawan(data: Omit<PekerjaanKaryawan, 'id_pekerjaan_karyawan'>) {
     try {
+        // Validasi: Cek apakah karyawan sudah dihapus
+        const [karyawanCheck] = await pool.query(
+            'SELECT deleted_at FROM karyawan WHERE id_karyawan = ?',
+            [data.id_karyawan]
+        );
+
+        const karyawan = (karyawanCheck as any)[0];
+        if (!karyawan) {
+            throw new Error('Karyawan tidak ditemukan');
+        }
+
+        if (karyawan.deleted_at !== null) {
+            throw new Error('Tidak dapat menambahkan pekerjaan untuk karyawan yang sudah dihapus');
+        }
+
         const [result] = await pool.query(
             `INSERT INTO pekerjaan_karyawan 
             (id_produk, id_karyawan, id_jenis_pekerjaan, unit_dikerjakan, target_unit, tanggal_selesai, status) 
@@ -99,6 +120,18 @@ export async function createMultiplePekerjaanKaryawan(pekerjaanList: Omit<Pekerj
     
     try {
         await connection.beginTransaction();
+
+        // Validasi semua karyawan belum dihapus
+        const karyawanIds = Array.from(new Set(pekerjaanList.map(p => p.id_karyawan)));
+        const [karyawanCheck] = await connection.query(
+            `SELECT id_karyawan, deleted_at FROM karyawan WHERE id_karyawan IN (?)`,
+            [karyawanIds]
+        );
+
+        const deletedKaryawan = (karyawanCheck as any[]).filter(k => k.deleted_at !== null);
+        if (deletedKaryawan.length > 0) {
+            throw new Error('Tidak dapat menambahkan pekerjaan untuk karyawan yang sudah dihapus');
+        }
 
         for (const pekerjaan of pekerjaanList) {
             await connection.query(

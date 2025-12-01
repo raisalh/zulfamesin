@@ -24,8 +24,7 @@ export async function getAllProduksi(page: number = 1, limit: number = 10) {
 
   try {
     const [rows] = await pool.query(
-      "SELECT * FROM produksi ORDER BY id_produk DESC LIMIT ? OFFSET ?",
-      [limit, offset],
+      "SELECT * FROM produksi ORDER BY id_produk DESC",
     );
 
     const [countResult] = await pool.query(
