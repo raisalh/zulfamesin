@@ -11,6 +11,7 @@ export interface Produksi {
   id_user: number;
   tanggal_mulai: Date | null;
   tanggal_selesai: Date | null;
+  deleted_at: Date | null;
 }
 
 export interface ProduksiStats {
@@ -24,11 +25,11 @@ export async function getAllProduksi(page: number = 1, limit: number = 10) {
 
   try {
     const [rows] = await pool.query(
-      "SELECT * FROM produksi ORDER BY id_produk DESC",
+      "SELECT * FROM produksi WHERE deleted_at IS NULL ORDER BY id_produk DESC",
     );
 
     const [countResult] = await pool.query(
-      "SELECT COUNT(*) as total FROM produksi",
+      "SELECT COUNT(*) as total FROM produksi WHERE deleted_at IS NULL",
     );
 
     const total = (countResult as any)[0].total;
@@ -52,6 +53,7 @@ export async function getProduksiStats(): Promise<ProduksiStats> {
         SUM(CASE WHEN status = 'diproses' THEN 1 ELSE 0 END) as sedang_diproses,
         SUM(CASE WHEN status = 'selesai' THEN 1 ELSE 0 END) as sudah_selesai
       FROM produksi
+      WHERE deleted_at IS NULL
     `);
 
     const result = (rows as any)[0];
@@ -70,7 +72,7 @@ export async function getProduksiStats(): Promise<ProduksiStats> {
 export async function getProduksiById(id: number) {
   try {
     const [rows] = await pool.query(
-      "SELECT * FROM produksi WHERE id_produk = ?",
+      "SELECT * FROM produksi WHERE id_produk = ? AND deleted_at IS NULL",
       [id],
     );
 
@@ -120,7 +122,7 @@ export async function updateProduksi(
     const values = Object.values(data);
 
     const [result] = await pool.query(
-      `UPDATE produksi SET ${fields} WHERE id_produk = ?`,
+      `UPDATE produksi SET ${fields} WHERE id_produk = ? AND deleted_at IS NULL`,
       [...values, id],
     );
 
@@ -131,16 +133,31 @@ export async function updateProduksi(
   }
 }
 
-export async function deleteProduksi(id: number) {
+
+export async function softDeleteProduksi(id: number) {
   try {
     const [result] = await pool.query(
-      "DELETE FROM produksi WHERE id_produk = ?",
-      [id],
+      "UPDATE produksi SET deleted_at = NOW() WHERE id_produk = ? AND deleted_at IS NULL",
+      [id]
     );
 
     return result;
   } catch (error) {
-    console.error("Error deleting produksi:", error);
+    console.error("Error soft deleting produksi:", error);
+    throw error;
+  }
+}
+
+export async function restoreProduksi(id: number) {
+  try {
+    const [result] = await pool.query(
+      "UPDATE produksi SET deleted_at = NULL WHERE id_produk = ?",
+      [id]
+    );
+
+    return result;
+  } catch (error) {
+    console.error("Error restoring produksi:", error);
     throw error;
   }
 }
@@ -157,7 +174,7 @@ export async function updateStatusBasedOnProgress(id_produk: number) {
               WHEN tanggal_selesai IS NULL THEN CURRENT_DATE 
               ELSE tanggal_selesai 
             END
-        WHERE id_produk = ? AND status != 'selesai'
+        WHERE id_produk = ? AND status != 'selesai' AND deleted_at IS NULL
       `, [id_produk]);
       
       return { updated: true, progress };

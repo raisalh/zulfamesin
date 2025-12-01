@@ -1,10 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
 
+import { NextRequest, NextResponse } from "next/server";
 import { getAllKaryawan, createKaryawan } from "@/lib/karyawan";
 
 export async function GET(request: NextRequest) {
   try {
-    const result = await getAllKaryawan();
+    const searchParams = request.nextUrl.searchParams;
+    const includeDeleted = searchParams.get("includeDeleted") === "true";
+
+    const result = await getAllKaryawan(includeDeleted);
 
     return NextResponse.json({
       success: true,

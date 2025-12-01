@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getProduksiById, updateProduksi, deleteProduksi, updateStatusBasedOnProgress } from "@/lib/produk";
-import { getGulunganByProduk, deleteGulunganByProduk, createMultipleGulungan, getTotalPolaByProduk } from "@/lib/gulungan";
-import { deleteUpahByProduk } from "@/lib/upahKaryawan";
+import { 
+  getProduksiById, 
+  updateProduksi, 
+  softDeleteProduksi, 
+  updateStatusBasedOnProgress 
+} from "@/lib/produk";
+import { 
+  getGulunganByProduk, 
+  deleteGulunganByProduk, 
+  createMultipleGulungan, 
+  getTotalPolaByProduk 
+} from "@/lib/gulungan";
 
 export async function GET(
   request: NextRequest,
@@ -14,7 +23,7 @@ export async function GET(
 
     if (isNaN(id)) {
       return NextResponse.json(
-        { success: false, message: "Invalid ID" },
+        { success: false, message: "ID tidak valid" },
         { status: 400 },
       );
     }
@@ -23,7 +32,7 @@ export async function GET(
 
     if (!produksi) {
       return NextResponse.json(
-        { success: false, message: "Produksi not found" },
+        { success: false, message: "Produksi tidak ditemukan" },
         { status: 404 },
       );
     }
@@ -43,7 +52,7 @@ export async function GET(
     console.error("Error in GET /api/production/[id]:", error);
 
     return NextResponse.json(
-      { success: false, message: "Failed to fetch produksi" },
+      { success: false, message: "Gagal mengambil data produksi" },
       { status: 500 },
     );
   }
@@ -59,7 +68,7 @@ export async function PUT(
 
     if (isNaN(id)) {
       return NextResponse.json(
-        { success: false, message: "Invalid ID" },
+        { success: false, message: "ID tidak valid" },
         { status: 400 },
       );
     }
@@ -70,7 +79,7 @@ export async function PUT(
 
     if (!existing) {
       return NextResponse.json(
-        { success: false, message: "Produksi not found" },
+        { success: false, message: "Produksi tidak ditemukan" },
         { status: 404 },
       );
     }
@@ -122,13 +131,13 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
-      message: "Produksi updated successfully",
+      message: "Produksi berhasil diperbarui",
     });
   } catch (error) {
     console.error("Error in PUT /api/production/[id]:", error);
 
     return NextResponse.json(
-      { success: false, message: "Failed to update produksi" },
+      { success: false, message: "Gagal memperbarui produksi" },
       { status: 500 },
     );
   }
@@ -144,7 +153,7 @@ export async function DELETE(
 
     if (isNaN(id)) {
       return NextResponse.json(
-        { success: false, message: "Invalid ID" },
+        { success: false, message: "ID tidak valid" },
         { status: 400 },
       );
     }
@@ -153,29 +162,32 @@ export async function DELETE(
 
     if (!existing) {
       return NextResponse.json(
-        { success: false, message: "Produksi not found" },
+        { success: false, message: "Produksi tidak ditemukan" },
         { status: 404 },
       );
     }
 
-    try {
-      await deleteUpahByProduk(id);
-      console.log('Deleted upah_karyawan records for produk:', id);
-    } catch (error) {
-      console.error('Error deleting upah_karyawan, continuing with produksi delete:', error);
+    if (existing.deleted_at !== null) {
+      return NextResponse.json(
+        { success: false, message: "Produksi sudah dihapus sebelumnya" },
+        { status: 400 },
+      );
     }
 
-    await deleteProduksi(id);
+    await softDeleteProduksi(id);
 
     return NextResponse.json({
       success: true,
-      message: "Produksi deleted successfully",
+      message: "Produksi berhasil dihapus",
     });
   } catch (error) {
     console.error("Error in DELETE /api/production/[id]:", error);
 
     return NextResponse.json(
-      { success: false, message: "Failed to delete produksi" },
+      { 
+        success: false, 
+        message: "Gagal menghapus produksi. Silakan coba lagi." 
+      },
       { status: 500 },
     );
   }

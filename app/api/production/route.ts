@@ -150,6 +150,7 @@ export async function POST(request: NextRequest) {
       id_user: userId,
       tanggal_mulai: body.tanggal_mulai || null,
       tanggal_selesai: body.tanggal_selesai || null,
+      deleted_at: null,
     });
 
     const idProduk = (result as any).insertId;

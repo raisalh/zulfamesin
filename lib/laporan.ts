@@ -31,7 +31,6 @@ export interface LaporanKaryawan {
     is_deleted: boolean; 
 }
 
-
 export interface LaporanKaryawanDetail {
     id_karyawan: number;
     nama_karyawan: string;
@@ -54,7 +53,6 @@ export interface LaporanUpah {
     belum_dibayar: number;
     is_deleted: boolean; 
 }
-
 
 export interface LaporanUpahDetail {
     id_upah: number;
@@ -163,7 +161,7 @@ export async function getLaporanProduksiPerBulan(params: {
                 CAST(SUM(CASE WHEN status = 'selesai' THEN 1 ELSE 0 END) AS UNSIGNED) as selesai,
                 CAST(SUM(CASE WHEN status = 'diproses' THEN 1 ELSE 0 END) AS UNSIGNED) as diproses
             FROM produksi
-            WHERE 1=1
+            WHERE deleted_at IS NULL
         `;
 
         const queryParams: any[] = [];
@@ -188,7 +186,6 @@ export async function getLaporanProduksiPerBulan(params: {
         throw error;
     }
 }
-
 
 export async function getLaporanProduksiDetail(params: {
     tahun?: number;
@@ -219,7 +216,7 @@ export async function getLaporanProduksiDetail(params: {
             FROM produksi p
             LEFT JOIN gulungan g ON p.id_produk = g.id_produk
             LEFT JOIN pekerjaan_karyawan pk ON p.id_produk = pk.id_produk
-            WHERE 1=1
+            WHERE p.deleted_at IS NULL
         `;
 
         const queryParams: any[] = [];
@@ -265,9 +262,9 @@ export async function getLaporanKaryawan(params: {
                 CAST(COALESCE(SUM(pk.unit_dikerjakan), 0) AS UNSIGNED) as unit_selesai,
                 CAST(COALESCE(SUM(pk.target_unit - pk.unit_dikerjakan), 0) AS UNSIGNED) as unit_sisa
             FROM karyawan k
-            LEFT JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
-            LEFT JOIN produksi p ON pk.id_produk = p.id_produk
-            WHERE 1=1
+            INNER JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
+            INNER JOIN produksi p ON pk.id_produk = p.id_produk
+            WHERE p.deleted_at IS NULL
         `;
 
         const queryParams: any[] = [];
@@ -293,7 +290,6 @@ export async function getLaporanKaryawan(params: {
     }
 }
 
-
 export async function getLaporanKaryawanDetail(
     id_karyawan: number,
     params: {
@@ -318,6 +314,7 @@ export async function getLaporanKaryawanDetail(
             INNER JOIN produksi p ON pk.id_produk = p.id_produk
             INNER JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
             WHERE k.id_karyawan = ?
+            AND p.deleted_at IS NULL
         `;
 
         const queryParams: any[] = [id_karyawan];
@@ -359,20 +356,21 @@ export async function getLaporanUpah(params: {
                 SUM(CASE WHEN pk.status = 'selesai' THEN pk.unit_dikerjakan * jp.upah_per_unit ELSE 0 END) as dibayar,
                 SUM(CASE WHEN pk.status = 'dikerjakan' THEN pk.unit_dikerjakan * jp.upah_per_unit ELSE 0 END) as belum_dibayar
             FROM karyawan k
-            LEFT JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
-            LEFT JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
-            LEFT JOIN produksi p ON pk.id_produk = p.id_produk
-            WHERE 1=1
+            INNER JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
+            INNER JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
+            INNER JOIN produksi p ON pk.id_produk = p.id_produk
+            WHERE p.deleted_at IS NULL
         `;
 
         const queryParams: any[] = [];
+        
         if (params.tahun) {
-            query += ` AND YEAR(tanggal_mulai) = ?`;
+            query += ` AND YEAR(p.tanggal_mulai) = ?`;
             queryParams.push(params.tahun);
         }
 
         if (params.bulan) {
-            query += ` AND MONTH(tanggal_mulai) = ?`;
+            query += ` AND MONTH(p.tanggal_mulai) = ?`;
             queryParams.push(params.bulan);
         }
 
@@ -391,7 +389,6 @@ export async function getLaporanUpah(params: {
         throw error;
     }
 }
-
 
 export async function getLaporanUpahPerProduk(params: {
     tahun?: number;
@@ -412,10 +409,11 @@ export async function getLaporanUpahPerProduk(params: {
             INNER JOIN karyawan k ON pk.id_karyawan = k.id_karyawan
             INNER JOIN produksi p ON pk.id_produk = p.id_produk
             INNER JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
-            WHERE 1=1
+            WHERE p.deleted_at IS NULL
         `;
 
         const queryParams: any[] = [];
+        
         if (params.tahun) {
             query += ` AND YEAR(p.tanggal_mulai) = ?`;
             queryParams.push(params.tahun);
@@ -454,7 +452,7 @@ export async function getLaporanPolaProduksi(params: {
                 CAST(COALESCE(SUM(pk.target_unit - pk.unit_dikerjakan), 0) AS UNSIGNED) as pola_belum_selesai
             FROM produksi p
             LEFT JOIN pekerjaan_karyawan pk ON p.id_produk = pk.id_produk
-            WHERE 1=1
+            WHERE p.deleted_at IS NULL
         `;
 
         const queryParams: any[] = [];
@@ -477,7 +475,6 @@ export async function getLaporanPolaProduksi(params: {
     }
 }
 
-
 export async function getOnTimeDelivery(params: {
     tahun?: number;
     bulan?: number;
@@ -499,7 +496,7 @@ export async function getOnTimeDelivery(params: {
                     THEN 1 ELSE 0 
                 END) as sedang_diproses
             FROM produksi
-            WHERE 1=1
+            WHERE deleted_at IS NULL
         `;
 
         const queryParams: any[] = [];
@@ -537,6 +534,7 @@ export async function getDurasiPengerjaan(params: {
             WHERE status = 'selesai' 
                 AND tanggal_mulai IS NOT NULL 
                 AND tanggal_selesai IS NOT NULL
+                AND deleted_at IS NULL
         `;
 
         const queryParams: any[] = [];
@@ -562,8 +560,6 @@ export async function getDurasiPengerjaan(params: {
     }
 }
 
-
-
 export async function getDistribusiJenisPekerjaan(params: {
     tahun?: number;
     bulan?: number;
@@ -583,7 +579,7 @@ export async function getDistribusiJenisPekerjaan(params: {
             FROM pekerjaan_karyawan pk
             INNER JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
             INNER JOIN produksi p ON pk.id_produk = p.id_produk
-            WHERE 1=1
+            WHERE p.deleted_at IS NULL
         `;
 
         const queryParams: any[] = [];
@@ -607,6 +603,7 @@ export async function getDistribusiJenisPekerjaan(params: {
         throw error;
     }
 }
+
 export async function getCompletionRate(params: {
     tahun?: number;
     bulan?: number;
@@ -623,7 +620,7 @@ export async function getCompletionRate(params: {
             FROM karyawan k
             INNER JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
             INNER JOIN produksi p ON pk.id_produk = p.id_produk
-            WHERE 1=1
+            WHERE p.deleted_at IS NULL
         `;
 
         const queryParams: any[] = [];
@@ -661,9 +658,10 @@ export async function getTingkatKehadiran(params: {
                 MAX(DATE(pp.tanggal_update)) as terakhir_aktif,
                 SUM(pp.unit_progress) as total_unit
             FROM karyawan k
-            LEFT JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
-            LEFT JOIN progress_pekerjaan pp ON pk.id_pekerjaan_karyawan = pp.id_pekerjaan_karyawan
-            WHERE 1=1
+            INNER JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
+            INNER JOIN progress_pekerjaan pp ON pk.id_pekerjaan_karyawan = pp.id_pekerjaan_karyawan
+            INNER JOIN produksi p ON pk.id_produk = p.id_produk
+            WHERE p.deleted_at IS NULL
         `;
 
         const queryParams: any[] = [];
@@ -710,9 +708,9 @@ export async function getWorkloadBalance(params: {
                     ELSE 0 
                 END as persentase_selesai
             FROM karyawan k
-            LEFT JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
-            LEFT JOIN produksi p ON pk.id_produk = p.id_produk
-            WHERE 1=1
+            INNER JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
+            INNER JOIN produksi p ON pk.id_produk = p.id_produk
+            WHERE p.deleted_at IS NULL
         `;
 
         const queryParams: any[] = [];
@@ -786,10 +784,10 @@ export async function getUpahBelumDibayar(params: {
                 END) as total_belum_dibayar
                 
             FROM karyawan k
-            LEFT JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
-            LEFT JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
-            LEFT JOIN produksi p ON pk.id_produk = p.id_produk
-            WHERE 1=1
+            INNER JOIN pekerjaan_karyawan pk ON k.id_karyawan = pk.id_karyawan
+            INNER JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
+            INNER JOIN produksi p ON pk.id_produk = p.id_produk
+            WHERE p.deleted_at IS NULL
         `;
 
         const queryParams: any[] = [];
@@ -860,6 +858,7 @@ export async function getPerbandinganUpahBulanan(params: {
             LEFT JOIN produksi p ON pk.id_produk = p.id_produk
             LEFT JOIN upah_karyawan uk ON k.id_karyawan = uk.id_karyawan AND pk.id_produk = uk.id_produk
             WHERE YEAR(p.tanggal_mulai) = ? AND MONTH(p.tanggal_mulai) = ?
+            AND p.deleted_at IS NULL
         `, [params.tahun, params.bulan]);
 
         const [rowsBulanLalu] = await pool.query(`
@@ -890,6 +889,7 @@ export async function getPerbandinganUpahBulanan(params: {
             LEFT JOIN produksi p ON pk.id_produk = p.id_produk
             LEFT JOIN upah_karyawan uk ON k.id_karyawan = uk.id_karyawan AND pk.id_produk = uk.id_produk
             WHERE YEAR(p.tanggal_mulai) = ? AND MONTH(p.tanggal_mulai) = ?
+            AND p.deleted_at IS NULL
         `, [tahunLalu, bulanLalu]);
 
         const dataBulanIni = (rowsBulanIni as any)[0];

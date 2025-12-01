@@ -1,64 +1,74 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { IconPlus, IconTrash, IconCheck, IconAlertTriangle, IconSearch, IconX } from "@tabler/icons-react";
-import { toast } from "sonner";
+import {
+    IconPlus,
+    IconTrash,
+    IconCheck,
+    IconAlertTriangle,
+    IconSearch,
+    IconX,
+    IconAlertCircle,
+    IconUserX,
+} from "@tabler/icons-react";
 import axios from "axios";
 import {
     Input,
     Button,
-    RadioGroup,
-    Radio,
     Chip,
     Card,
     CardBody,
+    Tooltip,
+    addToast,
 } from "@heroui/react";
 
 interface Karyawan {
     id_karyawan: number;
     nama_karyawan: string;
     jenis_kelamin: "perempuan" | "laki-laki" | null;
+    deleted_at: Date | null;
 }
 
-interface ManualAssignment {
+interface Assignment {
+    id_pekerjaan_karyawan?: number;
     id_karyawan: number;
-    unit: number;
+    nama_karyawan: string;
+    target_unit: number;
+    unit_dikerjakan: number;
+    is_deleted: boolean;
 }
 
 interface PekerjaanItem {
     id: string;
+    id_jenis_pekerjaan?: number;
     nama_pekerjaan: string;
     upah_per_unit: string;
-    assignment_type: "sistem" | "manual";
-    karyawan_ids: number[];
-    manual_assignments: ManualAssignment[];
+    tipe: "sistem" | "manual";
+    assignments: Assignment[];
 }
 
 interface FormErrors {
     nama_pekerjaan?: string;
     upah_per_unit?: string;
-    karyawan_ids?: string;
-    manual_assignments?: string;
+    assignments?: string;
+}
+
+interface ProdukInfo {
+    nama_produk: string;
+    total_gulungan: number;
+    total_pola: number;
 }
 
 export default function EditWorkAssignmentPage() {
     const [karyawanList, setKaryawanList] = useState<Karyawan[]>([]);
-    const [pekerjaanList, setPekerjaanList] = useState<PekerjaanItem[]>([
-        {
-            id: Date.now().toString(),
-            nama_pekerjaan: "",
-            upah_per_unit: "",
-            assignment_type: "sistem",
-            karyawan_ids: [],
-            manual_assignments: [],
-        },
-    ]);
+    const [pekerjaanList, setPekerjaanList] = useState<PekerjaanItem[]>([]);
+    const [produkInfo, setProdukInfo] = useState<ProdukInfo | null>(null);
 
     const router = useRouter();
     const params = useParams();
     const id = params.id as string;
-    const [totalPola, setTotalPola] = useState(0);
+
     const [loading, setLoading] = useState(false);
     const [loadingData, setLoadingData] = useState(true);
     const [showCancelModal, setShowCancelModal] = useState(false);
@@ -69,54 +79,121 @@ export default function EditWorkAssignmentPage() {
 
     useEffect(() => {
         if (id) {
-            fetchExistingData(); 
+            fetchExistingData();
         }
     }, [id]);
 
     const fetchExistingData = async () => {
         setLoadingData(true);
         try {
-            const karyawanResponse = await axios.get("/api/employee");
+            const karyawanResponse = await axios.get(
+                "/api/employee?includeDeleted=true"
+            );
             if (karyawanResponse.data.success) {
                 setKaryawanList(karyawanResponse.data.data);
             }
-    
+
             const produksiResponse = await axios.get(`/api/production/${id}`);
             if (produksiResponse.data.success && produksiResponse.data.data) {
-                const totalPolaValue = produksiResponse.data.data.jumlah_pola || 0;
-                setTotalPola(totalPolaValue);
+                const data = produksiResponse.data.data;
+                setProdukInfo({
+                    nama_produk: data.nama_produk,
+                    total_gulungan: data.gulungan || 0,
+                    total_pola: data.jumlah_pola || 0,
+                });
             }
-    
+
             const pekerjaanResponse = await axios.get(`/api/work-assignment/${id}`);
             if (pekerjaanResponse.data.success) {
                 const existingData = pekerjaanResponse.data.data.pekerjaan_list;
+
                 const transformedPekerjaan = existingData.map((pekerjaan: any) => {
-                    const karyawanIds = pekerjaan.karyawan.map((k: any) => k.id_karyawan);
-                    const assignmentType = pekerjaan.tipe; 
-                    
+                    const assignments = pekerjaan.karyawan.map((k: any) => ({
+                        id_pekerjaan_karyawan: k.id_pekerjaan_karyawan,
+                        id_karyawan: k.id_karyawan,
+                        nama_karyawan: k.nama_karyawan,
+                        target_unit: k.target_unit,
+                        unit_dikerjakan: k.unit_dikerjakan,
+                        is_deleted: k.is_karyawan_deleted || false,
+                    }));
+
                     return {
                         id: Date.now().toString() + Math.random(),
+                        id_jenis_pekerjaan: pekerjaan.id_jenis_pekerjaan,
                         nama_pekerjaan: pekerjaan.nama_pekerjaan,
-                        upah_per_unit: parseFloat(pekerjaan.upah_per_unit).toString(),
-                        assignment_type: assignmentType, 
-                        karyawan_ids: karyawanIds,
-                        manual_assignments: assignmentType === "manual" 
-                            ? pekerjaan.karyawan.map((k: any) => ({
-                                id_karyawan: k.id_karyawan,
-                                unit: k.target_unit
-                            }))
-                            : []
+                        upah_per_unit: pekerjaan.upah_per_unit.toString(),
+                        tipe: pekerjaan.tipe,
+                        assignments: assignments,
                     };
                 });
-                
+
                 setPekerjaanList(transformedPekerjaan);
             }
         } catch (error) {
             console.error("Error fetching data:", error);
-            toast.error("Gagal memuat data");
+            addToast({
+                title: "Gagal Memuat Data",
+                description: "Terjadi kesalahan saat mengambil data",
+                color: "danger",
+            });
         } finally {
             setLoadingData(false);
         }
+    };
+
+    const calculateTotalTarget = (): number => {
+        let total = 0;
+        pekerjaanList.forEach((pekerjaan) => {
+            pekerjaan.assignments.forEach((assignment) => {
+                total += assignment.target_unit;
+            });
+        });
+        return total;
+    };
+
+    const getTotalAssigned = (): number => {
+        return calculateTotalTarget();
+    };
+
+    const getDistributionStatus = () => {
+        if (!produkInfo) return null;
+
+        const totalAssigned = getTotalAssigned();
+        const diff = produkInfo.total_pola - totalAssigned;
+
+        if (diff === 0) {
+            return {
+                status: "valid",
+                message: "Sesuai Target",
+                color: "success" as const,
+                diff: 0,
+            };
+        } else if (diff > 0) {
+            return {
+                status: "kurang",
+                message: `Kurang ${diff} pola`,
+                color: "warning" as const,
+                diff,
+            };
+        } else {
+            return {
+                status: "lebih",
+                message: `Berlebih ${Math.abs(diff)} pola`,
+                color: "danger" as const,
+                diff,
+            };
+        }
+    };
+
+    const isSubmitDisabled = (): boolean => {
+        if (loading) return true;
+
+        const distributionStatus = getDistributionStatus();
+        if (distributionStatus && distributionStatus.status !== "valid") {
+            return true;
+        }
+
+        return false;
     };
 
     const handleAddPekerjaan = () => {
@@ -126,19 +203,40 @@ export default function EditWorkAssignmentPage() {
                 id: Date.now().toString(),
                 nama_pekerjaan: "",
                 upah_per_unit: "",
-                assignment_type: "sistem",
-                karyawan_ids: [],
-                manual_assignments: [],
+                tipe: "manual",
+                assignments: [],
             },
         ]);
     };
 
     const handleRemovePekerjaan = (id: string) => {
-        if (pekerjaanList.length === 1) {
-            toast.warning("Minimal harus ada 1 pekerjaan");
+        const pekerjaan = pekerjaanList.find((p) => p.id === id);
+
+        const hasProgress = pekerjaan?.assignments.some(
+            (a) => a.unit_dikerjakan > 0
+        );
+
+        if (hasProgress) {
+            addToast({
+                title: "Tidak Dapat Menghapus",
+                description:
+                    "Tidak dapat menghapus pekerjaan yang sudah memiliki progress",
+                color: "danger",
+            });
             return;
         }
+
+        if (pekerjaanList.length === 1) {
+            addToast({
+                title: "Peringatan",
+                description: "Minimal harus ada 1 pekerjaan",
+                color: "warning",
+            });
+            return;
+        }
+
         setPekerjaanList(pekerjaanList.filter((p) => p.id !== id));
+
         const newErrors = { ...errors };
         delete newErrors[id];
         setErrors(newErrors);
@@ -148,255 +246,224 @@ export default function EditWorkAssignmentPage() {
         setPekerjaanList(
             pekerjaanList.map((p) => {
                 if (p.id === id) {
-                    if (field === "assignment_type" && value === "manual") {
-                        const manualAssignments = p.karyawan_ids.map((kid) => ({
-                            id_karyawan: kid,
-                            unit: 0,
-                        }));
-                        return { ...p, [field]: value, manual_assignments: manualAssignments };
-                    }
                     return { ...p, [field]: value };
                 }
                 return p;
             })
         );
-
-        if (errors[id]?.[field as keyof FormErrors]) {
-            setErrors({
-                ...errors,
-                [id]: {
-                    ...errors[id],
-                    [field]: undefined,
-                },
-            });
-        }
     };
 
-    const handleKaryawanToggle = (pekerjaanId: string, karyawanId: number) => {
+    const handleAddAssignment = (pekerjaanId: string, karyawanId: number) => {
+        const karyawan = karyawanList.find((k) => k.id_karyawan === karyawanId);
+        if (!karyawan) return;
+
         setPekerjaanList(
             pekerjaanList.map((p) => {
                 if (p.id === pekerjaanId) {
-                    const isSelected = p.karyawan_ids.includes(karyawanId);
-                    const newKaryawanIds = isSelected
-                        ? p.karyawan_ids.filter((id) => id !== karyawanId)
-                        : [...p.karyawan_ids, karyawanId];
-
-                    if (p.assignment_type === "manual") {
-                        const newManualAssignments = isSelected
-                            ? p.manual_assignments.filter(
-                                (ma) => ma.id_karyawan !== karyawanId
-                            )
-                            : [...p.manual_assignments, { id_karyawan: karyawanId, unit: 0 }];
-
-                        return {
-                            ...p,
-                            karyawan_ids: newKaryawanIds,
-                            manual_assignments: newManualAssignments,
-                        };
+                    const exists = p.assignments.some(
+                        (a) => a.id_karyawan === karyawanId
+                    );
+                    if (exists) {
+                        addToast({
+                            title: "Karyawan Sudah Ada",
+                            description: `${karyawan.nama_karyawan} sudah ada dalam daftar`,
+                            color: "warning",
+                        });
+                        return p;
                     }
 
                     return {
                         ...p,
-                        karyawan_ids: newKaryawanIds,
+                        assignments: [
+                            ...p.assignments,
+                            {
+                                id_karyawan: karyawanId,
+                                nama_karyawan: karyawan.nama_karyawan,
+                                target_unit: 0,
+                                unit_dikerjakan: 0,
+                                is_deleted: karyawan.deleted_at !== null,
+                            },
+                        ],
                     };
                 }
                 return p;
             })
         );
-
-        if (errors[pekerjaanId]?.karyawan_ids) {
-            setErrors({
-                ...errors,
-                [pekerjaanId]: {
-                    ...errors[pekerjaanId],
-                    karyawan_ids: undefined,
-                },
-            });
-        }
     };
 
-    const handleManualUnitChange = (
-        pekerjaanId: string,
-        karyawanId: number,
-        value: string
-    ) => {
-        const numValue = value === '' ? 0 : parseInt(value.replace(/\D/g, '')) || 0;
-        
+    const handleRemoveAssignment = (pekerjaanId: string, karyawanId: number) => {
+        const pekerjaan = pekerjaanList.find((p) => p.id === pekerjaanId);
+        const assignment = pekerjaan?.assignments.find(
+            (a) => a.id_karyawan === karyawanId
+        );
+
+        if (assignment && assignment.unit_dikerjakan > 0) {
+            addToast({
+                title: "Tidak Dapat Menghapus",
+                description:
+                    "Tidak dapat menghapus karyawan yang sudah memiliki progress",
+                color: "danger",
+            });
+            return;
+        }
+
         setPekerjaanList(
             pekerjaanList.map((p) => {
                 if (p.id === pekerjaanId) {
-                    const newManualAssignments = p.manual_assignments.map((ma) =>
-                        ma.id_karyawan === karyawanId
-                            ? { ...ma, unit: numValue }
-                            : ma
-                    );
-                    return { ...p, manual_assignments: newManualAssignments };
+                    return {
+                        ...p,
+                        assignments: p.assignments.filter(
+                            (a) => a.id_karyawan !== karyawanId
+                        ),
+                    };
                 }
                 return p;
             })
         );
-
-        if (errors[pekerjaanId]?.manual_assignments) {
-            setErrors({
-                ...errors,
-                [pekerjaanId]: {
-                    ...errors[pekerjaanId],
-                    manual_assignments: undefined,
-                },
-            });
-        }
     };
 
-    const calculateUnitDistribution = (karyawanIds: number[]) => {
-        const totalKaryawan = karyawanIds.length;
-        if (totalKaryawan === 0) return [];
+    const handleTargetChange = (
+        pekerjaanId: string,
+        karyawanId: number,
+        value: string
+    ) => {
+        const numValue = value === "" ? 0 : parseInt(value.replace(/\D/g, "")) || 0;
 
-        const baseUnit = Math.floor(totalPola / totalKaryawan);
-        const remainder = totalPola % totalKaryawan;
-
-        return karyawanIds.map((id, index) => {
-            const karyawan = karyawanList.find((k) => k.id_karyawan === id);
-            return {
-                id_karyawan: id,
-                nama_karyawan: karyawan?.nama_karyawan || "-",
-                unit: index === totalKaryawan - 1 ? baseUnit + remainder : baseUnit,
-            };
-        });
-    };
-
-    const getManualDistributionStatus = (pekerjaan: PekerjaanItem) => {
-        const totalAssigned = pekerjaan.manual_assignments.reduce(
-            (sum, ma) => sum + (ma.unit || 0),
-            0
+        setPekerjaanList(
+            pekerjaanList.map((p) => {
+                if (p.id === pekerjaanId) {
+                    const newAssignments = p.assignments.map((a) => {
+                        if (a.id_karyawan === karyawanId) {
+                            return { ...a, target_unit: numValue };
+                        }
+                        return a;
+                    });
+                    return { ...p, assignments: newAssignments };
+                }
+                return p;
+            })
         );
-        const diff = totalPola - totalAssigned;
-        if (diff === 0) return { status: "valid", message: "Sesuai", color: "success" };
-        if (diff > 0) return { status: "kurang", message: `Kurang ${diff} pola`, color: "warning" };
-        return { status: "lebih", message: `Berlebih ${Math.abs(diff)} pola`, color: "danger" };
     };
 
     const getFilteredKaryawan = (pekerjaanId: string) => {
         const query = searchQueries[pekerjaanId]?.toLowerCase() || "";
-        if (!query) return karyawanList;
+        const pekerjaan = pekerjaanList.find((p) => p.id === pekerjaanId);
+        const assignedIds = pekerjaan?.assignments.map((a) => a.id_karyawan) || [];
 
-        return karyawanList.filter((k) =>
-            k.nama_karyawan.toLowerCase().includes(query)
+        let filtered = karyawanList.filter(
+            (k) =>
+                !assignedIds.includes(k.id_karyawan) &&
+                k.nama_karyawan.toLowerCase().includes(query)
         );
-    };
 
-    const getTotalStats = () => {
-        const totalPekerjaan = pekerjaanList.filter(
-            (p) => p.nama_pekerjaan.trim() !== ""
-        ).length;
-        const totalUnit = totalPola;
-        const totalUpah = pekerjaanList.reduce((sum, p) => {
-            if (p.karyawan_ids.length > 0 && p.upah_per_unit) {
-                const upah =
-                    typeof p.upah_per_unit === "string"
-                        ? parseFloat(p.upah_per_unit)
-                        : p.upah_per_unit;
-                return sum + upah * totalPola;
-            }
-            return sum;
-        }, 0);
-
-        return { totalPekerjaan, totalUnit, totalUpah };
+        return filtered;
     };
 
     const validateForm = (): boolean => {
-        const newErrors: { [key: string]: FormErrors } = {};
         let hasError = false;
 
+        if (produkInfo) {
+            const totalAssigned = getTotalAssigned();
+            const distributionStatus = getDistributionStatus();
+
+            if (distributionStatus && distributionStatus.status !== "valid") {
+                console.log("❌ Distribution error:", distributionStatus.message);
+                addToast({
+                    title: "Total Target Tidak Sesuai",
+                    description: `Total target semua karyawan harus sama dengan ${produkInfo.total_pola} pola. Saat ini ${totalAssigned} pola (${distributionStatus.message})`,
+                    color: "danger",
+                });
+                hasError = true;
+            }
+        }
+
         pekerjaanList.forEach((p) => {
-            const fieldErrors: FormErrors = {};
+            console.log("Validating pekerjaan:", p.nama_pekerjaan);
 
             if (!p.nama_pekerjaan.trim()) {
-                fieldErrors.nama_pekerjaan = "Nama pekerjaan harus diisi";
-                toast.error("Nama pekerjaan harus diisi");
+                console.log("❌ Nama pekerjaan kosong");
+                addToast({
+                    title: "Nama Pekerjaan Kosong",
+                    description: "Semua pekerjaan harus memiliki nama",
+                    color: "danger",
+                });
                 hasError = true;
             }
 
             if (!p.upah_per_unit.trim()) {
-                fieldErrors.upah_per_unit = "Upah per pola harus diisi";
-                toast.error("Upah per pola harus diisi");
+                console.log("❌ Upah kosong");
+                addToast({
+                    title: "Upah Belum Diisi",
+                    description: `Upah per pola untuk "${p.nama_pekerjaan || "pekerjaan ini"}" harus diisi`,
+                    color: "danger",
+                });
                 hasError = true;
-            } else if (!/^[0-9]+$/.test(p.upah_per_unit)) {
-                fieldErrors.upah_per_unit = "Upah per pola hanya boleh berisi angka";
-                toast.error("Upah per pola hanya boleh berisi angka");
+            } else if (!/^[0-9]+(\.[0-9]+)?$/.test(p.upah_per_unit)) {
+                console.log("❌ Format upah salah:", p.upah_per_unit);
+                addToast({
+                    title: "Format Upah Salah",
+                    description: "Upah per pola hanya boleh berisi angka",
+                    color: "danger",
+                });
                 hasError = true;
             } else if (parseFloat(p.upah_per_unit) <= 0) {
-                fieldErrors.upah_per_unit = "Upah per pola harus lebih dari 0";
-                toast.error("Upah per pola harus lebih dari 0");
+                console.log("❌ Upah <= 0");
+                addToast({
+                    title: "Upah Tidak Valid",
+                    description: "Upah per pola harus lebih dari 0",
+                    color: "danger",
+                });
                 hasError = true;
             }
 
-            if (p.karyawan_ids.length === 0) {
-                fieldErrors.karyawan_ids = "Pilih minimal 1 karyawan";
-                toast.error("Pilih minimal 1 karyawan untuk setiap pekerjaan");
+            if (p.assignments.length === 0) {
+                console.log("❌ Tidak ada karyawan");
+                addToast({
+                    title: "Karyawan Belum Dipilih",
+                    description: `Pekerjaan "${p.nama_pekerjaan}" harus memiliki minimal 1 karyawan`,
+                    color: "danger",
+                });
                 hasError = true;
             }
 
-            if (p.assignment_type === "manual") {
-                const totalAssigned = p.manual_assignments.reduce(
-                    (sum, ma) => sum + (ma.unit || 0),
-                    0
-                );
-            
-                const hasInvalidUnit = p.manual_assignments.some((ma) => !ma.unit || ma.unit <= 0);
-                if (hasInvalidUnit) {
-                    fieldErrors.manual_assignments = "Semua karyawan harus memiliki pola lebih dari 0";
-                    toast.error("Semua karyawan harus memiliki pola lebih dari 0");
+            p.assignments.forEach((a) => {
+                console.log(`Validating assignment: ${a.nama_karyawan}, target: ${a.target_unit}, done: ${a.unit_dikerjakan}`);
+
+                if (a.target_unit <= 0) {
+                    console.log(`❌ Target ${a.nama_karyawan} = 0`);
+                    addToast({
+                        title: "Target Belum Diisi",
+                        description: `Target untuk ${a.nama_karyawan} harus lebih dari 0`,
+                        color: "danger",
+                    });
                     hasError = true;
-                } else {
-                    const status = getManualDistributionStatus(p);
-                    if (status.status !== "valid") {
-                        const diff = totalPola - totalAssigned;
-                        fieldErrors.manual_assignments = `Total pola harus ${totalPola}`;
-                        toast.error(
-                            `Total pola untuk "${p.nama_pekerjaan}" harus ${totalPola}. Saat ini ${totalAssigned} (${diff > 0 ? 'kurang' : 'lebih'} ${Math.abs(diff)} pola)`
-                        );
-                        hasError = true;
-                    }
                 }
-            }
 
-            if (Object.keys(fieldErrors).length > 0) {
-                newErrors[p.id] = fieldErrors;
-            }
+                if (a.target_unit < a.unit_dikerjakan) {
+                    console.log(`❌ Target < progress untuk ${a.nama_karyawan}`);
+                    addToast({
+                        title: "Target Tidak Valid",
+                        description: `Target untuk ${a.nama_karyawan} tidak boleh lebih dari progress (${a.unit_dikerjakan} pola). Minimum target harus ${a.unit_dikerjakan} pola`,
+                        color: "danger",
+                    });
+                    hasError = true;
+                }
+            });
         });
 
-        setErrors(newErrors);
+        setErrors({});
+        console.log("Validation complete. hasError:", hasError);
         return !hasError;
     };
 
-    const handleBatal = () => {
-        setShowCancelModal(true);
-    };
-
-    const confirmBatal = () => {
-        router.push(`/produksi/${id}/lihat-progress`);
-    };
-
-    const cancelBatal = () => {
-        setShowCancelModal(false);
-    };
-
     const handleSubmit = async () => {
+        console.log("Submit clicked");
+        console.log("Validation result:", validateForm());
+        console.log("Current pekerjaanList:", pekerjaanList);
+        console.log("Distribution status:", getDistributionStatus());
+
         if (!validateForm()) {
-            return;
-        }
-
-        const validPekerjaan = pekerjaanList.filter(
-            (p) =>
-                p.nama_pekerjaan.trim() !== "" &&
-                p.upah_per_unit &&
-                p.karyawan_ids.length > 0
-        );
-
-        if (validPekerjaan.length === 0) {
-            toast.error(
-                "Harap lengkapi minimal 1 pekerjaan dengan nama, upah, dan karyawan"
-            );
+            console.log("Validation failed");
             return;
         }
 
@@ -404,56 +471,63 @@ export default function EditWorkAssignmentPage() {
 
         const payload = {
             id_produk: id,
-            pekerjaan_list: validPekerjaan.map((p) => {
-                if (p.assignment_type === "manual") {
-                    return {
-                        nama_pekerjaan: p.nama_pekerjaan,
-                        upah_per_unit:
-                            typeof p.upah_per_unit === "string"
-                                ? parseFloat(p.upah_per_unit)
-                                : p.upah_per_unit,
-                        karyawan_assignments: p.manual_assignments.map((ma) => ({
-                            id_karyawan: ma.id_karyawan,
-                            target_unit: ma.unit,
-                        })),
-                    };
-                } else {
-                    return {
-                        nama_pekerjaan: p.nama_pekerjaan,
-                        upah_per_unit:
-                            typeof p.upah_per_unit === "string"
-                                ? parseFloat(p.upah_per_unit)
-                                : p.upah_per_unit,
-                        karyawan_ids: p.karyawan_ids,
-                    };
-                }
-            }),
+            pekerjaan_list: pekerjaanList.map((p) => ({
+                id_jenis_pekerjaan: p.id_jenis_pekerjaan,
+                nama_pekerjaan: p.nama_pekerjaan,
+                upah_per_unit: parseFloat(p.upah_per_unit),
+                tipe: p.tipe,
+                assignments: p.assignments.map((a) => ({
+                    id_pekerjaan_karyawan: a.id_pekerjaan_karyawan,
+                    id_karyawan: a.id_karyawan,
+                    target_unit: a.target_unit,
+                    unit_dikerjakan: a.unit_dikerjakan,
+                })),
+            })),
         };
 
         try {
-            const response = await axios.put("/api/work-assignment", payload);
+            const response = await axios.put("/api/work-assignment/edit", payload);
 
             if (response.data.success) {
-                toast.success("Pekerjaan berhasil disimpan!");
-                router.push("/produksi");
+                addToast({
+                    title: "Berhasil!",
+                    description: "Pekerjaan berhasil diperbarui",
+                    color: "success",
+                });
+                setTimeout(() => {
+                    router.push(`/produksi/${id}/lihat-progress`);
+                }, 1000);
             } else {
-                toast.error(response.data.message || "Gagal menyimpan pekerjaan");
+                addToast({
+                    title: "Gagal Menyimpan",
+                    description:
+                        response.data.message || "Terjadi kesalahan saat menyimpan",
+                    color: "danger",
+                });
             }
         } catch (error) {
             console.error("Error submitting:", error);
             if (axios.isAxiosError(error)) {
-                toast.error(
-                    error.response?.data?.message || "Terjadi kesalahan saat menyimpan"
-                );
+                const message =
+                    error.response?.data?.message || "Terjadi kesalahan saat menyimpan";
+                addToast({
+                    title: "Gagal Menyimpan",
+                    description: message,
+                    color: "danger",
+                });
             } else {
-                toast.error("Terjadi kesalahan saat menyimpan pekerjaan");
+                addToast({
+                    title: "Error",
+                    description: "Terjadi kesalahan saat menyimpan pekerjaan",
+                    color: "danger",
+                });
             }
         } finally {
             setLoading(false);
         }
     };
 
-    const stats = getTotalStats();
+    const distributionStatus = getDistributionStatus();
 
     if (loadingData) {
         return (
@@ -470,9 +544,120 @@ export default function EditWorkAssignmentPage() {
         <div className="min-h-screen bg-gray-50 p-6">
             <div className="max-w-7xl mx-auto">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-                    <h1 className="text-2xl font-semibold text-gray-900">
-                        Mengubah Pekerjaan Karyawan
-                    </h1>
+                    <div>
+                        <h1 className="text-2xl font-semibold text-gray-900">
+                            Edit Pekerjaan Karyawan
+                        </h1>
+                        <p className="text-sm text-gray-600 mt-1">
+                            Edit pekerjaan dengan memperhatikan progress yang sudah dikerjakan
+                        </p>
+                    </div>
+                </div>
+
+                {produkInfo && (
+                    <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                        <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                            Informasi Produk
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-gray-50 rounded-lg p-4">
+                                <div className="text-sm text-gray-600 mb-1">Nama Produk</div>
+                                <div className="text-lg font-semibold text-gray-900">
+                                    {produkInfo.nama_produk}
+                                </div>
+                            </div>
+                            <div className="bg-gray-50 rounded-lg p-4">
+                                <div className="text-sm text-gray-600 mb-1">Total Gulungan</div>
+                                <div className="text-lg font-semibold text-gray-900">
+                                    {produkInfo.total_gulungan} gulungan
+                                </div>
+                            </div>
+                            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                                <div className="text-sm text-blue-600 mb-1">
+                                    Total Pola Target
+                                </div>
+                                <div className="text-2xl font-bold text-blue-900">
+                                    {produkInfo.total_pola} pola
+                                </div>
+                            </div>
+                        </div>
+
+                        {distributionStatus && (
+                            <div
+                                className="mt-4 flex items-center justify-between p-4 rounded-lg border-2"
+                                style={{
+                                    borderColor:
+                                        distributionStatus.status === "valid"
+                                            ? "#10b981"
+                                            : distributionStatus.status === "kurang"
+                                                ? "#f59e0b"
+                                                : "#ef4444",
+                                    backgroundColor:
+                                        distributionStatus.status === "valid"
+                                            ? "#f0fdf4"
+                                            : distributionStatus.status === "kurang"
+                                                ? "#fffbeb"
+                                                : "#fef2f2",
+                                }}
+                            >
+                                <div>
+                                    <div
+                                        className="text-sm font-medium"
+                                        style={{
+                                            color:
+                                                distributionStatus.status === "valid"
+                                                    ? "#059669"
+                                                    : distributionStatus.status === "kurang"
+                                                        ? "#d97706"
+                                                        : "#dc2626",
+                                        }}
+                                    >
+                                        Total Target Saat Ini: {getTotalAssigned()} pola
+                                    </div>
+                                    <div
+                                        className="text-xs mt-1"
+                                        style={{
+                                            color:
+                                                distributionStatus.status === "valid"
+                                                    ? "#047857"
+                                                    : distributionStatus.status === "kurang"
+                                                        ? "#b45309"
+                                                        : "#b91c1c",
+                                        }}
+                                    >
+                                        {distributionStatus.status === "valid"
+                                            ? "✓ Total target sudah sesuai dengan total pola produk"
+                                            : `${distributionStatus.message} dari target ${produkInfo.total_pola} pola`}
+                                    </div>
+                                </div>
+                                <Chip color={distributionStatus.color} variant="flat" size="lg">
+                                    {distributionStatus.message}
+                                </Chip>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex gap-3">
+                    <IconAlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-blue-900">
+                        <p className="font-semibold mb-1">Perhatian:</p>
+                        <ul className="list-disc list-inside space-y-1">
+                            <li>
+                                Total target semua karyawan harus sama dengan{" "}
+                                {produkInfo?.total_pola || 0} pola
+                            </li>
+                            <li>
+                                Target baru tidak boleh lebih kecil dari progress yang sudah
+                                dikerjakan
+                            </li>
+                            <li>
+                                Pekerjaan dan karyawan yang sudah ada progress tidak dapat
+                                dihapus
+                            </li>
+                            <li>Karyawan yang tidak aktif tetap bisa diedit targetnya</li>
+                        </ul>
+                    </div>
                 </div>
 
                 <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -481,21 +666,24 @@ export default function EditWorkAssignmentPage() {
                             Daftar Pekerjaan
                         </h2>
                         <Button
-                            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
                             onPress={handleAddPekerjaan}
                         >
                             <IconPlus size={18} />
-                            Tambah Pekerjaan
+                            Tambah Pekerjaan Baru
                         </Button>
                     </div>
 
                     <div className="space-y-6">
-                        {pekerjaanList.map((pekerjaan, index) => {
+                        {pekerjaanList.map((pekerjaan) => {
                             const filteredKaryawan = getFilteredKaryawan(pekerjaan.id);
-                            const distributionStatus =
-                                pekerjaan.assignment_type === "manual"
-                                    ? getManualDistributionStatus(pekerjaan)
-                                    : null;
+                            const hasProgress = pekerjaan.assignments.some(
+                                (a) => a.unit_dikerjakan > 0
+                            );
+                            const totalTargetPekerjaan = pekerjaan.assignments.reduce(
+                                (sum, a) => sum + a.target_unit,
+                                0
+                            );
 
                             return (
                                 <Card key={pekerjaan.id} className="border border-gray-200">
@@ -520,7 +708,11 @@ export default function EditWorkAssignmentPage() {
                                                 type="text"
                                                 label="Upah per Pola (Rp)"
                                                 placeholder="Contoh: 2000"
-                                                value={String(pekerjaan.upah_per_unit)}
+                                                value={
+                                                    pekerjaan.upah_per_unit
+                                                        ? parseInt(pekerjaan.upah_per_unit).toString()
+                                                        : ""
+                                                }
                                                 onChange={(e) =>
                                                     handlePekerjaanChange(
                                                         pekerjaan.id,
@@ -528,59 +720,122 @@ export default function EditWorkAssignmentPage() {
                                                         e.target.value
                                                     )
                                                 }
-                                                isInvalid={!!errors[pekerjaan.id]?.upah_per_unit}
-                                                errorMessage={errors[pekerjaan.id]?.upah_per_unit}
                                             />
                                         </div>
 
-                                        <div className="mb-4">
-                                            <RadioGroup
-                                                label="Metode Pembagian Pola"
-                                                orientation="horizontal"
-                                                value={pekerjaan.assignment_type}
-                                                onValueChange={(value) =>
-                                                    handlePekerjaanChange(pekerjaan.id, "assignment_type", value)
-                                                }
-                                            >
-                                                <Radio
-                                                    value="sistem"
-                                                    classNames={{
-                                                        base: "focus:outline-none focus:ring-0 data-[focus-visible=true]:outline-none",
-                                                        wrapper:
-                                                            "border-gray-400 group-data-[selected=true]:border-gray-400",
-                                                        control:
-                                                            "group-data-[selected=true]:bg-teal-600 group-data-[selected=true]:border-teal-600",
-                                                    }}
-                                                >
-                                                    Otomatis oleh Sistem
-                                                </Radio>
+                                        {pekerjaan.assignments.length > 0 && (
+                                            <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <span className="text-gray-600">
+                                                        Total Target Pekerjaan Ini:
+                                                    </span>
+                                                    <span className="font-semibold text-gray-900">
+                                                        {totalTargetPekerjaan} pola
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
 
-                                                <Radio
-                                                    value="manual"
-                                                    classNames={{
-                                                        base: "focus:outline-none focus:ring-0 data-[focus-visible=true]:outline-none",
-                                                        wrapper:
-                                                            "border-gray-400 group-data-[selected=true]:border-gray-400",
-                                                        control:
-                                                            "group-data-[selected=true]:bg-teal-600 group-data-[selected=true]:border-teal-600",
-                                                    }}
-                                                >
-                                                    Input Manual
-                                                </Radio>
-                                            </RadioGroup>
+                                        <div className="mb-4">
+                                            <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                                Karyawan Terpilih
+                                            </label>
+
+                                            {pekerjaan.assignments.length === 0 ? (
+                                                <p className="text-sm text-gray-500 italic">
+                                                    Belum ada karyawan terpilih
+                                                </p>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    {pekerjaan.assignments.map((assignment) => (
+                                                        <div
+                                                            key={assignment.id_karyawan}
+                                                            className={`flex items-center gap-3 p-3 rounded-lg border ${assignment.is_deleted
+                                                                    ? "bg-red-50 border-red-200"
+                                                                    : "bg-gray-50 border-gray-200"
+                                                                }`}
+                                                        >
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <span className="font-medium text-gray-900">
+                                                                        {assignment.nama_karyawan}
+                                                                    </span>
+                                                                    {assignment.is_deleted && (
+                                                                        <Tooltip content="Karyawan tidak aktif">
+                                                                            <Chip
+                                                                                size="sm"
+                                                                                color="danger"
+                                                                                variant="flat"
+                                                                                startContent={<IconUserX size={14} />}
+                                                                            >
+                                                                                Tidak Aktif
+                                                                            </Chip>
+                                                                        </Tooltip>
+                                                                    )}
+                                                                </div>
+                                                                <div className="text-xs text-gray-600">
+                                                                    Progress: {assignment.unit_dikerjakan} /{" "}
+                                                                    {assignment.target_unit} pola
+                                                                    {assignment.unit_dikerjakan > 0 && (
+                                                                        <span className="text-blue-600 ml-2">
+                                                                            (
+                                                                            {Math.round(
+                                                                                (assignment.unit_dikerjakan /
+                                                                                    assignment.target_unit) *
+                                                                                100
+                                                                            )}
+                                                                            %)
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            <Input
+                                                                type="text"
+                                                                size="sm"
+                                                                placeholder="Target"
+                                                                value={String(assignment.target_unit)}
+                                                                onChange={(e) =>
+                                                                    handleTargetChange(
+                                                                        pekerjaan.id,
+                                                                        assignment.id_karyawan,
+                                                                        e.target.value
+                                                                    )
+                                                                }
+                                                                className="w-32"
+                                                            />
+
+                                                            <Button
+                                                                isIconOnly
+                                                                size="sm"
+                                                                color="danger"
+                                                                variant="light"
+                                                                onPress={() =>
+                                                                    handleRemoveAssignment(
+                                                                        pekerjaan.id,
+                                                                        assignment.id_karyawan
+                                                                    )
+                                                                }
+                                                                isDisabled={assignment.unit_dikerjakan > 0}
+                                                            >
+                                                                <IconTrash size={18} />
+                                                            </Button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {errors[pekerjaan.id]?.assignments && (
+                                                <p className="text-sm text-danger mt-2">
+                                                    {errors[pekerjaan.id]?.assignments}
+                                                </p>
+                                            )}
                                         </div>
 
                                         <div className="mb-4">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <label className="text-sm font-medium text-gray-700">
-                                                    Pilih Karyawan
-                                                </label>
-                                                {pekerjaan.karyawan_ids.length > 0 && (
-                                                    <Chip size="sm" className="bg-teal-600 text-white border border-teal-600" variant="flat" >
-                                                        {pekerjaan.karyawan_ids.length} dipilih
-                                                    </Chip>
-                                                )}
-                                            </div>
+                                            <label className="text-sm font-medium text-gray-700 mb-2 block">
+                                                Tambah Karyawan
+                                            </label>
 
                                             <Input
                                                 placeholder="Cari nama karyawan..."
@@ -609,176 +864,39 @@ export default function EditWorkAssignmentPage() {
                                                 className="mb-3"
                                             />
 
-                                            <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto pr-1 mb-2">
+                                            <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
                                                 {filteredKaryawan.length > 0 ? (
-                                                    filteredKaryawan.map((karyawan) => {
-                                                        const isSelected = pekerjaan.karyawan_ids.includes(
-                                                            karyawan.id_karyawan
-                                                        );
-                                                        return (
-                                                            <Button
-                                                                key={karyawan.id_karyawan}
-                                                                variant={isSelected ? "solid" : "bordered"}
-                                                                size="sm"
-                                                                className={
-                                                                    isSelected
-                                                                        ? "bg-teal-600 text-white border-teal-600"
-                                                                        : "bg-white text-gray-700 border-gray-300 hover:border-teal-600"
-                                                                }
-                                                                onPress={() =>
-                                                                    handleKaryawanToggle(pekerjaan.id, karyawan.id_karyawan)
-                                                                }
-                                                            >
-
-                                                                {karyawan.nama_karyawan}
-                                                            </Button>
-                                                        );
-                                                    })
+                                                    filteredKaryawan.map((karyawan) => (
+                                                        <Button
+                                                            key={karyawan.id_karyawan}
+                                                            size="sm"
+                                                            variant="bordered"
+                                                            className={`${karyawan.deleted_at
+                                                                    ? "border-red-300 text-red-700"
+                                                                    : "border-gray-300 text-gray-700 hover:border-teal-600"
+                                                                }`}
+                                                            onPress={() =>
+                                                                handleAddAssignment(
+                                                                    pekerjaan.id,
+                                                                    karyawan.id_karyawan
+                                                                )
+                                                            }
+                                                            startContent={
+                                                                karyawan.deleted_at ? (
+                                                                    <IconUserX size={14} />
+                                                                ) : null
+                                                            }
+                                                        >
+                                                            {karyawan.nama_karyawan}
+                                                        </Button>
+                                                    ))
                                                 ) : (
                                                     <p className="text-sm text-gray-500">
-                                                        Tidak ada karyawan ditemukan
+                                                        Tidak ada karyawan tersedia
                                                     </p>
                                                 )}
                                             </div>
-
-                                            {errors[pekerjaan.id]?.karyawan_ids && (
-                                                <p className="text-sm text-danger mt-1">
-                                                    {errors[pekerjaan.id]?.karyawan_ids}
-                                                </p>
-                                            )}
                                         </div>
-
-                                        {pekerjaan.assignment_type === "manual" &&
-                                            pekerjaan.karyawan_ids.length > 0 && (
-                                                <div className="mt-4">
-                                                    <div className="flex justify-between items-center mb-3">
-                                                        <label className="text-sm font-medium text-gray-700">
-                                                            Pembagian Pola Manual
-                                                        </label>
-                                                        {distributionStatus && (
-                                                            <Chip
-                                                                color={
-                                                                    distributionStatus.color as
-                                                                    | "success"
-                                                                    | "warning"
-                                                                    | "danger"
-                                                                }
-                                                                variant="flat"
-                                                            >
-                                                                {distributionStatus.message}
-                                                            </Chip>
-                                                        )}
-                                                    </div>
-
-                                                    <div className="space-y-2 mb-4">
-                                                        {pekerjaan.manual_assignments.map((ma) => {
-                                                            const karyawan = karyawanList.find(
-                                                                (k) => k.id_karyawan === ma.id_karyawan
-                                                            );
-                                                            return (
-                                                                <div
-                                                                    key={ma.id_karyawan}
-                                                                    className="flex items-center gap-3"
-                                                                >
-                                                                    <span className="text-sm text-gray-700 flex-1">
-                                                                        {karyawan?.nama_karyawan}
-                                                                    </span>
-                                                                    <Input
-                                                                        type="text"
-                                                                        size="sm"
-                                                                        placeholder="Pola"
-                                                                        value={String(ma.unit)}
-                                                                        onChange={(e) =>
-                                                                            handleManualUnitChange(
-                                                                                pekerjaan.id,
-                                                                                ma.id_karyawan,
-                                                                                e.target.value
-                                                                            )
-                                                                        }
-                                                                        className="w-32"
-                                                                        min={0}
-                                                                    />
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-
-                                                    {pekerjaan.upah_per_unit && (
-                                                        <div className="bg-gray-50 rounded-lg p-4">
-                                                            <div className="flex justify-between items-center text-sm">
-                                                                <span className="text-gray-600">
-                                                                    Karyawan Terpilih:{" "}
-                                                                    <strong>
-                                                                        {pekerjaan.karyawan_ids.length} karyawan
-                                                                    </strong>
-                                                                </span>
-                                                                <span className="text-gray-600">
-                                                                    Total Upah:{" "}
-                                                                    <strong>
-                                                                        Rp{" "}
-                                                                        {(
-                                                                            (typeof pekerjaan.upah_per_unit === "string"
-                                                                                ? parseFloat(pekerjaan.upah_per_unit)
-                                                                                : pekerjaan.upah_per_unit) *
-                                                                            pekerjaan.manual_assignments.reduce(
-                                                                                (sum, ma) => sum + ma.unit,
-                                                                                0
-                                                                            )
-                                                                        ).toLocaleString("id-ID")}
-                                                                    </strong>
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {errors[pekerjaan.id]?.manual_assignments && (
-                                                        <p className="text-sm text-danger mt-2">
-                                                            {errors[pekerjaan.id]?.manual_assignments}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                        {pekerjaan.assignment_type === "sistem" &&
-                                            pekerjaan.karyawan_ids.length > 0 &&
-                                            pekerjaan.upah_per_unit && (
-                                                <div className="bg-gray-50 rounded-lg p-4">
-                                                    <div className="flex justify-between items-center text-sm mb-2">
-                                                        <span className="text-gray-600">
-                                                            Karyawan Terpilih:{" "}
-                                                            <strong>
-                                                                {pekerjaan.karyawan_ids.length} karyawan
-                                                            </strong>
-                                                        </span>
-                                                        <span className="text-gray-600">
-                                                            Pola per Pekerja:{" "}
-                                                            <strong>
-                                                                {(() => {
-                                                                    const total = totalPola;
-                                                                    const k = pekerjaan.karyawan_ids.length;
-                                                                    const base = Math.floor(total / k);
-                                                                    const remainder = total % k;
-
-                                                                    return remainder === 0
-                                                                        ? `${base} pola`
-                                                                        : `${base}-${base + remainder} pola`;
-                                                                })()}
-                                                            </strong>
-                                                        </span>
-                                                        <span className="text-gray-600">
-                                                            Total Upah:{" "}
-                                                            <strong>
-                                                                Rp{" "}
-                                                                {(
-                                                                    (typeof pekerjaan.upah_per_unit === "string"
-                                                                        ? parseFloat(pekerjaan.upah_per_unit)
-                                                                        : pekerjaan.upah_per_unit) * totalPola
-                                                                ).toLocaleString("id-ID")}
-                                                            </strong>
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            )}
 
                                         {pekerjaanList.length > 1 && (
                                             <Button
@@ -786,9 +904,12 @@ export default function EditWorkAssignmentPage() {
                                                 variant="light"
                                                 startContent={<IconTrash size={18} />}
                                                 onPress={() => handleRemovePekerjaan(pekerjaan.id)}
+                                                isDisabled={hasProgress}
                                                 className="mt-4"
                                             >
-                                                Hapus Pekerjaan
+                                                {hasProgress
+                                                    ? "Tidak dapat menghapus (ada progress)"
+                                                    : "Hapus Pekerjaan"}
                                             </Button>
                                         )}
                                     </CardBody>
@@ -798,106 +919,23 @@ export default function EditWorkAssignmentPage() {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                        Kesimpulan
-                    </h2>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                        <div className="bg-gray-50 rounded-lg p-4 text-center">
-                            <div className="text-3xl font-bold text-gray-900 mb-1">
-                                {stats.totalPekerjaan}
-                            </div>
-                            <div className="text-sm text-gray-600">Total Pekerjaan</div>
-                        </div>
-                        <div className="bg-gray-50 rounded-lg p-4 text-center">
-                            <div className="text-3xl font-bold text-gray-900 mb-1">
-                                {stats.totalUnit}
-                            </div>
-                            <div className="text-sm text-gray-600">Total Pola</div>
-                        </div>
-                        <div className="bg-gray-50 rounded-lg p-4 text-center">
-                            <div className="text-3xl font-bold text-gray-900 mb-1">
-                                Rp {stats.totalUpah.toLocaleString("id-ID")}
-                            </div>
-                            <div className="text-sm text-gray-600">Total Upah</div>
-                        </div>
-                    </div>
-
-                    {pekerjaanList.map((pekerjaan) => {
-                        if (
-                            !pekerjaan.nama_pekerjaan.trim() ||
-                            pekerjaan.karyawan_ids.length === 0
-                        )
-                            return null;
-
-                        const distribution =
-                            pekerjaan.assignment_type === "sistem"
-                                ? calculateUnitDistribution(pekerjaan.karyawan_ids)
-                                : pekerjaan.manual_assignments.map((ma) => {
-                                    const karyawan = karyawanList.find(
-                                        (k) => k.id_karyawan === ma.id_karyawan
-                                    );
-                                    return {
-                                        id_karyawan: ma.id_karyawan,
-                                        nama_karyawan: karyawan?.nama_karyawan || "-",
-                                        unit: ma.unit,
-                                    };
-                                });
-
-                        return (
-                            <div key={pekerjaan.id} className="mb-6">
-                                <h3 className="font-semibold text-gray-800 mb-3">
-                                    {pekerjaan.nama_pekerjaan}
-                                </h3>
-                                <div className="border border-gray-200 rounded-lg overflow-hidden overflow-x-auto">
-                                    <table className="w-full min-w-[500px]">
-                                        <thead className="bg-gray-50">
-                                            <tr>
-                                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
-                                                    NO
-                                                </th>
-                                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
-                                                    NAMA KARYAWAN
-                                                </th>
-                                                <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">
-                                                    TOTAL POLA
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="bg-white divide-y divide-gray-200">
-                                            {distribution.map((item, idx) => (
-                                                <tr key={item.id_karyawan}>
-                                                    <td className="px-4 py-3 text-sm text-gray-700">
-                                                        {idx + 1}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-sm text-gray-700">
-                                                        {item.nama_karyawan}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-sm text-gray-700 text-right">
-                                                        {item.unit}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-
                 <div className="flex justify-end gap-3">
-                    <button onClick={handleBatal} className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                    <button
+                        onClick={() => setShowCancelModal(true)}
+                        className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    >
                         Batal
                     </button>
                     <button
                         onClick={handleSubmit}
-                        disabled={loading || stats.totalPekerjaan === 0}
-                        className="flex items-center gap-2 px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        disabled={isSubmitDisabled()}
+                        className={`flex items-center gap-2 px-6 py-2 rounded-lg ${isSubmitDisabled()
+                                ? "bg-gray-400 cursor-not-allowed"
+                                : "bg-teal-600 hover:bg-teal-700"
+                            } text-white`}
                     >
                         <IconCheck size={18} />
-                        {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
+                        {loading ? "Menyimpan..." : "Simpan Perubahan"}
                     </button>
                 </div>
             </div>
@@ -913,7 +951,7 @@ export default function EditWorkAssignmentPage() {
                             PERINGATAN
                         </h3>
                         <p className="text-gray-600 mb-2">
-                            Anda yakin ingin membatalkan proses mengubah pekerjaan?
+                            Anda yakin ingin membatalkan perubahan?
                         </p>
                         <p className="text-gray-500 text-sm mb-8">
                             Perubahan yang Anda buat akan hilang!
@@ -921,14 +959,14 @@ export default function EditWorkAssignmentPage() {
 
                         <div className="flex gap-3 justify-center">
                             <button
-                                className="px-8 py-3 border-2 border-gray-300 rounded-full text-gray-700 font-semibold hover:bg-gray-50 transition-colors min-w-[120px]"
-                                onClick={cancelBatal}
+                                className="px-8 py-3 border-2 border-gray-300 rounded-full text-gray-700 font-semibold hover:bg-gray-50 min-w-[120px]"
+                                onClick={() => setShowCancelModal(false)}
                             >
                                 Kembali
                             </button>
                             <button
-                                className="px-8 py-3 bg-[#8EC3B3] rounded-full text-gray-900 font-semibold hover:bg-[#7AB9A8] transition-colors min-w-[120px]"
-                                onClick={confirmBatal}
+                                className="px-8 py-3 bg-[#8EC3B3] rounded-full text-gray-900 font-semibold hover:bg-[#7AB9A8] min-w-[120px]"
+                                onClick={() => router.push(`/produksi/${id}/lihat-progress`)}
                             >
                                 Ya
                             </button>

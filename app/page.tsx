@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from "react";
 import Image from "next/image";
 import { Button } from "@heroui/button";
@@ -134,6 +133,7 @@ export default function ZulfaMesinLanding() {
                 <IconUserFilled size={18} />
                 Login
               </Button>
+             
             </div>
 
             <button

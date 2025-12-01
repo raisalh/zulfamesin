@@ -55,6 +55,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
             FROM produksi 
             WHERE MONTH(tanggal_mulai) = MONTH(CURRENT_DATE()) 
             AND YEAR(tanggal_mulai) = YEAR(CURRENT_DATE())
+            AND deleted_at IS NULL
         `);
         const produkBulanIni = (produkRows as any)[0].total || 0;
 
@@ -74,11 +75,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
             INNER JOIN produksi p ON uk.id_produk = p.id_produk
             WHERE uk.status_pembayaran = 'belum'
             AND uk.tanggal_pembayaran IS NULL
+            AND p.deleted_at IS NULL
         `);
         const upahBelumDibayar = (upahBelumRows as any)[0].total || 0;
 
         const [karyawanRows] = await pool.query(`
-            SELECT COUNT(*) as total FROM karyawan
+            SELECT COUNT(*) as total FROM karyawan WHERE deleted_at IS NULL
         `);
         const totalKaryawan = (karyawanRows as any)[0].total || 0;
 
@@ -117,6 +119,7 @@ export async function getDistribusiUpah(params?: {
                 JOIN produksi p ON uk.id_produk = p.id_produk
                 WHERE MONTH(p.tanggal_mulai) = MONTH(CURRENT_DATE())
                 AND YEAR(p.tanggal_mulai) = YEAR(CURRENT_DATE())
+                AND p.deleted_at IS NULL
                 GROUP BY uk.id_karyawan
             ) AS grouped;
         `, [minUpahTinggi, minUpahMenengah, maxUpahMenengah, minUpahMenengah]);
@@ -155,6 +158,7 @@ export async function getProdukTerbaru(limit: number = 3): Promise<ProdukTerbaru
             LEFT JOIN pekerjaan_karyawan pk ON p.id_produk = pk.id_produk
             WHERE MONTH(p.tanggal_mulai) = MONTH(CURRENT_DATE())
             AND YEAR(p.tanggal_mulai) = YEAR(CURRENT_DATE())
+            AND p.deleted_at IS NULL
             GROUP BY p.id_produk, p.nama_produk, p.warna, p.status
             ORDER BY p.id_produk DESC
             LIMIT ?
@@ -193,6 +197,7 @@ export async function getProdukDeadlineMendekat(): Promise<ProdukDeadlineMendeka
             AND YEAR(p.tanggal_mulai) = YEAR(CURRENT_DATE())
             AND DATEDIFF(p.deadline, CURRENT_DATE()) <= 7
             AND DATEDIFF(p.deadline, CURRENT_DATE()) >= 0
+            AND p.deleted_at IS NULL
             GROUP BY p.id_produk, p.nama_produk, p.warna, p.deadline, p.status
             ORDER BY p.deadline ASC
         `);
@@ -245,6 +250,7 @@ export async function getProdukProgress(): Promise<ProdukProgress[]> {
 
             WHERE p.status = 'diproses'
             AND DATE_FORMAT(p.tanggal_mulai, '%Y-%m') = DATE_FORMAT(CURRENT_DATE(), '%Y-%m')
+            AND p.deleted_at IS NULL
 
             ORDER BY p.id_produk DESC;
         `);
@@ -271,10 +277,11 @@ export async function getAbsensiKaryawan(): Promise<AbsensiKaryawan[]> {
                 ON pk.id_pekerjaan_karyawan = pp.id_pekerjaan_karyawan
             WHERE MONTH(pp.tanggal_update) = MONTH(CURRENT_DATE())
             AND YEAR(pp.tanggal_update) = YEAR(CURRENT_DATE())
+            AND k.deleted_at IS NULL
             GROUP BY k.id_karyawan, k.nama_karyawan
             HAVING jumlah_kehadiran > 0
             ORDER BY tanggal_terakhir DESC;
-        `,);
+        `);
 
         return rows as AbsensiKaryawan[];
     } catch (error) {
@@ -289,6 +296,7 @@ export async function getCountProductionThisMonth() {
             SELECT COUNT(*) AS total
             FROM produksi
             WHERE DATE_FORMAT(tanggal_mulai, '%Y-%m') = DATE_FORMAT(CURRENT_DATE(), '%Y-%m')
+            AND deleted_at IS NULL
         `);
         return (rows as any)[0].total || 0;
     } catch (error) {
@@ -303,6 +311,7 @@ export async function getCountProductionLastMonth() {
             SELECT COUNT(*) AS total
             FROM produksi
             WHERE DATE_FORMAT(tanggal_mulai, '%Y-%m') = DATE_FORMAT(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH), '%Y-%m')
+            AND deleted_at IS NULL
         `);
         return (rows as any)[0].total || 0;
     } catch (error) {
@@ -318,6 +327,7 @@ export async function getCountPolaThisMonth() {
             FROM gulungan g
             INNER JOIN produksi p ON g.id_produk = p.id_produk
             WHERE DATE_FORMAT(p.tanggal_mulai, '%Y-%m') = DATE_FORMAT(CURRENT_DATE(), '%Y-%m')
+            AND p.deleted_at IS NULL
         `);
         return (rows as any)[0].total || 0;
     } catch (error) {
@@ -333,6 +343,7 @@ export async function getCountPolaLastMonth() {
             FROM gulungan g
             INNER JOIN produksi p ON g.id_produk = p.id_produk
             WHERE DATE_FORMAT(p.tanggal_mulai, '%Y-%m') = DATE_FORMAT(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH), '%Y-%m')
+            AND p.deleted_at IS NULL
         `);
         return (rows as any)[0].total || 0;
     } catch (error) {
