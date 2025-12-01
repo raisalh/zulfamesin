@@ -11,6 +11,7 @@ import {
     IconX,
     IconAlertCircle,
     IconUserX,
+    IconRefresh,
 } from "@tabler/icons-react";
 import axios from "axios";
 import {
@@ -21,6 +22,8 @@ import {
     CardBody,
     Tooltip,
     addToast,
+    RadioGroup,
+    Radio,
 } from "@heroui/react";
 
 interface Karyawan {
@@ -45,13 +48,8 @@ interface PekerjaanItem {
     nama_pekerjaan: string;
     upah_per_unit: string;
     tipe: "sistem" | "manual";
+    assignment_mode: "auto" | "manual";
     assignments: Assignment[];
-}
-
-interface FormErrors {
-    nama_pekerjaan?: string;
-    upah_per_unit?: string;
-    assignments?: string;
 }
 
 interface ProdukInfo {
@@ -72,10 +70,7 @@ export default function EditWorkAssignmentPage() {
     const [loading, setLoading] = useState(false);
     const [loadingData, setLoadingData] = useState(true);
     const [showCancelModal, setShowCancelModal] = useState(false);
-    const [errors, setErrors] = useState<{ [key: string]: FormErrors }>({});
-    const [searchQueries, setSearchQueries] = useState<{ [key: string]: string }>(
-        {}
-    );
+    const [searchQueries, setSearchQueries] = useState<{ [key: string]: string }>({});
 
     useEffect(() => {
         if (id) {
@@ -86,9 +81,7 @@ export default function EditWorkAssignmentPage() {
     const fetchExistingData = async () => {
         setLoadingData(true);
         try {
-            const karyawanResponse = await axios.get(
-                "/api/employee?includeDeleted=true"
-            );
+            const karyawanResponse = await axios.get("/api/employee?includeDeleted=true");
             if (karyawanResponse.data.success) {
                 setKaryawanList(karyawanResponse.data.data);
             }
@@ -123,6 +116,7 @@ export default function EditWorkAssignmentPage() {
                         nama_pekerjaan: pekerjaan.nama_pekerjaan,
                         upah_per_unit: pekerjaan.upah_per_unit.toString(),
                         tipe: pekerjaan.tipe,
+                        assignment_mode: "manual" as const, // Default ke manual untuk edit
                         assignments: assignments,
                     };
                 });
@@ -141,25 +135,112 @@ export default function EditWorkAssignmentPage() {
         }
     };
 
-    const calculateTotalTarget = (): number => {
-        let total = 0;
-        pekerjaanList.forEach((pekerjaan) => {
-            pekerjaan.assignments.forEach((assignment) => {
-                total += assignment.target_unit;
-            });
+    // SMART DISTRIBUTION ALGORITHM
+    const smartDistribute = (
+        assignments: Assignment[],
+        totalPola: number
+    ): Assignment[] => {
+        if (assignments.length === 0) return [];
+
+        // Step 1: Pisahkan karyawan aktif dan yang sudah keluar
+        const activeAssignments = assignments.filter(a => !a.is_deleted);
+        const deletedAssignments = assignments.filter(a => a.is_deleted);
+
+        // Step 2: Lock target karyawan yang keluar = progress mereka
+        const lockedDeleted = deletedAssignments.map(a => ({
+            ...a,
+            target_unit: a.unit_dikerjakan, // Lock di progress terakhir
+        }));
+
+        // Step 3: Hitung sisa pola untuk karyawan aktif
+        const totalLockedPola = lockedDeleted.reduce((sum, a) => sum + a.target_unit, 0);
+        const sisaPola = totalPola - totalLockedPola;
+
+        if (activeAssignments.length === 0) {
+            // Tidak ada karyawan aktif, kembalikan semua dengan target = progress
+            return assignments.map(a => ({
+                ...a,
+                target_unit: a.unit_dikerjakan,
+            }));
+        }
+
+        // Step 4: Distribute sisaPola ke karyawan aktif
+        const baseUnit = Math.floor(sisaPola / activeAssignments.length);
+        const remainder = sisaPola % activeAssignments.length;
+
+        // Step 5: Sort active by progress
+        const sortedActive = [...activeAssignments].sort((a, b) => b.unit_dikerjakan - a.unit_dikerjakan);
+
+        let distributed = sortedActive.map((a, index) => {
+            const minTarget = a.unit_dikerjakan;
+            let newTarget = baseUnit;
+
+            // Tambahkan sisa ke pekerja terakhir
+            if (index === sortedActive.length - 1) {
+                newTarget += remainder;
+            }
+
+            newTarget = Math.max(newTarget, minTarget);
+
+            return {
+                ...a,
+                target_unit: newTarget,
+            };
         });
-        return total;
+
+        // Step 6: Adjust jika total tidak pas
+        let currentTotal = distributed.reduce((sum, a) => sum + a.target_unit, 0) + totalLockedPola;
+        
+        if (currentTotal !== totalPola) {
+            const diff = totalPola - currentTotal;
+
+            if (diff > 0) {
+                // Kurang - tambahkan ke yang progress paling rendah
+                const lowestProgress = distributed.reduce((min, curr) => 
+                    curr.unit_dikerjakan < min.unit_dikerjakan ? curr : min
+                );
+                const idx = distributed.findIndex(a => a.id_karyawan === lowestProgress.id_karyawan);
+                distributed[idx].target_unit += diff;
+            } else {
+                // Lebih - kurangi dari yang paling banyak ruang kosong
+                let remaining = Math.abs(diff);
+                const sortedBySpace = [...distributed].sort((a, b) => 
+                    (b.target_unit - b.unit_dikerjakan) - (a.target_unit - a.unit_dikerjakan)
+                );
+
+                for (const assign of sortedBySpace) {
+                    if (remaining === 0) break;
+                    
+                    const canReduce = assign.target_unit - assign.unit_dikerjakan;
+                    if (canReduce > 0) {
+                        const reduction = Math.min(remaining, canReduce);
+                        const idx = distributed.findIndex(a => a.id_karyawan === assign.id_karyawan);
+                        distributed[idx].target_unit -= reduction;
+                        remaining -= reduction;
+                    }
+                }
+            }
+        }
+
+        // Step 7: Gabungkan kembali dengan urutan original
+        const allDistributed = [...distributed, ...lockedDeleted];
+        return assignments.map(original => {
+            const found = allDistributed.find(d => d.id_karyawan === original.id_karyawan);
+            return found || original;
+        });
     };
 
-    const getTotalAssigned = (): number => {
-        return calculateTotalTarget();
+    const getTotalTargetPekerjaan = (pekerjaanId: string): number => {
+        const pekerjaan = pekerjaanList.find((p) => p.id === pekerjaanId);
+        if (!pekerjaan) return 0;
+        return pekerjaan.assignments.reduce((sum, a) => sum + a.target_unit, 0);
     };
 
-    const getDistributionStatus = () => {
+    const getDistributionStatusPekerjaan = (pekerjaanId: string) => {
         if (!produkInfo) return null;
 
-        const totalAssigned = getTotalAssigned();
-        const diff = produkInfo.total_pola - totalAssigned;
+        const totalTarget = getTotalTargetPekerjaan(pekerjaanId);
+        const diff = produkInfo.total_pola - totalTarget;
 
         if (diff === 0) {
             return {
@@ -185,15 +266,22 @@ export default function EditWorkAssignmentPage() {
         }
     };
 
-    const isSubmitDisabled = (): boolean => {
-        if (loading) return true;
+    const areAllPekerjaanValid = (): boolean => {
+        if (!produkInfo) return false;
 
-        const distributionStatus = getDistributionStatus();
-        if (distributionStatus && distributionStatus.status !== "valid") {
-            return true;
+        for (const pekerjaan of pekerjaanList) {
+            const status = getDistributionStatusPekerjaan(pekerjaan.id);
+            if (!status || status.status !== "valid") {
+                return false;
+            }
         }
 
-        return false;
+        return true;
+    };
+
+    const isSubmitDisabled = (): boolean => {
+        if (loading) return true;
+        return !areAllPekerjaanValid();
     };
 
     const handleAddPekerjaan = () => {
@@ -204,6 +292,7 @@ export default function EditWorkAssignmentPage() {
                 nama_pekerjaan: "",
                 upah_per_unit: "",
                 tipe: "manual",
+                assignment_mode: "auto",
                 assignments: [],
             },
         ]);
@@ -211,16 +300,12 @@ export default function EditWorkAssignmentPage() {
 
     const handleRemovePekerjaan = (id: string) => {
         const pekerjaan = pekerjaanList.find((p) => p.id === id);
-
-        const hasProgress = pekerjaan?.assignments.some(
-            (a) => a.unit_dikerjakan > 0
-        );
+        const hasProgress = pekerjaan?.assignments.some((a) => a.unit_dikerjakan > 0);
 
         if (hasProgress) {
             addToast({
                 title: "Tidak Dapat Menghapus",
-                description:
-                    "Tidak dapat menghapus pekerjaan yang sudah memiliki progress",
+                description: "Tidak dapat menghapus pekerjaan yang sudah memiliki progress",
                 color: "danger",
             });
             return;
@@ -236,10 +321,6 @@ export default function EditWorkAssignmentPage() {
         }
 
         setPekerjaanList(pekerjaanList.filter((p) => p.id !== id));
-
-        const newErrors = { ...errors };
-        delete newErrors[id];
-        setErrors(newErrors);
     };
 
     const handlePekerjaanChange = (id: string, field: string, value: any) => {
@@ -253,6 +334,59 @@ export default function EditWorkAssignmentPage() {
         );
     };
 
+    const handleAssignmentModeChange = (pekerjaanId: string, mode: "auto" | "manual") => {
+        setPekerjaanList(
+            pekerjaanList.map((p) => {
+                if (p.id === pekerjaanId && produkInfo) {
+                    const newAssignments = mode === "auto" 
+                        ? smartDistribute(p.assignments, produkInfo.total_pola)
+                        : p.assignments;
+
+                    return {
+                        ...p,
+                        assignment_mode: mode,
+                        assignments: newAssignments,
+                    };
+                }
+                return p;
+            })
+        );
+    };
+
+    const handleAutoDistribute = (pekerjaanId: string) => {
+        if (!produkInfo) return;
+
+        const pekerjaan = pekerjaanList.find(p => p.id === pekerjaanId);
+        const hasDeletedWithProgress = pekerjaan?.assignments.some(a => a.is_deleted && a.unit_dikerjakan > 0);
+
+        if (hasDeletedWithProgress) {
+            addToast({
+                title: "Perhatian!",
+                description: "Karyawan yang keluar akan di-lock pada progress terakhir mereka. Distribusi hanya untuk karyawan aktif.",
+                color: "warning",
+            });
+        }
+
+        setPekerjaanList(
+            pekerjaanList.map((p) => {
+                if (p.id === pekerjaanId) {
+                    const newAssignments = smartDistribute(p.assignments, produkInfo.total_pola);
+                    return {
+                        ...p,
+                        assignments: newAssignments,
+                    };
+                }
+                return p;
+            })
+        );
+
+        addToast({
+            title: "Distribusi Berhasil",
+            description: "Target pola berhasil didistribusikan secara otomatis",
+            color: "success",
+        });
+    };
+
     const handleAddAssignment = (pekerjaanId: string, karyawanId: number) => {
         const karyawan = karyawanList.find((k) => k.id_karyawan === karyawanId);
         if (!karyawan) return;
@@ -260,9 +394,7 @@ export default function EditWorkAssignmentPage() {
         setPekerjaanList(
             pekerjaanList.map((p) => {
                 if (p.id === pekerjaanId) {
-                    const exists = p.assignments.some(
-                        (a) => a.id_karyawan === karyawanId
-                    );
+                    const exists = p.assignments.some((a) => a.id_karyawan === karyawanId);
                     if (exists) {
                         addToast({
                             title: "Karyawan Sudah Ada",
@@ -272,18 +404,24 @@ export default function EditWorkAssignmentPage() {
                         return p;
                     }
 
+                    const newAssignment: Assignment = {
+                        id_karyawan: karyawanId,
+                        nama_karyawan: karyawan.nama_karyawan,
+                        target_unit: 0,
+                        unit_dikerjakan: 0,
+                        is_deleted: karyawan.deleted_at !== null,
+                    };
+
+                    const updatedAssignments = [...p.assignments, newAssignment];
+
+                    // Jika mode auto, langsung distribute
+                    const finalAssignments = p.assignment_mode === "auto" && produkInfo
+                        ? smartDistribute(updatedAssignments, produkInfo.total_pola)
+                        : updatedAssignments;
+
                     return {
                         ...p,
-                        assignments: [
-                            ...p.assignments,
-                            {
-                                id_karyawan: karyawanId,
-                                nama_karyawan: karyawan.nama_karyawan,
-                                target_unit: 0,
-                                unit_dikerjakan: 0,
-                                is_deleted: karyawan.deleted_at !== null,
-                            },
-                        ],
+                        assignments: finalAssignments,
                     };
                 }
                 return p;
@@ -293,15 +431,21 @@ export default function EditWorkAssignmentPage() {
 
     const handleRemoveAssignment = (pekerjaanId: string, karyawanId: number) => {
         const pekerjaan = pekerjaanList.find((p) => p.id === pekerjaanId);
-        const assignment = pekerjaan?.assignments.find(
-            (a) => a.id_karyawan === karyawanId
-        );
+        const assignment = pekerjaan?.assignments.find((a) => a.id_karyawan === karyawanId);
+
+        if (assignment && assignment.is_deleted) {
+            addToast({
+                title: "Tidak Dapat Menghapus",
+                description: "Karyawan yang sudah keluar tidak dapat dihapus dari daftar",
+                color: "danger",
+            });
+            return;
+        }
 
         if (assignment && assignment.unit_dikerjakan > 0) {
             addToast({
                 title: "Tidak Dapat Menghapus",
-                description:
-                    "Tidak dapat menghapus karyawan yang sudah memiliki progress",
+                description: "Tidak dapat menghapus karyawan yang sudah memiliki progress",
                 color: "danger",
             });
             return;
@@ -310,11 +454,16 @@ export default function EditWorkAssignmentPage() {
         setPekerjaanList(
             pekerjaanList.map((p) => {
                 if (p.id === pekerjaanId) {
+                    const updatedAssignments = p.assignments.filter((a) => a.id_karyawan !== karyawanId);
+
+                    // Jika mode auto, redistribute setelah remove
+                    const finalAssignments = p.assignment_mode === "auto" && produkInfo && updatedAssignments.length > 0
+                        ? smartDistribute(updatedAssignments, produkInfo.total_pola)
+                        : updatedAssignments;
+
                     return {
                         ...p,
-                        assignments: p.assignments.filter(
-                            (a) => a.id_karyawan !== karyawanId
-                        ),
+                        assignments: finalAssignments,
                     };
                 }
                 return p;
@@ -322,11 +471,20 @@ export default function EditWorkAssignmentPage() {
         );
     };
 
-    const handleTargetChange = (
-        pekerjaanId: string,
-        karyawanId: number,
-        value: string
-    ) => {
+    const handleTargetChange = (pekerjaanId: string, karyawanId: number, value: string) => {
+        const pekerjaan = pekerjaanList.find((p) => p.id === pekerjaanId);
+        const assignment = pekerjaan?.assignments.find((a) => a.id_karyawan === karyawanId);
+
+        // Prevent change untuk karyawan yang deleted
+        if (assignment && assignment.is_deleted) {
+            addToast({
+                title: "Tidak Dapat Mengubah",
+                description: "Target karyawan yang sudah keluar tidak dapat diubah",
+                color: "warning",
+            });
+            return;
+        }
+
         const numValue = value === "" ? 0 : parseInt(value.replace(/\D/g, "")) || 0;
 
         setPekerjaanList(
@@ -353,6 +511,7 @@ export default function EditWorkAssignmentPage() {
         let filtered = karyawanList.filter(
             (k) =>
                 !assignedIds.includes(k.id_karyawan) &&
+                k.deleted_at === null &&
                 k.nama_karyawan.toLowerCase().includes(query)
         );
 
@@ -362,26 +521,8 @@ export default function EditWorkAssignmentPage() {
     const validateForm = (): boolean => {
         let hasError = false;
 
-        if (produkInfo) {
-            const totalAssigned = getTotalAssigned();
-            const distributionStatus = getDistributionStatus();
-
-            if (distributionStatus && distributionStatus.status !== "valid") {
-                console.log("❌ Distribution error:", distributionStatus.message);
-                addToast({
-                    title: "Total Target Tidak Sesuai",
-                    description: `Total target semua karyawan harus sama dengan ${produkInfo.total_pola} pola. Saat ini ${totalAssigned} pola (${distributionStatus.message})`,
-                    color: "danger",
-                });
-                hasError = true;
-            }
-        }
-
         pekerjaanList.forEach((p) => {
-            console.log("Validating pekerjaan:", p.nama_pekerjaan);
-
             if (!p.nama_pekerjaan.trim()) {
-                console.log("❌ Nama pekerjaan kosong");
                 addToast({
                     title: "Nama Pekerjaan Kosong",
                     description: "Semua pekerjaan harus memiliki nama",
@@ -391,7 +532,6 @@ export default function EditWorkAssignmentPage() {
             }
 
             if (!p.upah_per_unit.trim()) {
-                console.log("❌ Upah kosong");
                 addToast({
                     title: "Upah Belum Diisi",
                     description: `Upah per pola untuk "${p.nama_pekerjaan || "pekerjaan ini"}" harus diisi`,
@@ -399,7 +539,6 @@ export default function EditWorkAssignmentPage() {
                 });
                 hasError = true;
             } else if (!/^[0-9]+(\.[0-9]+)?$/.test(p.upah_per_unit)) {
-                console.log("❌ Format upah salah:", p.upah_per_unit);
                 addToast({
                     title: "Format Upah Salah",
                     description: "Upah per pola hanya boleh berisi angka",
@@ -407,7 +546,6 @@ export default function EditWorkAssignmentPage() {
                 });
                 hasError = true;
             } else if (parseFloat(p.upah_per_unit) <= 0) {
-                console.log("❌ Upah <= 0");
                 addToast({
                     title: "Upah Tidak Valid",
                     description: "Upah per pola harus lebih dari 0",
@@ -417,7 +555,6 @@ export default function EditWorkAssignmentPage() {
             }
 
             if (p.assignments.length === 0) {
-                console.log("❌ Tidak ada karyawan");
                 addToast({
                     title: "Karyawan Belum Dipilih",
                     description: `Pekerjaan "${p.nama_pekerjaan}" harus memiliki minimal 1 karyawan`,
@@ -426,11 +563,21 @@ export default function EditWorkAssignmentPage() {
                 hasError = true;
             }
 
-            p.assignments.forEach((a) => {
-                console.log(`Validating assignment: ${a.nama_karyawan}, target: ${a.target_unit}, done: ${a.unit_dikerjakan}`);
+            if (produkInfo) {
+                const totalTarget = getTotalTargetPekerjaan(p.id);
+                if (totalTarget !== produkInfo.total_pola) {
+                    const diff = produkInfo.total_pola - totalTarget;
+                    addToast({
+                        title: "Total Target Tidak Sesuai",
+                        description: `Pekerjaan "${p.nama_pekerjaan}" memiliki total target ${totalTarget} pola. ${diff > 0 ? `Kurang ${diff} pola` : `Berlebih ${Math.abs(diff)} pola`} dari target ${produkInfo.total_pola} pola`,
+                        color: "danger",
+                    });
+                    hasError = true;
+                }
+            }
 
+            p.assignments.forEach((a) => {
                 if (a.target_unit <= 0) {
-                    console.log(`❌ Target ${a.nama_karyawan} = 0`);
                     addToast({
                         title: "Target Belum Diisi",
                         description: `Target untuk ${a.nama_karyawan} harus lebih dari 0`,
@@ -440,30 +587,31 @@ export default function EditWorkAssignmentPage() {
                 }
 
                 if (a.target_unit < a.unit_dikerjakan) {
-                    console.log(`❌ Target < progress untuk ${a.nama_karyawan}`);
                     addToast({
                         title: "Target Tidak Valid",
-                        description: `Target untuk ${a.nama_karyawan} tidak boleh lebih dari progress (${a.unit_dikerjakan} pola). Minimum target harus ${a.unit_dikerjakan} pola`,
+                        description: `Target untuk ${a.nama_karyawan} tidak boleh lebih kecil dari progress (${a.unit_dikerjakan} pola)`,
                         color: "danger",
+                    });
+                    hasError = true;
+                }
+
+                // Warning khusus untuk karyawan yang deleted
+                if (a.is_deleted && a.target_unit !== a.unit_dikerjakan) {
+                    addToast({
+                        title: "Peringatan",
+                        description: `${a.nama_karyawan} sudah keluar. Target harus sama dengan progress terakhir (${a.unit_dikerjakan} pola)`,
+                        color: "warning",
                     });
                     hasError = true;
                 }
             });
         });
 
-        setErrors({});
-        console.log("Validation complete. hasError:", hasError);
         return !hasError;
     };
 
     const handleSubmit = async () => {
-        console.log("Submit clicked");
-        console.log("Validation result:", validateForm());
-        console.log("Current pekerjaanList:", pekerjaanList);
-        console.log("Distribution status:", getDistributionStatus());
-
         if (!validateForm()) {
-            console.log("Validation failed");
             return;
         }
 
@@ -500,16 +648,14 @@ export default function EditWorkAssignmentPage() {
             } else {
                 addToast({
                     title: "Gagal Menyimpan",
-                    description:
-                        response.data.message || "Terjadi kesalahan saat menyimpan",
+                    description: response.data.message || "Terjadi kesalahan saat menyimpan",
                     color: "danger",
                 });
             }
         } catch (error) {
             console.error("Error submitting:", error);
             if (axios.isAxiosError(error)) {
-                const message =
-                    error.response?.data?.message || "Terjadi kesalahan saat menyimpan";
+                const message = error.response?.data?.message || "Terjadi kesalahan saat menyimpan";
                 addToast({
                     title: "Gagal Menyimpan",
                     description: message,
@@ -527,8 +673,6 @@ export default function EditWorkAssignmentPage() {
         }
     };
 
-    const distributionStatus = getDistributionStatus();
-
     if (loadingData) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -545,126 +689,50 @@ export default function EditWorkAssignmentPage() {
             <div className="max-w-7xl mx-auto">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
                     <div>
-                        <h1 className="text-2xl font-semibold text-gray-900">
-                            Edit Pekerjaan Karyawan
-                        </h1>
+                        <h1 className="text-2xl font-semibold text-gray-900">Edit Pekerjaan Karyawan</h1>
                         <p className="text-sm text-gray-600 mt-1">
-                            Edit pekerjaan dengan memperhatikan progress yang sudah dikerjakan
+                            Edit pekerjaan dengan distribusi otomatis atau manual
                         </p>
                     </div>
                 </div>
 
                 {produkInfo && (
                     <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                        <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                            Informasi Produk
-                        </h2>
+                        <h2 className="text-lg font-semibold text-gray-800 mb-4">Informasi Produk</h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="bg-gray-50 rounded-lg p-4">
                                 <div className="text-sm text-gray-600 mb-1">Nama Produk</div>
-                                <div className="text-lg font-semibold text-gray-900">
-                                    {produkInfo.nama_produk}
-                                </div>
+                                <div className="text-lg font-semibold text-gray-900">{produkInfo.nama_produk}</div>
                             </div>
                             <div className="bg-gray-50 rounded-lg p-4">
                                 <div className="text-sm text-gray-600 mb-1">Total Gulungan</div>
-                                <div className="text-lg font-semibold text-gray-900">
-                                    {produkInfo.total_gulungan} gulungan
-                                </div>
+                                <div className="text-lg font-semibold text-gray-900">{produkInfo.total_gulungan} gulungan</div>
                             </div>
                             <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                                <div className="text-sm text-blue-600 mb-1">
-                                    Total Pola Target
-                                </div>
-                                <div className="text-2xl font-bold text-blue-900">
-                                    {produkInfo.total_pola} pola
-                                </div>
+                                <div className="text-sm text-blue-600 mb-1">Total Pola Target</div>
+                                <div className="text-2xl font-bold text-blue-900">{produkInfo.total_pola} pola</div>
                             </div>
                         </div>
-
-                        {distributionStatus && (
-                            <div
-                                className="mt-4 flex items-center justify-between p-4 rounded-lg border-2"
-                                style={{
-                                    borderColor:
-                                        distributionStatus.status === "valid"
-                                            ? "#10b981"
-                                            : distributionStatus.status === "kurang"
-                                                ? "#f59e0b"
-                                                : "#ef4444",
-                                    backgroundColor:
-                                        distributionStatus.status === "valid"
-                                            ? "#f0fdf4"
-                                            : distributionStatus.status === "kurang"
-                                                ? "#fffbeb"
-                                                : "#fef2f2",
-                                }}
-                            >
-                                <div>
-                                    <div
-                                        className="text-sm font-medium"
-                                        style={{
-                                            color:
-                                                distributionStatus.status === "valid"
-                                                    ? "#059669"
-                                                    : distributionStatus.status === "kurang"
-                                                        ? "#d97706"
-                                                        : "#dc2626",
-                                        }}
-                                    >
-                                        Total Target Saat Ini: {getTotalAssigned()} pola
-                                    </div>
-                                    <div
-                                        className="text-xs mt-1"
-                                        style={{
-                                            color:
-                                                distributionStatus.status === "valid"
-                                                    ? "#047857"
-                                                    : distributionStatus.status === "kurang"
-                                                        ? "#b45309"
-                                                        : "#b91c1c",
-                                        }}
-                                    >
-                                        {distributionStatus.status === "valid"
-                                            ? "✓ Total target sudah sesuai dengan total pola produk"
-                                            : `${distributionStatus.message} dari target ${produkInfo.total_pola} pola`}
-                                    </div>
-                                </div>
-                                <Chip color={distributionStatus.color} variant="flat" size="lg">
-                                    {distributionStatus.message}
-                                </Chip>
-                            </div>
-                        )}
                     </div>
                 )}
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex gap-3">
                     <IconAlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                     <div className="text-sm text-blue-900">
-                        <p className="font-semibold mb-1">Perhatian:</p>
+                        <p className="font-semibold mb-1">Fitur Distribusi Otomatis:</p>
                         <ul className="list-disc list-inside space-y-1">
-                            <li>
-                                Total target semua karyawan harus sama dengan{" "}
-                                {produkInfo?.total_pola || 0} pola
-                            </li>
-                            <li>
-                                Target baru tidak boleh lebih kecil dari progress yang sudah
-                                dikerjakan
-                            </li>
-                            <li>
-                                Pekerjaan dan karyawan yang sudah ada progress tidak dapat
-                                dihapus
-                            </li>
-                            <li>Karyawan yang tidak aktif tetap bisa diedit targetnya</li>
+                            <li>Mode Otomatis: Sistem akan membagi pola secara merata dengan mempertimbangkan progress yang sudah dikerjakan</li>
+                            <li>Mode Manual: Anda bisa mengatur target setiap karyawan secara manual</li>
+                            <li>Target tidak boleh lebih kecil dari progress yang sudah dikerjakan</li>
+                            <li>Setiap pekerjaan harus memiliki total target = {produkInfo?.total_pola || 0} pola</li>
+                            <li className="text-red-700 font-semibold">⚠️ Karyawan yang sudah keluar akan di-lock pada progress terakhir mereka dan tidak ikut distribusi otomatis</li>
                         </ul>
                     </div>
                 </div>
 
                 <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg font-semibold text-gray-800">
-                            Daftar Pekerjaan
-                        </h2>
+                        <h2 className="text-lg font-semibold text-gray-800">Daftar Pekerjaan</h2>
                         <Button
                             className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700"
                             onPress={handleAddPekerjaan}
@@ -677,13 +745,9 @@ export default function EditWorkAssignmentPage() {
                     <div className="space-y-6">
                         {pekerjaanList.map((pekerjaan) => {
                             const filteredKaryawan = getFilteredKaryawan(pekerjaan.id);
-                            const hasProgress = pekerjaan.assignments.some(
-                                (a) => a.unit_dikerjakan > 0
-                            );
-                            const totalTargetPekerjaan = pekerjaan.assignments.reduce(
-                                (sum, a) => sum + a.target_unit,
-                                0
-                            );
+                            const hasProgress = pekerjaan.assignments.some((a) => a.unit_dikerjakan > 0);
+                            const totalTargetPekerjaan = getTotalTargetPekerjaan(pekerjaan.id);
+                            const distributionStatus = getDistributionStatusPekerjaan(pekerjaan.id);
 
                             return (
                                 <Card key={pekerjaan.id} className="border border-gray-200">
@@ -694,148 +758,208 @@ export default function EditWorkAssignmentPage() {
                                                 placeholder="Contoh: Pasang Kancing"
                                                 value={pekerjaan.nama_pekerjaan}
                                                 onChange={(e) =>
-                                                    handlePekerjaanChange(
-                                                        pekerjaan.id,
-                                                        "nama_pekerjaan",
-                                                        e.target.value
-                                                    )
+                                                    handlePekerjaanChange(pekerjaan.id, "nama_pekerjaan", e.target.value)
                                                 }
-                                                isInvalid={!!errors[pekerjaan.id]?.nama_pekerjaan}
-                                                errorMessage={errors[pekerjaan.id]?.nama_pekerjaan}
                                             />
 
                                             <Input
                                                 type="text"
                                                 label="Upah per Pola (Rp)"
                                                 placeholder="Contoh: 2000"
-                                                value={
-                                                    pekerjaan.upah_per_unit
-                                                        ? parseInt(pekerjaan.upah_per_unit).toString()
-                                                        : ""
-                                                }
+                                                value={pekerjaan.upah_per_unit ? parseInt(pekerjaan.upah_per_unit).toString() : ""}
                                                 onChange={(e) =>
-                                                    handlePekerjaanChange(
-                                                        pekerjaan.id,
-                                                        "upah_per_unit",
-                                                        e.target.value
-                                                    )
+                                                    handlePekerjaanChange(pekerjaan.id, "upah_per_unit", e.target.value)
                                                 }
                                             />
                                         </div>
 
-                                        {pekerjaan.assignments.length > 0 && (
-                                            <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                                                <div className="flex justify-between items-center text-sm">
-                                                    <span className="text-gray-600">
-                                                        Total Target Pekerjaan Ini:
-                                                    </span>
-                                                    <span className="font-semibold text-gray-900">
-                                                        {totalTargetPekerjaan} pola
-                                                    </span>
+                                        {/* Mode Distribusi */}
+                                        <div className="mb-4">
+                                            <RadioGroup
+                                                label="Mode Distribusi Target"
+                                                orientation="horizontal"
+                                                value={pekerjaan.assignment_mode}
+                                                onValueChange={(value) =>
+                                                    handleAssignmentModeChange(pekerjaan.id, value as "auto" | "manual")
+                                                }
+                                            >
+                                                <Radio value="auto">Otomatis oleh Sistem</Radio>
+                                                <Radio value="manual">Atur Manual</Radio>
+                                            </RadioGroup>
+                                        </div>
+
+                                        {/* Status Distribusi */}
+                                        {distributionStatus && (
+                                            <div
+                                                className="mb-4 flex items-center justify-between p-4 rounded-lg border-2"
+                                                style={{
+                                                    borderColor:
+                                                        distributionStatus.status === "valid"
+                                                            ? "#10b981"
+                                                            : distributionStatus.status === "kurang"
+                                                            ? "#f59e0b"
+                                                            : "#ef4444",
+                                                    backgroundColor:
+                                                        distributionStatus.status === "valid"
+                                                            ? "#f0fdf4"
+                                                            : distributionStatus.status === "kurang"
+                                                            ? "#fffbeb"
+                                                            : "#fef2f2",
+                                                }}
+                                            >
+                                                <div>
+                                                    <div
+                                                        className="text-sm font-medium"
+                                                        style={{
+                                                            color:
+                                                                distributionStatus.status === "valid"
+                                                                    ? "#059669"
+                                                                    : distributionStatus.status === "kurang"
+                                                                    ? "#d97706"
+                                                                    : "#dc2626",
+                                                        }}
+                                                    >
+                                                        Total Target Pekerjaan Ini: {totalTargetPekerjaan} pola
+                                                    </div>
+                                                    <div
+                                                        className="text-xs mt-1"
+                                                        style={{
+                                                            color:
+                                                                distributionStatus.status === "valid"
+                                                                    ? "#047857"
+                                                                    : distributionStatus.status === "kurang"
+                                                                    ? "#b45309"
+                                                                    : "#b91c1c",
+                                                        }}
+                                                    >
+                                                        {distributionStatus.status === "valid"
+                                                            ? "✓ Total target sudah sesuai"
+                                                            : `${distributionStatus.message} dari target ${produkInfo?.total_pola} pola`}
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    {pekerjaan.assignment_mode === "auto" && pekerjaan.assignments.length > 0 && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="flat"
+                                                            color="primary"
+                                                            startContent={<IconRefresh size={16} />}
+                                                            onPress={() => handleAutoDistribute(pekerjaan.id)}
+                                                        >
+                                                            Distribusi Ulang
+                                                        </Button>
+                                                    )}
+                                                    <Chip color={distributionStatus.color} variant="flat" size="lg">
+                                                        {distributionStatus.message}
+                                                    </Chip>
                                                 </div>
                                             </div>
                                         )}
 
+                                        {/* Karyawan Terpilih */}
                                         <div className="mb-4">
-                                            <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                                Karyawan Terpilih
-                                            </label>
+                                            <label className="text-sm font-medium text-gray-700 mb-2 block">Karyawan Terpilih</label>
 
                                             {pekerjaan.assignments.length === 0 ? (
-                                                <p className="text-sm text-gray-500 italic">
-                                                    Belum ada karyawan terpilih
-                                                </p>
+                                                <p className="text-sm text-gray-500 italic">Belum ada karyawan terpilih</p>
                                             ) : (
-                                                <div className="space-y-3">
-                                                    {pekerjaan.assignments.map((assignment) => (
-                                                        <div
-                                                            key={assignment.id_karyawan}
-                                                            className={`flex items-center gap-3 p-3 rounded-lg border ${assignment.is_deleted
-                                                                    ? "bg-red-50 border-red-200"
-                                                                    : "bg-gray-50 border-gray-200"
-                                                                }`}
-                                                        >
-                                                            <div className="flex-1">
-                                                                <div className="flex items-center gap-2 mb-1">
-                                                                    <span className="font-medium text-gray-900">
-                                                                        {assignment.nama_karyawan}
-                                                                    </span>
-                                                                    {assignment.is_deleted && (
-                                                                        <Tooltip content="Karyawan tidak aktif">
-                                                                            <Chip
-                                                                                size="sm"
-                                                                                color="danger"
-                                                                                variant="flat"
-                                                                                startContent={<IconUserX size={14} />}
-                                                                            >
-                                                                                Tidak Aktif
-                                                                            </Chip>
-                                                                        </Tooltip>
-                                                                    )}
-                                                                </div>
-                                                                <div className="text-xs text-gray-600">
-                                                                    Progress: {assignment.unit_dikerjakan} /{" "}
-                                                                    {assignment.target_unit} pola
-                                                                    {assignment.unit_dikerjakan > 0 && (
-                                                                        <span className="text-blue-600 ml-2">
-                                                                            (
-                                                                            {Math.round(
-                                                                                (assignment.unit_dikerjakan /
-                                                                                    assignment.target_unit) *
-                                                                                100
-                                                                            )}
-                                                                            %)
-                                                                        </span>
-                                                                    )}
-                                                                </div>
+                                                <>
+                                                    {/* Warning jika ada karyawan yang keluar */}
+                                                    {pekerjaan.assignments.some(a => a.is_deleted) && (
+                                                        <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                                                            <IconAlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                                            <div className="text-sm text-red-900">
+                                                                <p className="font-semibold">Peringatan: Ada karyawan yang sudah keluar</p>
+                                                                <p className="text-xs mt-1">
+                                                                    Karyawan yang keluar akan di-lock pada progress terakhir mereka. 
+                                                                    {pekerjaan.assignment_mode === "auto" && " Distribusi otomatis hanya untuk karyawan aktif."}
+                                                                </p>
                                                             </div>
-
-                                                            <Input
-                                                                type="text"
-                                                                size="sm"
-                                                                placeholder="Target"
-                                                                value={String(assignment.target_unit)}
-                                                                onChange={(e) =>
-                                                                    handleTargetChange(
-                                                                        pekerjaan.id,
-                                                                        assignment.id_karyawan,
-                                                                        e.target.value
-                                                                    )
-                                                                }
-                                                                className="w-32"
-                                                            />
-
-                                                            <Button
-                                                                isIconOnly
-                                                                size="sm"
-                                                                color="danger"
-                                                                variant="light"
-                                                                onPress={() =>
-                                                                    handleRemoveAssignment(
-                                                                        pekerjaan.id,
-                                                                        assignment.id_karyawan
-                                                                    )
-                                                                }
-                                                                isDisabled={assignment.unit_dikerjakan > 0}
-                                                            >
-                                                                <IconTrash size={18} />
-                                                            </Button>
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            )}
+                                                    )}
 
-                                            {errors[pekerjaan.id]?.assignments && (
-                                                <p className="text-sm text-danger mt-2">
-                                                    {errors[pekerjaan.id]?.assignments}
-                                                </p>
+                                                    <div className="space-y-3">
+                                                        {pekerjaan.assignments.map((assignment) => (
+                                                            <div
+                                                                key={assignment.id_karyawan}
+                                                                className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
+                                                                    assignment.is_deleted
+                                                                        ? "bg-red-50 border-red-300 shadow-sm"
+                                                                        : "bg-gray-50 border-gray-200"
+                                                                }`}
+                                                            >
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center gap-2 mb-1">
+                                                                        <span className={`font-medium ${assignment.is_deleted ? 'text-red-900' : 'text-gray-900'}`}>
+                                                                            {assignment.nama_karyawan}
+                                                                        </span>
+                                                                        {assignment.is_deleted && (
+                                                                            <Tooltip content="Karyawan ini sudah keluar. Target di-lock pada progress terakhir.">
+                                                                                <Chip 
+                                                                                    size="sm" 
+                                                                                    color="danger" 
+                                                                                    variant="solid"
+                                                                                    startContent={<IconUserX size={14} />}
+                                                                                    className="font-semibold"
+                                                                                >
+                                                                                    KELUAR
+                                                                                </Chip>
+                                                                            </Tooltip>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className={`text-xs ${assignment.is_deleted ? 'text-red-700' : 'text-gray-600'}`}>
+                                                                        Progress: {assignment.unit_dikerjakan} / {assignment.target_unit} pola
+                                                                        {assignment.unit_dikerjakan > 0 && (
+                                                                            <span className={assignment.is_deleted ? 'text-red-600 ml-2' : 'text-blue-600 ml-2'}>
+                                                                                ({Math.round((assignment.unit_dikerjakan / assignment.target_unit) * 100)}%)
+                                                                            </span>
+                                                                        )}
+                                                                        {assignment.is_deleted && (
+                                                                            <span className="block text-red-600 font-medium mt-1">
+                                                                                🔒 Target dikunci pada progress terakhir
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                <Input
+                                                                    type="text"
+                                                                    size="sm"
+                                                                    placeholder="Target"
+                                                                    value={String(assignment.target_unit)}
+                                                                    onChange={(e) =>
+                                                                        handleTargetChange(pekerjaan.id, assignment.id_karyawan, e.target.value)
+                                                                    }
+                                                                    className="w-32"
+                                                                    isReadOnly={pekerjaan.assignment_mode === "auto" || assignment.is_deleted}
+                                                                    isDisabled={assignment.is_deleted}
+                                                                    classNames={{
+                                                                        input: assignment.is_deleted ? "bg-red-100 text-red-900 cursor-not-allowed" : ""
+                                                                    }}
+                                                                />
+
+                                                                <Tooltip content={assignment.is_deleted ? "Tidak bisa dihapus - karyawan sudah keluar dengan progress" : (assignment.unit_dikerjakan > 0 ? "Tidak bisa dihapus - sudah ada progress" : "Hapus karyawan")}>
+                                                                    <Button
+                                                                        isIconOnly
+                                                                        size="sm"
+                                                                        color="danger"
+                                                                        variant="light"
+                                                                        onPress={() => handleRemoveAssignment(pekerjaan.id, assignment.id_karyawan)}
+                                                                        isDisabled={assignment.unit_dikerjakan > 0 || assignment.is_deleted}
+                                                                    >
+                                                                        <IconTrash size={18} />
+                                                                    </Button>
+                                                                </Tooltip>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
                                             )}
                                         </div>
 
+                                        {/* Tambah Karyawan */}
                                         <div className="mb-4">
-                                            <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                                Tambah Karyawan
-                                            </label>
+                                            <label className="text-sm font-medium text-gray-700 mb-2 block">Tambah Karyawan</label>
 
                                             <Input
                                                 placeholder="Cari nama karyawan..."
@@ -871,29 +995,14 @@ export default function EditWorkAssignmentPage() {
                                                             key={karyawan.id_karyawan}
                                                             size="sm"
                                                             variant="bordered"
-                                                            className={`${karyawan.deleted_at
-                                                                    ? "border-red-300 text-red-700"
-                                                                    : "border-gray-300 text-gray-700 hover:border-teal-600"
-                                                                }`}
-                                                            onPress={() =>
-                                                                handleAddAssignment(
-                                                                    pekerjaan.id,
-                                                                    karyawan.id_karyawan
-                                                                )
-                                                            }
-                                                            startContent={
-                                                                karyawan.deleted_at ? (
-                                                                    <IconUserX size={14} />
-                                                                ) : null
-                                                            }
+                                                            className="border-gray-300 text-gray-700 hover:border-teal-600"
+                                                            onPress={() => handleAddAssignment(pekerjaan.id, karyawan.id_karyawan)}
                                                         >
                                                             {karyawan.nama_karyawan}
                                                         </Button>
                                                     ))
                                                 ) : (
-                                                    <p className="text-sm text-gray-500">
-                                                        Tidak ada karyawan tersedia
-                                                    </p>
+                                                    <p className="text-sm text-gray-500">Tidak ada karyawan tersedia</p>
                                                 )}
                                             </div>
                                         </div>
@@ -907,9 +1016,7 @@ export default function EditWorkAssignmentPage() {
                                                 isDisabled={hasProgress}
                                                 className="mt-4"
                                             >
-                                                {hasProgress
-                                                    ? "Tidak dapat menghapus (ada progress)"
-                                                    : "Hapus Pekerjaan"}
+                                                {hasProgress ? "Tidak dapat menghapus (ada progress)" : "Hapus Pekerjaan"}
                                             </Button>
                                         )}
                                     </CardBody>
@@ -929,10 +1036,9 @@ export default function EditWorkAssignmentPage() {
                     <button
                         onClick={handleSubmit}
                         disabled={isSubmitDisabled()}
-                        className={`flex items-center gap-2 px-6 py-2 rounded-lg ${isSubmitDisabled()
-                                ? "bg-gray-400 cursor-not-allowed"
-                                : "bg-teal-600 hover:bg-teal-700"
-                            } text-white`}
+                        className={`flex items-center gap-2 px-6 py-2 rounded-lg ${
+                            isSubmitDisabled() ? "bg-gray-400 cursor-not-allowed" : "bg-teal-600 hover:bg-teal-700"
+                        } text-white`}
                     >
                         <IconCheck size={18} />
                         {loading ? "Menyimpan..." : "Simpan Perubahan"}
@@ -947,15 +1053,9 @@ export default function EditWorkAssignmentPage() {
                             <IconAlertTriangle className="w-10 h-10 text-gray-700" />
                         </div>
 
-                        <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                            PERINGATAN
-                        </h3>
-                        <p className="text-gray-600 mb-2">
-                            Anda yakin ingin membatalkan perubahan?
-                        </p>
-                        <p className="text-gray-500 text-sm mb-8">
-                            Perubahan yang Anda buat akan hilang!
-                        </p>
+                        <h3 className="text-2xl font-bold text-gray-900 mb-3">PERINGATAN</h3>
+                        <p className="text-gray-600 mb-2">Anda yakin ingin membatalkan perubahan?</p>
+                        <p className="text-gray-500 text-sm mb-8">Perubahan yang Anda buat akan hilang!</p>
 
                         <div className="flex gap-3 justify-center">
                             <button
