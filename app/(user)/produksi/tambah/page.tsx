@@ -9,9 +9,10 @@ import {
   IconSearch,
   IconCheck,
 } from "@tabler/icons-react";
+import { parse } from "path";
 
 interface PolaGulungan {
-  gulungan: number;
+  gulungan: string;
   pola: string;
 }
 
@@ -40,7 +41,6 @@ export default function TambahProdukPage() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
-  // Autocomplete states
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<ProdukSuggestion[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -54,9 +54,9 @@ export default function TambahProdukPage() {
   const [namaProduk, setNamaProduk] = useState("");
   const [ukuran, setUkuran] = useState("");
   const [warna, setWarna] = useState("");
-  const [jumlahGulungan, setJumlahGulungan] = useState(1);
+  const [jumlahGulungan, setJumlahGulungan] = useState<string>("1");
   const [polaGulungan, setPolaGulungan] = useState<PolaGulungan[]>([
-    { gulungan: 1, pola: "" },
+    { gulungan: "1", pola: "" },
   ]);
 
   useEffect(() => {
@@ -113,7 +113,6 @@ export default function TambahProdukPage() {
     setWarna(suggestion.warna);
     setUkuran(suggestion.ukuran);
 
-    // Auto-fill jumlah gulungan berdasarkan nomor_gulungan terakhir
     if (suggestion.nomor_gulungan && suggestion.nomor_gulungan > 0) {
       handleJumlahGulunganChange(suggestion.nomor_gulungan);
     }
@@ -159,7 +158,7 @@ export default function TambahProdukPage() {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    const onlyLetters = /^[A-Za-z\s]+$/; 
+    const onlyLetters = /^[A-Za-z\s]+$/;
 
     if (!namaProduk.trim()) {
       newErrors.namaProduk = "Nama produk harus diisi";
@@ -181,8 +180,18 @@ export default function TambahProdukPage() {
       newErrors.ukuran = "Ukuran harus diisi";
     }
 
-    if (jumlahGulungan < 1) {
+    if (jumlahGulungan.trim() === "") {
+      newErrors.jumlahGulungan = "Jumlah gulungan harus diisi";
+    } else if (parseInt(jumlahGulungan) < 1) {
       newErrors.jumlahGulungan = "Jumlah gulungan minimal 1";
+    }
+
+    if (tanggalMulai == ""){
+      newErrors.tanggalMulai = "Tanggal mulai harus diisi";
+    } 
+
+    if (estimasiSelesai == ""){
+      newErrors.estimasiSelesai = "Tanggal selesai harus diisi";
     }
 
     if (tanggalMulai && estimasiSelesai) {
@@ -227,10 +236,10 @@ export default function TambahProdukPage() {
   const handleJumlahGulunganChange = (value: number) => {
     if (value < 1) return;
 
-    setJumlahGulungan(value);
+    setJumlahGulungan(value.toString());
 
     const newPola = Array.from({ length: value }, (_, i) => ({
-      gulungan: i + 1,
+      gulungan: (i + 1).toString(),
       pola: polaGulungan[i]?.pola || "",
     }));
 
@@ -570,20 +579,16 @@ export default function TambahProdukPage() {
                   className={`w-full px-4 py-3 border ${errors.jumlahGulungan ? "border-red-500" : "border-gray-300"
                     } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                   id="jumlah_gulungan"
-                  min="1"
-                  type="number"
+                  type="text"
                   value={jumlahGulungan}
                   onChange={(e) => {
                     const val = e.target.value;
 
-                    if (val === "") {
-                      setJumlahGulungan("" as any);
-                      return;
-                    }
-
-                    const num = parseInt(val);
-                    if (!isNaN(num) && num > 0) {
-                      handleJumlahGulunganChange(num);
+                    if (/^\d*$/.test(val)) {
+                      setJumlahGulungan(val);
+                
+                      const num = parseInt(val || "0");
+                      if (num > 0) handleJumlahGulunganChange(num);
                     }
 
                     clearError("jumlahGulungan");
@@ -623,11 +628,16 @@ export default function TambahProdukPage() {
                         : "border-gray-300"
                         } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                       id={`pola-gulungan-${index}`}
-                      min="1"
                       placeholder={`Masukkan pola untuk gulungan ${item.gulungan}`}
-                      type="number"
+                      type="text"
                       value={item.pola}
-                      onChange={(e) => handlePolaChange(index, e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                    
+                        if (/^\d*$/.test(val)) {   
+                          handlePolaChange(index, val);
+                        }
+                      }}
                     />
                     {errors.polaGulungan && errors.polaGulungan[index] && (
                       <p className="text-red-500 text-sm mt-1">
