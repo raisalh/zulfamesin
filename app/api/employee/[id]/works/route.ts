@@ -27,22 +27,50 @@ export async function GET(
 
         const [rows] = await pool.query(
             `SELECT 
-            p.id_produk,
-            p.nama_produk,
-            p.warna,
-            p.ukuran,
-            p.status AS status_kerjaan,
-            SUM(pk.unit_dikerjakan * jp.upah_per_unit) as total_upah,
-            uk.status_pembayaran,
-            uk.tanggal_pembayaran
+                p.id_produk,
+                p.nama_produk,
+                p.warna,
+                p.ukuran,
+                p.status AS status_kerjaan,
+                COALESCE(SUM(
+                    CASE 
+                        WHEN k.jenis_upah = 'harian' THEN 
+                            COALESCE(hari.jumlah_hari, 0) * COALESCE(jp.upah_harian, 0)
+                        ELSE 
+                            COALESCE(pk.unit_dikerjakan * jp.upah_per_unit, 0)
+                    END
+                ), 0) as total_upah,
+                uk.status_pembayaran,
+                uk.tanggal_pembayaran
             FROM pekerjaan_karyawan pk
+            INNER JOIN karyawan k ON pk.id_karyawan = k.id_karyawan
             INNER JOIN produksi p ON pk.id_produk = p.id_produk
             INNER JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
             LEFT JOIN upah_karyawan uk ON uk.id_karyawan = pk.id_karyawan AND uk.id_produk = pk.id_produk
+            LEFT JOIN (
+                SELECT 
+                    pk2.id_produk,
+                    pk2.id_karyawan,
+                    pk2.id_jenis_pekerjaan,
+                    COUNT(DISTINCT DATE(pp.tanggal_update)) as jumlah_hari
+                FROM progress_pekerjaan pp
+                INNER JOIN pekerjaan_karyawan pk2 ON pp.id_pekerjaan_karyawan = pk2.id_pekerjaan_karyawan
+                WHERE pk2.id_karyawan = ?
+                GROUP BY pk2.id_produk, pk2.id_karyawan, pk2.id_jenis_pekerjaan
+            ) hari ON hari.id_produk = p.id_produk 
+                AND hari.id_karyawan = pk.id_karyawan 
+                AND hari.id_jenis_pekerjaan = pk.id_jenis_pekerjaan
             WHERE pk.id_karyawan = ?
-            GROUP BY p.id_produk, p.nama_produk, p.warna, p.ukuran, p.status, uk.status_pembayaran, uk.tanggal_pembayaran
+            GROUP BY 
+                p.id_produk, 
+                p.nama_produk, 
+                p.warna, 
+                p.ukuran, 
+                p.status, 
+                uk.status_pembayaran, 
+                uk.tanggal_pembayaran
             ORDER BY p.id_produk DESC`,
-            [id]
+            [id, id]
         );
 
         return NextResponse.json({

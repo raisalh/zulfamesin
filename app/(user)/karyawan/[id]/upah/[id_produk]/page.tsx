@@ -11,6 +11,7 @@ import autoTable from "jspdf-autotable";
 interface Karyawan {
     id_karyawan: number;
     nama_karyawan: string;
+    jenis_upah: "pola" | "harian" | null;
 }
 
 interface Produk {
@@ -19,6 +20,7 @@ interface Produk {
     warna: string;
     ukuran: string;
     status: "selesai" | "diproses" | null;
+    deleted_at: Date | null;
 }
 
 interface PekerjaanDetail {
@@ -26,8 +28,11 @@ interface PekerjaanDetail {
     nama_pekerjaan: string;
     unit_dikerjakan: number;
     upah_per_unit: number;
+    upah_harian: number;
     target_unit: number | null;
-    tanggal: string | null;
+    jenis_upah: "pola" | "harian" | null;
+    jumlah_hari: number;
+    total_upah_pekerjaan: number;
 }
 
 interface Ringkasan {
@@ -58,14 +63,14 @@ export default function DetailInformasiUpahKaryawan() {
             const response = await axios.get(
                 `/api/employee/${params.id}/works/${params.id_produk}`
             );
-    
+
             if (response.data.success) {
                 setKaryawan(response.data.data.karyawan);
                 setProduk(response.data.data.produk);
                 setPekerjaanList(response.data.data.pekerjaan_list);
                 setRingkasan(response.data.data.ringkasan);
                 setStatusPembayaran(response.data.data.status_pembayaran);
-                
+
                 if (response.data.data.tanggal_pembayaran) {
                     const date = new Date(response.data.data.tanggal_pembayaran);
                     const formattedDate = date.toLocaleDateString("id-ID", {
@@ -152,17 +157,35 @@ export default function DetailInformasiUpahKaryawan() {
             doc.setFont("helvetica", "normal");
             doc.text(produk.ukuran, 65, yPos);
 
-            const tableData = pekerjaanList.map((pekerjaan, index) => [
-                (index + 1).toString(),
-                pekerjaan.nama_pekerjaan,
-                pekerjaan.unit_dikerjakan.toString(),
-                formatRupiah(pekerjaan.upah_per_unit),
-                formatRupiah(pekerjaan.unit_dikerjakan * pekerjaan.upah_per_unit)
-            ]);
+            const tableData = pekerjaanList.map((pekerjaan, index) => {
+                if (pekerjaan.jenis_upah === 'harian') {
+                    return [
+                        (index + 1).toString(),
+                        pekerjaan.nama_pekerjaan,
+                        `${pekerjaan.jumlah_hari} Hari`,
+                        formatRupiah(pekerjaan.upah_harian),
+                        formatRupiah(pekerjaan.total_upah_pekerjaan)
+                    ];
+                } else {
+                    return [
+                        (index + 1).toString(),
+                        pekerjaan.nama_pekerjaan,
+                        `${pekerjaan.unit_dikerjakan} Pola`,
+                        formatRupiah(pekerjaan.upah_per_unit),
+                        formatRupiah(pekerjaan.total_upah_pekerjaan)
+                    ];
+                }
+            });
 
             autoTable(doc, {
                 startY: yPos + 10,
-                head: [["No", "Nama Pekerjaan", "Unit Dikerjakan", "Upah per Unit", "Total Upah"]],
+                head: [[
+                    "No",
+                    "Nama Pekerjaan",
+                    karyawan.jenis_upah === 'harian' ? "Hari Kerja" : "Pola Dikerjakan",
+                    karyawan.jenis_upah === 'harian' ? "Upah per Hari" : "Upah per Pola",
+                    "Total Upah"
+                ]],
                 body: tableData,
                 theme: "grid",
                 headStyles: {
@@ -200,8 +223,17 @@ export default function DetailInformasiUpahKaryawan() {
             doc.text("Total Pekerjaan:", 20, summaryY + 8);
             doc.text(`${ringkasan?.total_kategori || 0} Kategori`, 140, summaryY + 8, { align: "right" });
 
-            doc.text("Total Unit Dikerjakan:", 20, summaryY + 15);
-            doc.text(`${ringkasan?.total_unit || 0} Unit`, 140, summaryY + 15, { align: "right" });
+            doc.text(
+                karyawan.jenis_upah === 'harian' ? "Total Hari Kerja:" : "Total Pola Dikerjakan:",
+                20,
+                summaryY + 15
+            );
+            doc.text(
+                `${ringkasan?.total_unit || 0} ${karyawan.jenis_upah === 'harian' ? 'Hari' : 'Pola'}`,
+                140,
+                summaryY + 15,
+                { align: "right" }
+            );
 
             doc.setLineWidth(0.3);
             doc.line(20, summaryY + 20, 140, summaryY + 20);
@@ -228,7 +260,7 @@ export default function DetailInformasiUpahKaryawan() {
 
             try {
                 const ttdImg = '/assets/ttd.jpg';
-                doc.addImage(ttdImg, 'JPEG', 115, signatureStartY + 5, 50, 25); 
+                doc.addImage(ttdImg, 'JPEG', 115, signatureStartY + 5, 50, 25);
             } catch (error) {
                 console.error("Error loading signature image:", error);
             }
@@ -285,10 +317,10 @@ export default function DetailInformasiUpahKaryawan() {
                 `/api/employee/${params.id}/works/${params.id_produk}`,
                 { status_pembayaran: newStatus }
             );
-    
+
             if (response.data.success) {
                 setStatusPembayaran(newStatus);
-                
+
                 if (newStatus === "dibayar") {
                     const today = new Date().toLocaleDateString("id-ID", {
                         day: "numeric",
@@ -299,7 +331,7 @@ export default function DetailInformasiUpahKaryawan() {
                 } else {
                     setTanggalPembayaran("");
                 }
-                
+
                 toast.success("Status berhasil diubah", {
                     description: `Status pembayaran telah diubah menjadi ${newStatus === "dibayar" ? "Sudah Dibayar" : "Belum Dibayar"}`
                 });
@@ -383,8 +415,13 @@ export default function DetailInformasiUpahKaryawan() {
                             <h2 className="text-xl font-bold text-gray-800">
                                 {karyawan.nama_karyawan}
                             </h2>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-gray-600 flex items-center gap-2">
                                 Produk: {produk.nama_produk} ({produk.ukuran}) - {produk.warna}
+                                {produk.deleted_at && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        Produk Dihapus
+                                    </span>
+                                )}
                             </p>
                         </div>
                     </div>
@@ -417,13 +454,21 @@ export default function DetailInformasiUpahKaryawan() {
                                                     {pekerjaan.nama_pekerjaan}
                                                 </h4>
                                                 <p className="text-sm text-gray-600">
-                                                    {pekerjaan.unit_dikerjakan} buah × {formatRupiah(pekerjaan.upah_per_unit)}
+                                                    {pekerjaan.jenis_upah === 'harian' ? (
+                                                        <>
+                                                            {pekerjaan.jumlah_hari} hari × {formatRupiah(pekerjaan.upah_harian)}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            {pekerjaan.unit_dikerjakan} pola × {formatRupiah(pekerjaan.upah_per_unit)}
+                                                        </>
+                                                    )}
                                                 </p>
                                             </div>
 
                                             <div className="text-left md:text-right">
                                                 <p className="font-semibold text-gray-900">
-                                                    {formatRupiah(pekerjaan.unit_dikerjakan * pekerjaan.upah_per_unit)}
+                                                    {formatRupiah(pekerjaan.total_upah_pekerjaan)}
                                                 </p>
                                             </div>
                                         </div>
@@ -447,9 +492,11 @@ export default function DetailInformasiUpahKaryawan() {
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">Total Unit Dikerjakan</span>
+                                    <span className="text-gray-600">
+                                        {karyawan?.jenis_upah === 'harian' ? 'Total Hari Kerja' : 'Total Pola Dikerjakan'}
+                                    </span>
                                     <span className="font-semibold text-gray-900">
-                                        {ringkasan?.total_unit || 0} Unit
+                                        {ringkasan?.total_unit || 0} {karyawan?.jenis_upah === 'harian' ? 'Hari' : 'Pola'}
                                     </span>
                                 </div>
                                 <div className="pt-3 border-t">

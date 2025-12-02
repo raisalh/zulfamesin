@@ -70,10 +70,14 @@ export async function getProduksiStats(): Promise<ProduksiStats> {
   }
 }
 
-export async function getProduksiById(id: number) {
+export async function getProduksiById(id: number, includeDeleted: boolean = false) {
   try {
+    const whereClause = includeDeleted 
+      ? "WHERE id_produk = ?" 
+      : "WHERE id_produk = ? AND deleted_at IS NULL";
+    
     const [rows] = await pool.query(
-      "SELECT * FROM produksi WHERE id_produk = ? AND deleted_at IS NULL",
+      `SELECT * FROM produksi ${whereClause}`,
       [id],
     );
 
