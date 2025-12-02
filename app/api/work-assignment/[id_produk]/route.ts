@@ -41,6 +41,7 @@ export async function GET(
                     nama_pekerjaan: item.nama_pekerjaan,
                     upah_per_unit: item.upah_per_unit,
                     tipe: item.tipe,
+                    upah_harian: item.upah_harian,
                     karyawan: []
                 };
             }
@@ -52,7 +53,8 @@ export async function GET(
                 target_unit: item.target_unit,
                 unit_dikerjakan: item.unit_dikerjakan,
                 status: item.status,
-                tanggal_selesai: item.tanggal_selesai
+                tanggal_selesai: item.tanggal_selesai,
+                jenis_upah: item.upah_harian
             });
         });
 

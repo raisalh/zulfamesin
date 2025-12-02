@@ -30,6 +30,7 @@ interface Karyawan {
     id_karyawan: number;
     nama_karyawan: string;
     jenis_kelamin: "perempuan" | "laki-laki" | null;
+    jenis_upah: "pola" | "harian" | null;
     deleted_at: Date | null;
 }
 
@@ -48,6 +49,7 @@ interface PekerjaanItem {
     nama_pekerjaan: string;
     upah_per_unit: string;
     tipe: "sistem" | "manual";
+    upah_harian: string;
     assignment_mode: "auto" | "manual";
     assignments: Assignment[];
 }
@@ -109,14 +111,15 @@ export default function EditWorkAssignmentPage() {
                         unit_dikerjakan: k.unit_dikerjakan,
                         is_deleted: k.is_karyawan_deleted || false,
                     }));
-
+                
                     return {
                         id: Date.now().toString() + Math.random(),
                         id_jenis_pekerjaan: pekerjaan.id_jenis_pekerjaan,
                         nama_pekerjaan: pekerjaan.nama_pekerjaan,
-                        upah_per_unit: pekerjaan.upah_per_unit.toString(),
+                        upah_per_unit: pekerjaan.upah_per_unit ? pekerjaan.upah_per_unit.toString() : "0",
                         tipe: pekerjaan.tipe,
-                        assignment_mode: "manual" as const, // Default ke manual untuk edit
+                        upah_harian: pekerjaan.upah_harian ? pekerjaan.upah_harian.toString() : "0",
+                        assignment_mode: "manual" as const,
                         assignments: assignments,
                     };
                 });
@@ -135,47 +138,39 @@ export default function EditWorkAssignmentPage() {
         }
     };
 
-    // SMART DISTRIBUTION ALGORITHM
     const smartDistribute = (
         assignments: Assignment[],
         totalPola: number
     ): Assignment[] => {
         if (assignments.length === 0) return [];
 
-        // Step 1: Pisahkan karyawan aktif dan yang sudah keluar
         const activeAssignments = assignments.filter(a => !a.is_deleted);
         const deletedAssignments = assignments.filter(a => a.is_deleted);
 
-        // Step 2: Lock target karyawan yang keluar = progress mereka
         const lockedDeleted = deletedAssignments.map(a => ({
             ...a,
-            target_unit: a.unit_dikerjakan, // Lock di progress terakhir
+            target_unit: a.unit_dikerjakan, 
         }));
 
-        // Step 3: Hitung sisa pola untuk karyawan aktif
         const totalLockedPola = lockedDeleted.reduce((sum, a) => sum + a.target_unit, 0);
         const sisaPola = totalPola - totalLockedPola;
 
         if (activeAssignments.length === 0) {
-            // Tidak ada karyawan aktif, kembalikan semua dengan target = progress
             return assignments.map(a => ({
                 ...a,
                 target_unit: a.unit_dikerjakan,
             }));
         }
 
-        // Step 4: Distribute sisaPola ke karyawan aktif
         const baseUnit = Math.floor(sisaPola / activeAssignments.length);
         const remainder = sisaPola % activeAssignments.length;
 
-        // Step 5: Sort active by progress
         const sortedActive = [...activeAssignments].sort((a, b) => b.unit_dikerjakan - a.unit_dikerjakan);
 
         let distributed = sortedActive.map((a, index) => {
             const minTarget = a.unit_dikerjakan;
             let newTarget = baseUnit;
 
-            // Tambahkan sisa ke pekerja terakhir
             if (index === sortedActive.length - 1) {
                 newTarget += remainder;
             }
@@ -188,29 +183,26 @@ export default function EditWorkAssignmentPage() {
             };
         });
 
-        // Step 6: Adjust jika total tidak pas
         let currentTotal = distributed.reduce((sum, a) => sum + a.target_unit, 0) + totalLockedPola;
-        
+
         if (currentTotal !== totalPola) {
             const diff = totalPola - currentTotal;
 
             if (diff > 0) {
-                // Kurang - tambahkan ke yang progress paling rendah
-                const lowestProgress = distributed.reduce((min, curr) => 
+                const lowestProgress = distributed.reduce((min, curr) =>
                     curr.unit_dikerjakan < min.unit_dikerjakan ? curr : min
                 );
                 const idx = distributed.findIndex(a => a.id_karyawan === lowestProgress.id_karyawan);
                 distributed[idx].target_unit += diff;
             } else {
-                // Lebih - kurangi dari yang paling banyak ruang kosong
                 let remaining = Math.abs(diff);
-                const sortedBySpace = [...distributed].sort((a, b) => 
+                const sortedBySpace = [...distributed].sort((a, b) =>
                     (b.target_unit - b.unit_dikerjakan) - (a.target_unit - a.unit_dikerjakan)
                 );
 
                 for (const assign of sortedBySpace) {
                     if (remaining === 0) break;
-                    
+
                     const canReduce = assign.target_unit - assign.unit_dikerjakan;
                     if (canReduce > 0) {
                         const reduction = Math.min(remaining, canReduce);
@@ -222,7 +214,6 @@ export default function EditWorkAssignmentPage() {
             }
         }
 
-        // Step 7: Gabungkan kembali dengan urutan original
         const allDistributed = [...distributed, ...lockedDeleted];
         return assignments.map(original => {
             const found = allDistributed.find(d => d.id_karyawan === original.id_karyawan);
@@ -292,6 +283,7 @@ export default function EditWorkAssignmentPage() {
                 nama_pekerjaan: "",
                 upah_per_unit: "",
                 tipe: "manual",
+                upah_harian: "",
                 assignment_mode: "auto",
                 assignments: [],
             },
@@ -338,7 +330,7 @@ export default function EditWorkAssignmentPage() {
         setPekerjaanList(
             pekerjaanList.map((p) => {
                 if (p.id === pekerjaanId && produkInfo) {
-                    const newAssignments = mode === "auto" 
+                    const newAssignments = mode === "auto"
                         ? smartDistribute(p.assignments, produkInfo.total_pola)
                         : p.assignments;
 
@@ -414,7 +406,6 @@ export default function EditWorkAssignmentPage() {
 
                     const updatedAssignments = [...p.assignments, newAssignment];
 
-                    // Jika mode auto, langsung distribute
                     const finalAssignments = p.assignment_mode === "auto" && produkInfo
                         ? smartDistribute(updatedAssignments, produkInfo.total_pola)
                         : updatedAssignments;
@@ -456,7 +447,6 @@ export default function EditWorkAssignmentPage() {
                 if (p.id === pekerjaanId) {
                     const updatedAssignments = p.assignments.filter((a) => a.id_karyawan !== karyawanId);
 
-                    // Jika mode auto, redistribute setelah remove
                     const finalAssignments = p.assignment_mode === "auto" && produkInfo && updatedAssignments.length > 0
                         ? smartDistribute(updatedAssignments, produkInfo.total_pola)
                         : updatedAssignments;
@@ -475,7 +465,6 @@ export default function EditWorkAssignmentPage() {
         const pekerjaan = pekerjaanList.find((p) => p.id === pekerjaanId);
         const assignment = pekerjaan?.assignments.find((a) => a.id_karyawan === karyawanId);
 
-        // Prevent change untuk karyawan yang deleted
         if (assignment && assignment.is_deleted) {
             addToast({
                 title: "Tidak Dapat Mengubah",
@@ -516,6 +505,11 @@ export default function EditWorkAssignmentPage() {
         );
 
         return filtered;
+    };
+
+    const getKaryawanByJenisUpah = (pekerjaanId: string, jenisUpah: "pola" | "harian") => {
+        const filteredList = getFilteredKaryawan(pekerjaanId);
+        return filteredList.filter((k) => k.jenis_upah === jenisUpah);
     };
 
     const validateForm = (): boolean => {
@@ -595,7 +589,6 @@ export default function EditWorkAssignmentPage() {
                     hasError = true;
                 }
 
-                // Warning khusus untuk karyawan yang deleted
                 if (a.is_deleted && a.target_unit !== a.unit_dikerjakan) {
                     addToast({
                         title: "Peringatan",
@@ -624,6 +617,7 @@ export default function EditWorkAssignmentPage() {
                 nama_pekerjaan: p.nama_pekerjaan,
                 upah_per_unit: parseFloat(p.upah_per_unit),
                 tipe: p.tipe,
+                upah_harian: parseFloat(p.upah_harian),
                 assignments: p.assignments.map((a) => ({
                     id_pekerjaan_karyawan: a.id_pekerjaan_karyawan,
                     id_karyawan: a.id_karyawan,
@@ -725,7 +719,6 @@ export default function EditWorkAssignmentPage() {
                             <li>Mode Manual: Anda bisa mengatur target setiap karyawan secara manual</li>
                             <li>Target tidak boleh lebih kecil dari progress yang sudah dikerjakan</li>
                             <li>Setiap pekerjaan harus memiliki total target = {produkInfo?.total_pola || 0} pola</li>
-                            <li className="text-red-700 font-semibold">⚠️ Karyawan yang sudah keluar akan di-lock pada progress terakhir mereka dan tidak ikut distribusi otomatis</li>
                         </ul>
                     </div>
                 </div>
@@ -752,7 +745,7 @@ export default function EditWorkAssignmentPage() {
                             return (
                                 <Card key={pekerjaan.id} className="border border-gray-200">
                                     <CardBody className="p-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-4">
                                             <Input
                                                 label="Nama Pekerjaan"
                                                 placeholder="Contoh: Pasang Kancing"
@@ -761,7 +754,9 @@ export default function EditWorkAssignmentPage() {
                                                     handlePekerjaanChange(pekerjaan.id, "nama_pekerjaan", e.target.value)
                                                 }
                                             />
+                                        </div>
 
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                             <Input
                                                 type="text"
                                                 label="Upah per Pola (Rp)"
@@ -769,6 +764,16 @@ export default function EditWorkAssignmentPage() {
                                                 value={pekerjaan.upah_per_unit ? parseInt(pekerjaan.upah_per_unit).toString() : ""}
                                                 onChange={(e) =>
                                                     handlePekerjaanChange(pekerjaan.id, "upah_per_unit", e.target.value)
+                                                }
+                                            />
+
+                                            <Input
+                                                type="text"
+                                                label="Upah per Hari (Rp)"
+                                                placeholder="Contoh: 5000"
+                                                value={pekerjaan.upah_harian ? parseInt(pekerjaan.upah_harian).toString() : ""}
+                                                onChange={(e) =>
+                                                    handlePekerjaanChange(pekerjaan.id, "upah_harian", e.target.value)
                                                 }
                                             />
                                         </div>
@@ -797,14 +802,14 @@ export default function EditWorkAssignmentPage() {
                                                         distributionStatus.status === "valid"
                                                             ? "#10b981"
                                                             : distributionStatus.status === "kurang"
-                                                            ? "#f59e0b"
-                                                            : "#ef4444",
+                                                                ? "#f59e0b"
+                                                                : "#ef4444",
                                                     backgroundColor:
                                                         distributionStatus.status === "valid"
                                                             ? "#f0fdf4"
                                                             : distributionStatus.status === "kurang"
-                                                            ? "#fffbeb"
-                                                            : "#fef2f2",
+                                                                ? "#fffbeb"
+                                                                : "#fef2f2",
                                                 }}
                                             >
                                                 <div>
@@ -815,8 +820,8 @@ export default function EditWorkAssignmentPage() {
                                                                 distributionStatus.status === "valid"
                                                                     ? "#059669"
                                                                     : distributionStatus.status === "kurang"
-                                                                    ? "#d97706"
-                                                                    : "#dc2626",
+                                                                        ? "#d97706"
+                                                                        : "#dc2626",
                                                         }}
                                                     >
                                                         Total Target Pekerjaan Ini: {totalTargetPekerjaan} pola
@@ -828,8 +833,8 @@ export default function EditWorkAssignmentPage() {
                                                                 distributionStatus.status === "valid"
                                                                     ? "#047857"
                                                                     : distributionStatus.status === "kurang"
-                                                                    ? "#b45309"
-                                                                    : "#b91c1c",
+                                                                        ? "#b45309"
+                                                                        : "#b91c1c",
                                                         }}
                                                     >
                                                         {distributionStatus.status === "valid"
@@ -871,7 +876,7 @@ export default function EditWorkAssignmentPage() {
                                                             <div className="text-sm text-red-900">
                                                                 <p className="font-semibold">Peringatan: Ada karyawan yang sudah keluar</p>
                                                                 <p className="text-xs mt-1">
-                                                                    Karyawan yang keluar akan di-lock pada progress terakhir mereka. 
+                                                                    Karyawan yang keluar akan di-lock pada progress terakhir mereka.
                                                                     {pekerjaan.assignment_mode === "auto" && " Distribusi otomatis hanya untuk karyawan aktif."}
                                                                 </p>
                                                             </div>
@@ -882,11 +887,10 @@ export default function EditWorkAssignmentPage() {
                                                         {pekerjaan.assignments.map((assignment) => (
                                                             <div
                                                                 key={assignment.id_karyawan}
-                                                                className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
-                                                                    assignment.is_deleted
-                                                                        ? "bg-red-50 border-red-300 shadow-sm"
-                                                                        : "bg-gray-50 border-gray-200"
-                                                                }`}
+                                                                className={`flex items-center gap-3 p-3 rounded-lg border-2 ${assignment.is_deleted
+                                                                    ? "bg-red-50 border-red-300 shadow-sm"
+                                                                    : "bg-gray-50 border-gray-200"
+                                                                    }`}
                                                             >
                                                                 <div className="flex-1">
                                                                     <div className="flex items-center gap-2 mb-1">
@@ -895,9 +899,9 @@ export default function EditWorkAssignmentPage() {
                                                                         </span>
                                                                         {assignment.is_deleted && (
                                                                             <Tooltip content="Karyawan ini sudah keluar. Target di-lock pada progress terakhir.">
-                                                                                <Chip 
-                                                                                    size="sm" 
-                                                                                    color="danger" 
+                                                                                <Chip
+                                                                                    size="sm"
+                                                                                    color="danger"
                                                                                     variant="solid"
                                                                                     startContent={<IconUserX size={14} />}
                                                                                     className="font-semibold"
@@ -988,22 +992,52 @@ export default function EditWorkAssignmentPage() {
                                                 className="mb-3"
                                             />
 
-                                            <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
-                                                {filteredKaryawan.length > 0 ? (
-                                                    filteredKaryawan.map((karyawan) => (
-                                                        <Button
-                                                            key={karyawan.id_karyawan}
-                                                            size="sm"
-                                                            variant="bordered"
-                                                            className="border-gray-300 text-gray-700 hover:border-teal-600"
-                                                            onPress={() => handleAddAssignment(pekerjaan.id, karyawan.id_karyawan)}
-                                                        >
-                                                            {karyawan.nama_karyawan}
-                                                        </Button>
-                                                    ))
-                                                ) : (
-                                                    <p className="text-sm text-gray-500">Tidak ada karyawan tersedia</p>
-                                                )}
+                                            {/* Karyawan Upah Pola */}
+                                            <div className="mb-4">
+                                                <p className="text-xs font-semibold text-gray-600 mb-2 uppercase">
+                                                    Karyawan Upah Per Pola
+                                                </p>
+                                                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                                                    {getKaryawanByJenisUpah(pekerjaan.id, "pola").length > 0 ? (
+                                                        getKaryawanByJenisUpah(pekerjaan.id, "pola").map((karyawan) => (
+                                                            <Button
+                                                                key={karyawan.id_karyawan}
+                                                                size="sm"
+                                                                variant="bordered"
+                                                                className="border-gray-300 text-gray-700 hover:border-teal-600"
+                                                                onPress={() => handleAddAssignment(pekerjaan.id, karyawan.id_karyawan)}
+                                                            >
+                                                                {karyawan.nama_karyawan}
+                                                            </Button>
+                                                        ))
+                                                    ) : (
+                                                        <p className="text-sm text-gray-500">Tidak ada karyawan dengan upah per pola</p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Karyawan Upah Harian */}
+                                            <div className="mb-2">
+                                                <p className="text-xs font-semibold text-gray-600 mb-2 uppercase">
+                                                    Karyawan Upah Harian
+                                                </p>
+                                                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                                                    {getKaryawanByJenisUpah(pekerjaan.id, "harian").length > 0 ? (
+                                                        getKaryawanByJenisUpah(pekerjaan.id, "harian").map((karyawan) => (
+                                                            <Button
+                                                                key={karyawan.id_karyawan}
+                                                                size="sm"
+                                                                variant="bordered"
+                                                                className="border-gray-300 text-gray-700 hover:border-teal-600"
+                                                                onPress={() => handleAddAssignment(pekerjaan.id, karyawan.id_karyawan)}
+                                                            >
+                                                                {karyawan.nama_karyawan}
+                                                            </Button>
+                                                        ))
+                                                    ) : (
+                                                        <p className="text-sm text-gray-500">Tidak ada karyawan dengan upah harian</p>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
 
@@ -1026,6 +1060,121 @@ export default function EditWorkAssignmentPage() {
                     </div>
                 </div>
 
+                <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                    <h2 className="text-lg font-semibold text-gray-800 mb-4">Kesimpulan</h2>
+
+                    {pekerjaanList.map((pekerjaan) => {
+                        if (!pekerjaan.nama_pekerjaan.trim() || pekerjaan.assignments.length === 0) {
+                            return null;
+                        }
+
+                        return (
+                            <div key={pekerjaan.id} className="mb-6">
+                                <h3 className="font-semibold text-gray-800 mb-3">
+                                    {pekerjaan.nama_pekerjaan}
+                                </h3>
+                                <div className="border border-gray-200 rounded-lg overflow-hidden overflow-x-auto">
+                                    <table className="w-full min-w-[600px]">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                                                    NO
+                                                </th>
+                                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                                                    NAMA KARYAWAN
+                                                </th>
+                                                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">
+                                                    PROGRESS
+                                                </th>
+                                                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">
+                                                    TARGET POLA
+                                                </th>
+                                                <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">
+                                                    TOTAL UPAH
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {pekerjaan.assignments.map((assignment, idx) => {
+                                                const karyawan = karyawanList.find(
+                                                    (k) => k.id_karyawan === assignment.id_karyawan
+                                                );
+                                                const isUpahPola = karyawan?.jenis_upah === "pola";
+                                                const totalUpah = isUpahPola
+                                                    ? assignment.target_unit * (pekerjaan.upah_per_unit ? parseFloat(pekerjaan.upah_per_unit) : 0)
+                                                    : 0;
+
+                                                return (
+                                                    <tr key={assignment.id_karyawan} className={assignment.is_deleted ? 'bg-red-50' : ''}>
+                                                        <td className="px-4 py-3 text-sm text-gray-700">
+                                                            {idx + 1}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={assignment.is_deleted ? 'text-red-900 font-medium' : 'text-gray-700'}>
+                                                                    {assignment.nama_karyawan}
+                                                                </span>
+                                                                {assignment.is_deleted && (
+                                                                    <Chip
+                                                                        size="sm"
+                                                                        color="danger"
+                                                                        variant="solid"
+                                                                        startContent={<IconUserX size={14} />}
+                                                                    >
+                                                                        KELUAR
+                                                                    </Chip>
+                                                                )}
+                                                                <Chip
+                                                                    size="sm"
+                                                                    className={`${isUpahPola ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}
+                                                                    variant="flat"
+                                                                >
+                                                                    {isUpahPola ? 'Per Pola' : 'Harian'}
+                                                                </Chip>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-gray-700 text-center">
+                                                            {assignment.unit_dikerjakan} pola
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-gray-700 text-center">
+                                                            {assignment.target_unit} pola
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-gray-700 text-center font-medium">
+                                                            {isUpahPola
+                                                                ? `Rp ${totalUpah.toLocaleString("id-ID")}`
+                                                                : "-"
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                            <tr className="bg-gray-100 font-semibold">
+                                                <td colSpan={4} className="px-4 py-3 text-sm text-gray-900 text-right">
+                                                    Total Upah Pekerjaan:
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-900 text-left">
+                                                    {(() => {
+                                                        const totalUpahPekerjaan = pekerjaan.assignments.reduce((sum, a) => {
+                                                            const karyawan = karyawanList.find(k => k.id_karyawan === a.id_karyawan);
+                                                            const isUpahPola = karyawan?.jenis_upah === "pola";
+                                                            if (isUpahPola) {
+                                                                return sum + (a.target_unit * (pekerjaan.upah_per_unit ? parseFloat(pekerjaan.upah_per_unit) : 0));
+                                                            }
+                                                            return sum;
+                                                        }, 0);
+                                                        return `Rp ${totalUpahPekerjaan.toLocaleString("id-ID")}`;
+                                                    })()}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+                
+
                 <div className="flex justify-end gap-3">
                     <button
                         onClick={() => setShowCancelModal(true)}
@@ -1036,9 +1185,8 @@ export default function EditWorkAssignmentPage() {
                     <button
                         onClick={handleSubmit}
                         disabled={isSubmitDisabled()}
-                        className={`flex items-center gap-2 px-6 py-2 rounded-lg ${
-                            isSubmitDisabled() ? "bg-gray-400 cursor-not-allowed" : "bg-teal-600 hover:bg-teal-700"
-                        } text-white`}
+                        className={`flex items-center gap-2 px-6 py-2 rounded-lg ${isSubmitDisabled() ? "bg-gray-400 cursor-not-allowed" : "bg-teal-600 hover:bg-teal-700"
+                            } text-white`}
                     >
                         <IconCheck size={18} />
                         {loading ? "Menyimpan..." : "Simpan Perubahan"}

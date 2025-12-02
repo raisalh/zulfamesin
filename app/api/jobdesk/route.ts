@@ -40,7 +40,8 @@ export async function POST(request: NextRequest) {
         const result = await createJenisPekerjaan({
             nama_pekerjaan: body.nama_pekerjaan,
             upah_per_unit: body.upah_per_unit,
-            tipe: body.tipe || "sistem"
+            tipe: body.tipe || "sistem",
+            upah_harian: body.upah_harian
         });
 
         return NextResponse.json(

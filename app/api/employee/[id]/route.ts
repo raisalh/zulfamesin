@@ -77,6 +77,8 @@ export async function PUT(
       updateData.email = body.email;
     if (body.alamat !== undefined)
       updateData.alamat = body.alamat;
+    if (body.jenis_upah !== undefined)
+      updateData.jenis_upah = body.jenis_upah;
 
     await updateKaryawan(id, updateData);
 

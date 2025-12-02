@@ -17,8 +17,9 @@ export interface PekerjaanKaryawanWithDetails extends PekerjaanKaryawan {
     nama_pekerjaan?: string;
     upah_per_unit?: number;
     tipe?: 'sistem' | 'manual';
+    upah_harian?: number;
     tanggal_mulai?: Date | null; 
-    is_karyawan_deleted?: boolean; // Tambah info apakah karyawan sudah dihapus
+    is_karyawan_deleted?: boolean; 
 }
 
 export async function getPekerjaanByProduk(id_produk: number) {
@@ -31,6 +32,7 @@ export async function getPekerjaanByProduk(id_produk: number) {
                 jp.nama_pekerjaan,
                 jp.upah_per_unit,
                 jp.tipe,
+                jp.upah_harian,  
                 (SELECT MIN(tanggal_update) 
                 FROM progress_pekerjaan pp 
                 WHERE pp.id_pekerjaan_karyawan = pk.id_pekerjaan_karyawan) as tanggal_mulai

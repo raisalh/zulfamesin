@@ -25,7 +25,8 @@ export async function getAllProduksi(page: number = 1, limit: number = 10) {
 
   try {
     const [rows] = await pool.query(
-      "SELECT * FROM produksi WHERE deleted_at IS NULL ORDER BY id_produk DESC",
+      "SELECT * FROM produksi WHERE deleted_at IS NULL ORDER BY id_produk DESC LIMIT ? OFFSET ?",
+      [limit, offset]  
     );
 
     const [countResult] = await pool.query(

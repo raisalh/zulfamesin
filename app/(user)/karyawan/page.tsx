@@ -17,6 +17,7 @@ interface Karyawan {
   no_telp: string | null;
   email: string | null;
   alamat: string | null;
+  jenis_upah: "pola" | "harian" | null;
 }
 
 export default function KaryawanPage() {
@@ -118,6 +119,9 @@ export default function KaryawanPage() {
                     Jenis Kelamin
                   </th>
                   <th className="px-3 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Jenis Upah
+                  </th>
+                  <th className="px-3 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     Nomor Telepon
                   </th>
                   <th className="px-3 md:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
@@ -205,6 +209,13 @@ export default function KaryawanPage() {
                           ? karyawan.jenis_kelamin === "perempuan"
                             ? "Perempuan"
                             : "Laki-Laki"
+                          : "-"}
+                      </td>
+                      <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-center text-gray-900">
+                        {karyawan.jenis_upah
+                          ? karyawan.jenis_upah === "pola"
+                            ? "Upah per Pola"
+                            : "Upah per Hari"
                           : "-"}
                       </td>
                       <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm text-center text-gray-900">

@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
       no_telp: body.no_telp || null,
       email: body.email || null,
       alamat: body.alamat || null,
+      jenis_upah: body.jenis_upah || null,
     });
 
     return NextResponse.json(

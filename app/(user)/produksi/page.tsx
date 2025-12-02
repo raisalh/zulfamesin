@@ -130,6 +130,14 @@ export default function ProduksiPage() {
     });
   };
 
+  const getPaginationText = () => {
+    if (stats.total === 0) return "";
+    const limit = 10;
+    const start = (currentPage - 1) * limit + 1;
+    const end = Math.min(currentPage * limit, stats.total);
+    return `Menampilkan ${start}-${end} dari ${stats.total} produk`;
+  };
+
   const handleDelete = async (id: number) => {
     if (!confirm("Apakah Anda yakin ingin menghapus produk ini?")) return;
 
@@ -385,8 +393,7 @@ export default function ProduksiPage() {
 
             <div className="px-4 md:px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="text-xs md:text-sm text-gray-700 text-center sm:text-left">
-                {stats.total > 0 &&
-                  `Menampilkan 1-10 dari ${stats.total} produk`}
+                {getPaginationText()}
               </div>
               <div className="flex gap-1 md:gap-2 flex-wrap justify-center">
                 <button

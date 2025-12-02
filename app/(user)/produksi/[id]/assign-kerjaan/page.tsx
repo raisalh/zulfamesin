@@ -19,6 +19,7 @@ interface Karyawan {
     id_karyawan: number;
     nama_karyawan: string;
     jenis_kelamin: "perempuan" | "laki-laki" | null;
+    jenis_upah: "pola" | "harian" | null;
 }
 
 interface ManualAssignment {
@@ -31,6 +32,7 @@ interface PekerjaanItem {
     nama_pekerjaan: string;
     upah_per_unit: string;
     assignment_type: "sistem" | "manual";
+    upah_harian: string;
     karyawan_ids: number[];
     manual_assignments: ManualAssignment[];
 }
@@ -50,6 +52,7 @@ export default function WorkAssignmentPage() {
             nama_pekerjaan: "",
             upah_per_unit: "",
             assignment_type: "sistem",
+            upah_harian: "",
             karyawan_ids: [],
             manual_assignments: [],
         },
@@ -100,6 +103,7 @@ export default function WorkAssignmentPage() {
                 nama_pekerjaan: "",
                 upah_per_unit: "",
                 assignment_type: "sistem",
+                upah_harian: "",
                 karyawan_ids: [],
                 manual_assignments: [],
             },
@@ -194,7 +198,7 @@ export default function WorkAssignmentPage() {
         value: string
     ) => {
         const numValue = value === '' ? 0 : parseInt(value.replace(/\D/g, '')) || 0;
-        
+
         setPekerjaanList(
             pekerjaanList.map((p) => {
                 if (p.id === pekerjaanId) {
@@ -257,6 +261,11 @@ export default function WorkAssignmentPage() {
         );
     };
 
+    const getKaryawanByJenisUpah = (pekerjaanId: string, jenisUpah: "pola" | "harian") => {
+        const filteredList = getFilteredKaryawan(pekerjaanId);
+        return filteredList.filter((k) => k.jenis_upah === jenisUpah);
+    };
+
     const getTotalStats = () => {
         const totalPekerjaan = pekerjaanList.filter(
             (p) => p.nama_pekerjaan.trim() !== ""
@@ -268,7 +277,15 @@ export default function WorkAssignmentPage() {
                     typeof p.upah_per_unit === "string"
                         ? parseFloat(p.upah_per_unit)
                         : p.upah_per_unit;
-                return sum + upah * totalPola;
+
+                const karyawanPolaCount = p.karyawan_ids.filter(kid => {
+                    const karyawan = karyawanList.find(k => k.id_karyawan === kid);
+                    return karyawan?.jenis_upah === "pola";
+                }).length;
+
+                if (karyawanPolaCount > 0) {
+                    return sum + (upah * totalPola);
+                }
             }
             return sum;
         }, 0);
@@ -290,16 +307,16 @@ export default function WorkAssignmentPage() {
             }
 
             if (!p.upah_per_unit.trim()) {
-                fieldErrors.upah_per_unit = "Upah per pola harus diisi";
-                toast.error("Upah per pola harus diisi");
+                fieldErrors.upah_per_unit = "Upah harus diisi";
+                toast.error("Upah harus diisi");
                 hasError = true;
             } else if (!/^[0-9]+$/.test(p.upah_per_unit)) {
-                fieldErrors.upah_per_unit = "Upah per pola hanya boleh berisi angka";
-                toast.error("Upah per pola hanya boleh berisi angka");
+                fieldErrors.upah_per_unit = "Upah hanya boleh berisi angka";
+                toast.error("Upah hanya boleh berisi angka");
                 hasError = true;
             } else if (parseFloat(p.upah_per_unit) <= 0) {
-                fieldErrors.upah_per_unit = "Upah per pola harus lebih dari 0";
-                toast.error("Upah per pola harus lebih dari 0");
+                fieldErrors.upah_per_unit = "Upah harus lebih dari 0";
+                toast.error("Upah harus lebih dari 0");
                 hasError = true;
             }
 
@@ -315,7 +332,7 @@ export default function WorkAssignmentPage() {
                     0
                 );
                 const hasInvalidUnit = p.manual_assignments.some((ma) => !ma.unit || ma.unit <= 0);
-                
+
                 if (hasInvalidUnit) {
                     fieldErrors.manual_assignments = "Semua karyawan harus memiliki pola lebih dari 0";
                     toast.error("Semua karyawan harus memiliki pola lebih dari 0");
@@ -385,6 +402,10 @@ export default function WorkAssignmentPage() {
                             typeof p.upah_per_unit === "string"
                                 ? parseFloat(p.upah_per_unit)
                                 : p.upah_per_unit,
+                        upah_harian:
+                            typeof p.upah_harian === "string"
+                                ? parseFloat(p.upah_harian)
+                                : p.upah_harian,
                         tipe: "manual",
                         karyawan_assignments: p.manual_assignments.map((ma) => ({
                             id_karyawan: ma.id_karyawan,
@@ -398,6 +419,10 @@ export default function WorkAssignmentPage() {
                             typeof p.upah_per_unit === "string"
                                 ? parseFloat(p.upah_per_unit)
                                 : p.upah_per_unit,
+                        upah_harian:
+                            typeof p.upah_harian === "string"
+                                ? parseFloat(p.upah_harian)
+                                : p.upah_harian,
                         tipe: 'sistem',
                         karyawan_ids: p.karyawan_ids,
                     };
@@ -475,7 +500,7 @@ export default function WorkAssignmentPage() {
                             return (
                                 <Card key={pekerjaan.id} className="border border-gray-200">
                                     <CardBody className="p-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-4">
                                             <Input
                                                 label="Nama Pekerjaan"
                                                 placeholder="Contoh: Pasang Kancing"
@@ -490,7 +515,9 @@ export default function WorkAssignmentPage() {
                                                 isInvalid={!!errors[pekerjaan.id]?.nama_pekerjaan}
                                                 errorMessage={errors[pekerjaan.id]?.nama_pekerjaan}
                                             />
+                                        </div>
 
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                             <Input
                                                 type="text"
                                                 label="Upah per Pola (Rp)"
@@ -500,6 +527,22 @@ export default function WorkAssignmentPage() {
                                                     handlePekerjaanChange(
                                                         pekerjaan.id,
                                                         "upah_per_unit",
+                                                        e.target.value
+                                                    )
+                                                }
+                                                isInvalid={!!errors[pekerjaan.id]?.upah_per_unit}
+                                                errorMessage={errors[pekerjaan.id]?.upah_per_unit}
+                                            />
+
+                                            <Input
+                                                type="text"
+                                                label="Upah per Hari (Rp)"
+                                                placeholder="Contoh: 5000"
+                                                value={String(pekerjaan.upah_harian)}
+                                                onChange={(e) =>
+                                                    handlePekerjaanChange(
+                                                        pekerjaan.id,
+                                                        "upah_harian",
                                                         e.target.value
                                                     )
                                                 }
@@ -545,82 +588,127 @@ export default function WorkAssignmentPage() {
                                             </RadioGroup>
                                         </div>
 
-                                        <div className="mb-4">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <label className="text-sm font-medium text-gray-700">
-                                                    Pilih Karyawan
-                                                </label>
-                                                {pekerjaan.karyawan_ids.length > 0 && (
-                                                    <Chip size="sm" className="bg-teal-600 text-white border border-teal-600" variant="flat" >
-                                                        {pekerjaan.karyawan_ids.length} dipilih
-                                                    </Chip>
-                                                )}
-                                            </div>
+                                        <div>
 
-                                            <Input
-                                                placeholder="Cari nama karyawan..."
-                                                startContent={<IconSearch size={18} />}
-                                                value={searchQueries[pekerjaan.id] || ""}
-                                                onChange={(e) =>
-                                                    setSearchQueries({
-                                                        ...searchQueries,
-                                                        [pekerjaan.id]: e.target.value,
-                                                    })
-                                                }
-                                                endContent={
-                                                    searchQueries[pekerjaan.id] && (
-                                                        <button
-                                                            onClick={() =>
-                                                                setSearchQueries({
-                                                                    ...searchQueries,
-                                                                    [pekerjaan.id]: "",
-                                                                })
-                                                            }
-                                                        >
-                                                            <IconX size={18} className="text-gray-400" />
-                                                        </button>
-                                                    )
-                                                }
-                                                className="mb-3"
-                                            />
+                                            <div className="mb-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <label className="text-sm font-medium text-gray-700">
+                                                        Pilih Karyawan
+                                                    </label>
+                                                    {pekerjaan.karyawan_ids.length > 0 && (
+                                                        <Chip size="sm" className="bg-teal-600 text-white border border-teal-600" variant="flat">
+                                                            {pekerjaan.karyawan_ids.length} dipilih
+                                                        </Chip>
+                                                    )}
+                                                </div>
 
-                                            <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto pr-1 mb-2">
-                                                {filteredKaryawan.length > 0 ? (
-                                                    filteredKaryawan.map((karyawan) => {
-                                                        const isSelected = pekerjaan.karyawan_ids.includes(
-                                                            karyawan.id_karyawan
-                                                        );
-                                                        return (
-                                                            <Button
-                                                                key={karyawan.id_karyawan}
-                                                                variant={isSelected ? "solid" : "bordered"}
-                                                                size="sm"
-                                                                className={
-                                                                    isSelected
-                                                                        ? "bg-teal-600 text-white border-teal-600"
-                                                                        : "bg-white text-gray-700 border-gray-300 hover:border-teal-600"
-                                                                }
-                                                                onPress={() =>
-                                                                    handleKaryawanToggle(pekerjaan.id, karyawan.id_karyawan)
+                                                <Input
+                                                    placeholder="Cari nama karyawan..."
+                                                    startContent={<IconSearch size={18} />}
+                                                    value={searchQueries[pekerjaan.id] || ""}
+                                                    onChange={(e) =>
+                                                        setSearchQueries({
+                                                            ...searchQueries,
+                                                            [pekerjaan.id]: e.target.value,
+                                                        })
+                                                    }
+                                                    endContent={
+                                                        searchQueries[pekerjaan.id] && (
+                                                            <button
+                                                                onClick={() =>
+                                                                    setSearchQueries({
+                                                                        ...searchQueries,
+                                                                        [pekerjaan.id]: "",
+                                                                    })
                                                                 }
                                                             >
+                                                                <IconX size={18} className="text-gray-400" />
+                                                            </button>
+                                                        )
+                                                    }
+                                                    className="mb-3"
+                                                />
 
-                                                                {karyawan.nama_karyawan}
-                                                            </Button>
-                                                        );
-                                                    })
-                                                ) : (
-                                                    <p className="text-sm text-gray-500">
-                                                        Tidak ada karyawan ditemukan
+                                                {/* Karyawan Upah Pola */}
+                                                <div className="mb-4">
+                                                    <p className="text-xs font-semibold text-gray-600 mb-2 uppercase">
+                                                        Karyawan Upah Per Pola
+                                                    </p>
+                                                    <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto pr-1 mb-2 border border-gray-200 rounded-lg p-3">
+                                                        {getKaryawanByJenisUpah(pekerjaan.id, "pola").length > 0 ? (
+                                                            getKaryawanByJenisUpah(pekerjaan.id, "pola").map((karyawan) => {
+                                                                const isSelected = pekerjaan.karyawan_ids.includes(
+                                                                    karyawan.id_karyawan
+                                                                );
+                                                                return (
+                                                                    <Button
+                                                                        key={karyawan.id_karyawan}
+                                                                        variant={isSelected ? "solid" : "bordered"}
+                                                                        size="sm"
+                                                                        className={
+                                                                            isSelected
+                                                                                ? "bg-teal-600 text-white border-teal-600"
+                                                                                : "bg-white text-gray-700 border-gray-300 hover:border-teal-600"
+                                                                        }
+                                                                        onPress={() =>
+                                                                            handleKaryawanToggle(pekerjaan.id, karyawan.id_karyawan)
+                                                                        }
+                                                                    >
+                                                                        {karyawan.nama_karyawan}
+                                                                    </Button>
+                                                                );
+                                                            })
+                                                        ) : (
+                                                            <p className="text-sm text-gray-500">
+                                                                Tidak ada karyawan dengan upah per pola
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Karyawan Upah Harian */}
+                                                <div className="mb-2">
+                                                    <p className="text-xs font-semibold text-gray-600 mb-2 uppercase">
+                                                        Karyawan Upah Harian
+                                                    </p>
+                                                    <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto pr-1 mb-2 border border-gray-200 rounded-lg p-3">
+                                                        {getKaryawanByJenisUpah(pekerjaan.id, "harian").length > 0 ? (
+                                                            getKaryawanByJenisUpah(pekerjaan.id, "harian").map((karyawan) => {
+                                                                const isSelected = pekerjaan.karyawan_ids.includes(
+                                                                    karyawan.id_karyawan
+                                                                );
+                                                                return (
+                                                                    <Button
+                                                                        key={karyawan.id_karyawan}
+                                                                        variant={isSelected ? "solid" : "bordered"}
+                                                                        size="sm"
+                                                                        className={
+                                                                            isSelected
+                                                                                ? "bg-teal-600 text-white border-teal-600"
+                                                                                : "bg-white text-gray-700 border-gray-300 hover:border-teal-600"
+                                                                        }
+                                                                        onPress={() =>
+                                                                            handleKaryawanToggle(pekerjaan.id, karyawan.id_karyawan)
+                                                                        }
+                                                                    >
+                                                                        {karyawan.nama_karyawan}
+                                                                    </Button>
+                                                                );
+                                                            })
+                                                        ) : (
+                                                            <p className="text-sm text-gray-500">
+                                                                Tidak ada karyawan dengan upah harian
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {errors[pekerjaan.id]?.karyawan_ids && (
+                                                    <p className="text-sm text-danger mt-1">
+                                                        {errors[pekerjaan.id]?.karyawan_ids}
                                                     </p>
                                                 )}
                                             </div>
-
-                                            {errors[pekerjaan.id]?.karyawan_ids && (
-                                                <p className="text-sm text-danger mt-1">
-                                                    {errors[pekerjaan.id]?.karyawan_ids}
-                                                </p>
-                                            )}
                                         </div>
 
                                         {pekerjaan.assignment_type === "manual" &&
@@ -688,7 +776,7 @@ export default function WorkAssignmentPage() {
                                                                     </strong>
                                                                 </span>
                                                                 <span className="text-gray-600">
-                                                                    Total Upah:{" "}
+                                                                    Total Upah per Pola:{" "}
                                                                     <strong>
                                                                         Rp{" "}
                                                                         {(
@@ -741,7 +829,7 @@ export default function WorkAssignmentPage() {
                                                             </strong>
                                                         </span>
                                                         <span className="text-gray-600">
-                                                            Total Upah:{" "}
+                                                            Total Upah per Pola:{" "}
                                                             <strong>
                                                                 Rp{" "}
                                                                 {(
@@ -795,7 +883,7 @@ export default function WorkAssignmentPage() {
                             <div className="text-3xl font-bold text-gray-900 mb-1">
                                 Rp {stats.totalUpah.toLocaleString("id-ID")}
                             </div>
-                            <div className="text-sm text-gray-600">Total Upah</div>
+                            <div className="text-sm text-gray-600">Total Upah per Pola</div>
                         </div>
                     </div>
 
@@ -826,7 +914,7 @@ export default function WorkAssignmentPage() {
                                     {pekerjaan.nama_pekerjaan}
                                 </h3>
                                 <div className="border border-gray-200 rounded-lg overflow-hidden overflow-x-auto">
-                                    <table className="w-full min-w-[500px]">
+                                    <table className="w-full min-w-[600px]">
                                         <thead className="bg-gray-50">
                                             <tr>
                                                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
@@ -838,22 +926,50 @@ export default function WorkAssignmentPage() {
                                                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">
                                                     TOTAL POLA
                                                 </th>
+                                                <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">
+                                                    TOTAL UPAH
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
-                                            {distribution.map((item, idx) => (
-                                                <tr key={item.id_karyawan}>
-                                                    <td className="px-4 py-3 text-sm text-gray-700">
-                                                        {idx + 1}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-sm text-gray-700">
-                                                        {item.nama_karyawan}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-sm text-gray-700 text-right">
-                                                        {item.unit}
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                            {distribution.map((item, idx) => {
+                                                const karyawan = karyawanList.find(
+                                                    (k) => k.id_karyawan === item.id_karyawan
+                                                );
+                                                const isUpahPola = karyawan?.jenis_upah === "pola";
+                                                const totalUpah = isUpahPola
+                                                    ? item.unit * (typeof pekerjaan.upah_per_unit === "string"
+                                                        ? parseFloat(pekerjaan.upah_per_unit)
+                                                        : pekerjaan.upah_per_unit)
+                                                    : 0;
+
+                                                return (
+                                                    <tr key={item.id_karyawan}>
+                                                        <td className="px-4 py-3 text-sm text-gray-700">
+                                                            {idx + 1}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-gray-700">
+                                                            {item.nama_karyawan}
+                                                            <Chip
+                                                                size="sm"
+                                                                className={`ml-2 ${isUpahPola ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}
+                                                                variant="flat"
+                                                            >
+                                                                {isUpahPola ? 'Per Pola' : 'Harian'}
+                                                            </Chip>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-gray-700 text-right">
+                                                            {item.unit}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-gray-700 text-right">
+                                                            {isUpahPola
+                                                                ? `Rp ${totalUpah.toLocaleString("id-ID")}`
+                                                                : "-"
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>

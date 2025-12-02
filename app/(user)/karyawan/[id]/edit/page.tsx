@@ -15,6 +15,7 @@ interface FormErrors {
   noTelp?: string;
   email?: string;
   alamat?: string;
+  jenisUpah?: string;
 }
 
 export default function EditKaryawanPage() {
@@ -32,6 +33,7 @@ export default function EditKaryawanPage() {
   const [noTelp, setNoTelp] = useState("");
   const [email, setEmail] = useState("");
   const [alamat, setAlamat] = useState("");
+  const [jenisUpah, setJenisUpah] = useState("");
 
   useEffect(() => {
     fetchKaryawanData();
@@ -49,6 +51,7 @@ export default function EditKaryawanPage() {
         setNoTelp(result.data.no_telp || "");
         setEmail(result.data.email || "");
         setAlamat(result.data.alamat || "");
+        setJenisUpah(result.data.jenis_upah || "");
       } else {
         alert("Gagal memuat data karyawan");
         router.push("/karyawan");
@@ -104,6 +107,10 @@ export default function EditKaryawanPage() {
       }
     }
 
+    if (!jenisUpah) {
+      newErrors.jenisUpah = "Jenis upah harus dipilih";
+    }
+
     setErrors(newErrors);
 
     return Object.keys(newErrors).length === 0;
@@ -139,6 +146,7 @@ export default function EditKaryawanPage() {
           no_telp: noTelp,
           email: email,
           alamat: alamat,
+          jenis_upah: jenisUpah,
         }),
       });
 
@@ -241,9 +249,7 @@ export default function EditKaryawanPage() {
                   className={`w-full px-4 py-3 border text-sm truncate ${errors.jenisKelamin ? "border-red-500" : "border-gray-300"
                     } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                 >
-                  <option value="">
-                    Pilih Jenis Kelamin
-                  </option>
+                  <option value=""> Pilih Jenis Kelamin </option>
                   <option value="perempuan">Perempuan</option>
                   <option value="laki-laki">Laki-Laki</option>
                 </select>
@@ -254,6 +260,37 @@ export default function EditKaryawanPage() {
                 </p>
               )}
             </div>
+
+            <div className="w-full">
+              <label
+                className="block text-sm font-medium text-gray-700 mb-2"
+                htmlFor="jenisUpah"
+              >
+                Jenis Upah <span className="text-red-500">*</span>
+              </label>
+              <div className="w-full max-w-full">
+                <select
+                  id="jenisUpah"
+                  value={jenisUpah}
+                  onChange={(e) => {
+                    setJenisUpah(e.target.value);
+                    clearError("jenisUpah");
+                  }}
+                  className={`w-full px-4 py-3 border text-sm truncate ${errors.jenisUpah ? "border-red-500" : "border-gray-300"
+                    } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
+                >
+                  <option value="">Pilih Jenis Upah</option>
+                  <option value="pola">Upah per Pola</option>
+                  <option value="harian">Upah per Hari</option>
+                </select>
+              </div>
+              {errors.jenisUpah && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.jenisUpah}
+                </p>
+              )}
+            </div>
+
 
             <div>
               <label

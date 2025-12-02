@@ -5,6 +5,7 @@ export interface JenisPekerjaan {
     nama_pekerjaan: string;
     upah_per_unit: number;
     tipe: 'sistem' | 'manual';
+    upah_harian: number;
 }
 
 export async function getAllJenisPekerjaan() {
@@ -48,12 +49,13 @@ export async function createJenisPekerjaan(data: Omit<JenisPekerjaan, 'id_jenis_
     try {
         const [result] = await pool.query(
             `INSERT INTO jenis_pekerjaan 
-            (nama_pekerjaan, upah_per_unit, tipe) 
-            VALUES (?, ?, ?)`,
+            (nama_pekerjaan, upah_per_unit, tipe, upah_harian) 
+            VALUES (?, ?, ?, ?)`,
             [
                 data.nama_pekerjaan,
                 data.upah_per_unit, 
-                data.tipe
+                data.tipe,
+                data.upah_harian
             ]
         );
 

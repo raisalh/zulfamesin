@@ -8,6 +8,7 @@ export interface Karyawan {
   email: string | null;
   alamat: string | null;
   deleted_at: Date | null;
+  jenis_upah: "pola" | "harian" | null;
 }
 
 export async function getAllKaryawan(includeDeleted: boolean = false) {
@@ -54,9 +55,9 @@ export async function createKaryawan(data: Omit<Karyawan, "id_karyawan" | "delet
   try {
     const [result] = await pool.query(
       `INSERT INTO karyawan 
-            (nama_karyawan, jenis_kelamin, no_telp, email, alamat) 
-            VALUES (?, ?, ?, ?, ?)`,
-      [data.nama_karyawan, data.jenis_kelamin, data.no_telp, data.email, data.alamat]
+            (nama_karyawan, jenis_kelamin, no_telp, email, alamat, jenis_upah) 
+            VALUES (?, ?, ?, ?, ?, ?)`,
+      [data.nama_karyawan, data.jenis_kelamin, data.no_telp, data.email, data.alamat, data.jenis_upah]
     );
 
     return result;

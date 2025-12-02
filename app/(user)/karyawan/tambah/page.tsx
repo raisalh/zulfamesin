@@ -11,6 +11,7 @@ interface FormErrors {
   noTelp?: string;
   email?: string;
   alamat?: string;
+  jenisUpah?: string;
 }
 
 export default function TambahKaryawanPage() {
@@ -24,6 +25,7 @@ export default function TambahKaryawanPage() {
   const [noTelp, setNoTelp] = useState("");
   const [email, setEmail] = useState("");
   const [alamat, setAlamat] = useState("");
+  const [jenisUpah, setJenisUpah] = useState("");
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -67,6 +69,10 @@ export default function TambahKaryawanPage() {
       }
     }
 
+    if (!jenisUpah) {
+      newErrors.jenisUpah = "Jenis upah harus dipilih";
+    }
+
     setErrors(newErrors);
 
     return Object.keys(newErrors).length === 0;
@@ -102,6 +108,7 @@ export default function TambahKaryawanPage() {
           no_telp: noTelp || null,
           email: email || null,
           alamat: alamat || null,
+          jenis_upah: jenisUpah || null,
         }),
       });
 
@@ -195,6 +202,32 @@ export default function TambahKaryawanPage() {
               </select>
               {errors.jenisKelamin && (
                 <p className="text-red-500 text-sm mt-1">{errors.jenisKelamin}</p>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <label
+                className="block text-sm font-medium text-gray-700 mb-2"
+                htmlFor="jenisUpah"
+              >
+                Jenis Upah Karyawan <span className="text-red-500">*</span>
+              </label>
+              <select
+                className={`w-full px-4 py-3 border ${errors.jenisUpah ? "border-red-500" : "border-gray-300"
+                  } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none text-sm`}
+                id="jenisUpah"
+                value={jenisUpah}
+                onChange={(e) => {
+                  setJenisUpah(e.target.value);
+                  clearError("jenisUpah");
+                }}
+              >
+                <option value="">Pilih Jenis upah</option>
+                <option value="pola">Upah per Pola</option>
+                <option value="harian">Upah per Hari</option>
+              </select>
+              {errors.jenisUpah && (
+                <p className="text-red-500 text-sm mt-1">{errors.jenisUpah}</p>
               )}
             </div>
 

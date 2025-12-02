@@ -13,6 +13,7 @@ import { getProduksiById } from "@/lib/produk";
 import { getTotalPolaByProduk } from "@/lib/gulungan";
 import { calculateAndSaveUpahFromPekerjaan, deleteUpahByProduk } from "@/lib/upahKaryawan";
 import { deleteProgressByProduk } from "@/lib/progressPekerjaan";
+import { parse } from "path";
 
 export async function POST(request: NextRequest) {
     try {
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest) {
                 nama_pekerjaan, 
                 upah_per_unit, 
                 tipe,
+                upah_harian,
                 karyawan_ids,
                 karyawan_assignments 
             } = pekerjaan;
@@ -77,7 +79,8 @@ export async function POST(request: NextRequest) {
                     const result = await createJenisPekerjaan({
                         nama_pekerjaan: nama_pekerjaan.trim(),
                         upah_per_unit: parseFloat(upah_per_unit.toString()),
-                        tipe: tipe.trim() || 'sistem'
+                        tipe: tipe.trim() || 'sistem',
+                        upah_harian: parseFloat(upah_harian.toString()),
                     });
 
                     id_jenis_pekerjaan = (result as any).insertId;
@@ -106,7 +109,8 @@ export async function POST(request: NextRequest) {
                     const result = await createJenisPekerjaan({
                         nama_pekerjaan: nama_pekerjaan.trim(),
                         upah_per_unit: parseFloat(upah_per_unit.toString()),
-                        tipe: tipe.trim() || 'sistem'
+                        tipe: tipe.trim() || 'sistem',
+                        upah_harian: parseFloat(upah_harian.toString())
                     });
 
                     id_jenis_pekerjaan = (result as any).insertId;
@@ -263,6 +267,7 @@ export async function PUT(request: NextRequest) {
                 nama_pekerjaan, 
                 upah_per_unit, 
                 tipe,
+                upah_harian,
                 karyawan_ids,
                 karyawan_assignments 
             } = pekerjaan;
@@ -273,7 +278,8 @@ export async function PUT(request: NextRequest) {
                 const result = await createJenisPekerjaan({
                     nama_pekerjaan: nama_pekerjaan.trim(),
                     upah_per_unit: parseFloat(upah_per_unit.toString()),
-                    tipe: tipe.trim() || 'sistem'
+                    tipe: tipe.trim() || 'sistem',
+                    upah_harian: parseFloat(upah_harian.toString())
                 });
 
                 id_jenis_pekerjaan = (result as any).insertId;
