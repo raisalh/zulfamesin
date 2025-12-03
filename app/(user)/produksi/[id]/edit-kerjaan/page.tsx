@@ -111,7 +111,7 @@ export default function EditWorkAssignmentPage() {
                         unit_dikerjakan: k.unit_dikerjakan,
                         is_deleted: k.is_karyawan_deleted || false,
                     }));
-                
+
                     return {
                         id: Date.now().toString() + Math.random(),
                         id_jenis_pekerjaan: pekerjaan.id_jenis_pekerjaan,
@@ -149,7 +149,7 @@ export default function EditWorkAssignmentPage() {
 
         const lockedDeleted = deletedAssignments.map(a => ({
             ...a,
-            target_unit: a.unit_dikerjakan, 
+            target_unit: a.unit_dikerjakan,
         }));
 
         const totalLockedPola = lockedDeleted.reduce((sum, a) => sum + a.target_unit, 0);
@@ -525,27 +525,53 @@ export default function EditWorkAssignmentPage() {
                 hasError = true;
             }
 
-            if (!p.upah_per_unit.trim()) {
+            const hasAtLeastOneUpah =
+                (p.upah_per_unit && p.upah_per_unit.trim() !== "") ||
+                (p.upah_harian && p.upah_harian.trim() !== "");
+
+            if (!hasAtLeastOneUpah) {
                 addToast({
                     title: "Upah Belum Diisi",
-                    description: `Upah per pola untuk "${p.nama_pekerjaan || "pekerjaan ini"}" harus diisi`,
+                    description: `Isi salah satu upah: Upah per pola atau Upah harian untuk "${p.nama_pekerjaan || "pekerjaan ini"}"`,
                     color: "danger",
                 });
                 hasError = true;
-            } else if (!/^[0-9]+(\.[0-9]+)?$/.test(p.upah_per_unit)) {
-                addToast({
-                    title: "Format Upah Salah",
-                    description: "Upah per pola hanya boleh berisi angka",
-                    color: "danger",
-                });
-                hasError = true;
-            } else if (parseFloat(p.upah_per_unit) <= 0) {
-                addToast({
-                    title: "Upah Tidak Valid",
-                    description: "Upah per pola harus lebih dari 0",
-                    color: "danger",
-                });
-                hasError = true;
+            }
+
+            if (p.upah_per_unit && p.upah_per_unit.trim() !== "") {
+                if (!/^[0-9]+(\.[0-9]+)?$/.test(p.upah_per_unit)) {
+                    addToast({
+                        title: "Format Upah Salah",
+                        description: "Upah per pola hanya boleh berisi angka",
+                        color: "danger",
+                    });
+                    hasError = true;
+                } else if (parseFloat(p.upah_per_unit) <= 0) {
+                    addToast({
+                        title: "Upah Tidak Valid",
+                        description: "Upah per pola harus lebih dari 0",
+                        color: "danger",
+                    });
+                    hasError = true;
+                }
+            }
+
+            if (p.upah_harian && p.upah_harian.trim() !== "") {
+                if (!/^[0-9]+(\.[0-9]+)?$/.test(p.upah_harian)) {
+                    addToast({
+                        title: "Format Upah Salah",
+                        description: "Upah harian hanya boleh berisi angka",
+                        color: "danger",
+                    });
+                    hasError = true;
+                } else if (parseFloat(p.upah_harian) <= 0) {
+                    addToast({
+                        title: "Upah Tidak Valid",
+                        description: "Upah harian harus lebih dari 0",
+                        color: "danger",
+                    });
+                    hasError = true;
+                }
             }
 
             if (p.assignments.length === 0) {
@@ -1166,7 +1192,7 @@ export default function EditWorkAssignmentPage() {
                         );
                     })}
                 </div>
-                
+
 
                 <div className="flex justify-end gap-3">
                     <button

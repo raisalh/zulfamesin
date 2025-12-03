@@ -95,7 +95,7 @@ export default function DetailUpahKaryawan() {
             <div className="max-w-7xl mx-auto">
                 <div className="mb-6">
                     <button
-                        onClick={() => router.back()}
+                        onClick={() => router.push(`/karyawan`)}
                         className="flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-4"
                     >
                         <IconArrowLeft size={20} />

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { IconArrowLeft, IconUser, IconDownload } from "@tabler/icons-react";
-import { toast } from "sonner";
+import { addToast} from "@heroui/react";
 import axios from "axios";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -83,15 +83,20 @@ export default function DetailInformasiUpahKaryawan() {
                     setTanggalPembayaran("");
                 }
             } else {
-                toast.error("Gagal memuat data", {
-                    description: response.data.message || "Terjadi kesalahan saat mengambil data"
+                addToast({
+                    title: "Gagal memuat data",
+                    description: response.data.message || "Terjadi kesalahan saat mengambil data",
+                    color: "danger",
                 });
             }
+            
         } catch (error) {
             console.error("Error fetching data:", error);
-            toast.error("Gagal memuat data", {
-                description: "Terjadi kesalahan saat mengambil data karyawan"
-            });
+            addToast({
+                title: "Gagal memuat data",
+                description: "Terjadi kesalahan saat mengambil data karyawan",
+                color: "danger",
+            })
         } finally {
             setLoading(false);
         }
@@ -107,17 +112,11 @@ export default function DetailInformasiUpahKaryawan() {
 
     const handleExport = async () => {
         if (!karyawan || !produk || pekerjaanList.length === 0) {
-            toast.error("Data tidak lengkap", {
-                description: "Tidak dapat mengekspor PDF karena data belum tersedia"
-            });
             return;
         }
 
         try {
             setIsExporting(true);
-            toast.info("Membuat PDF...", {
-                description: "Mohon tunggu sebentar"
-            });
 
             const doc = new jsPDF();
 
@@ -290,14 +289,12 @@ export default function DetailInformasiUpahKaryawan() {
             const fileName = `${karyawan.nama_karyawan.replace(/\s+/g, "_")}-${produk.nama_produk.replace(/\s+/g, "_")}.pdf`;
 
             doc.save(fileName);
-
-            toast.success("PDF berhasil diunduh", {
-                description: `File ${fileName} telah tersimpan`
-            });
         } catch (error) {
             console.error("Error exporting PDF:", error);
-            toast.error("Gagal membuat PDF", {
-                description: "Terjadi kesalahan saat membuat dokumen PDF"
+            addToast({
+                title: "Gagal mengekspor PDF",
+                description: "Terjadi kesalahan saat mengekspor data ke PDF",
+                color: "danger",
             });
         } finally {
             setIsExporting(false);
@@ -306,9 +303,6 @@ export default function DetailInformasiUpahKaryawan() {
 
     const handleStatusChange = async (newStatus: string) => {
         if (produk?.status !== "selesai") {
-            toast.warning("Tidak dapat mengubah status", {
-                description: "Pembayaran hanya bisa diubah jika produk sudah selesai"
-            });
             return;
         }
 
@@ -320,7 +314,7 @@ export default function DetailInformasiUpahKaryawan() {
 
             if (response.data.success) {
                 setStatusPembayaran(newStatus);
-
+            
                 if (newStatus === "dibayar") {
                     const today = new Date().toLocaleDateString("id-ID", {
                         day: "numeric",
@@ -331,20 +325,24 @@ export default function DetailInformasiUpahKaryawan() {
                 } else {
                     setTanggalPembayaran("");
                 }
-
-                toast.success("Status berhasil diubah", {
-                    description: `Status pembayaran telah diubah menjadi ${newStatus === "dibayar" ? "Sudah Dibayar" : "Belum Dibayar"}`
+            
+                addToast({
+                    title: "Status berhasil diubah",
+                    description: `Status pembayaran telah diubah menjadi ${
+                        newStatus === "dibayar" ? "Sudah Dibayar" : "Belum Dibayar"
+                    }`,
+                    color: "success",
                 });
+            
             } else {
-                toast.error("Gagal mengubah status", {
-                    description: response.data.message || "Terjadi kesalahan"
+                addToast({
+                    title: "Gagal mengubah status",
+                    description: response.data.message || "Terjadi kesalahan",
+                    color: "danger",
                 });
-            }
+            }            
         } catch (error) {
             console.error("Error updating status:", error);
-            toast.error("Gagal mengubah status", {
-                description: "Terjadi kesalahan saat mengubah status pembayaran"
-            });
         }
     };
 

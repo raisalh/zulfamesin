@@ -25,10 +25,10 @@ export interface LaporanKaryawan {
     id_karyawan: number;
     nama_karyawan: string;
     total_pekerjaan: number;
-    total_unit: number; 
-    unit_selesai: number;  
+    total_unit: number;
+    unit_selesai: number;
     unit_sisa: number;
-    is_deleted: boolean; 
+    is_deleted: boolean;
 }
 
 export interface LaporanKaryawanDetail {
@@ -51,7 +51,7 @@ export interface LaporanUpah {
     total_upah: number;
     dibayar: number;
     belum_dibayar: number;
-    is_deleted: boolean; 
+    is_deleted: boolean;
 }
 
 export interface LaporanUpahDetail {
@@ -157,7 +157,7 @@ export interface CashflowSummary {
 }
 
 export interface CashflowData {
-    periode: string; 
+    periode: string;
     pemasukan: number;
     pengeluaran: number;
 }
@@ -291,7 +291,7 @@ export async function getLaporanKaryawan(params: {
             query += ` AND MONTH(p.tanggal_mulai) = ?`;
             queryParams.push(params.bulan);
         }
-        
+
         query += ` GROUP BY k.id_karyawan ORDER BY unit_selesai DESC`;
 
         const [rows] = await pool.query(query, queryParams);
@@ -376,7 +376,7 @@ export async function getLaporanUpah(params: {
         `;
 
         const queryParams: any[] = [];
-        
+
         if (params.tahun) {
             query += ` AND YEAR(p.tanggal_mulai) = ?`;
             queryParams.push(params.tahun);
@@ -426,7 +426,7 @@ export async function getLaporanUpahPerProduk(params: {
         `;
 
         const queryParams: any[] = [];
-        
+
         if (params.tahun) {
             query += ` AND YEAR(p.tanggal_mulai) = ?`;
             queryParams.push(params.tahun);
@@ -977,7 +977,7 @@ export async function getCashflowMingguan(): Promise<{
         const [dataRows] = await pool.query(`
             SELECT 
                 DATE(k.tanggal) as periode,
-                DAYNAME(k.tanggal) as nama_hari,
+                DAYOFWEEK(k.tanggal) as day_num,  -- Tambahkan ini (1=Minggu, 2=Senin, dst)
                 COALESCE(SUM(CASE WHEN k.tipe = 'pemasukan' THEN k.amount ELSE 0 END), 0) as pemasukan,
                 COALESCE(SUM(CASE WHEN k.tipe = 'pengeluaran' THEN k.amount ELSE 0 END), 0) as pengeluaran_manual
             FROM keuangan k
@@ -985,7 +985,7 @@ export async function getCashflowMingguan(): Promise<{
             WHERE k.tanggal >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
             AND k.tanggal <= CURDATE()
             AND p.deleted_at IS NULL
-            GROUP BY DATE(k.tanggal), DAYNAME(k.tanggal)
+            GROUP BY DATE(k.tanggal), DAYOFWEEK(k.tanggal)
             ORDER BY periode ASC
         `);
 
@@ -1002,6 +1002,8 @@ export async function getCashflowMingguan(): Promise<{
             GROUP BY DATE(uk.tanggal_pembayaran)
         `);
 
+        const namaHari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
         const upahMap = new Map();
         (upahRows as any[]).forEach(row => {
             upahMap.set(row.periode.toISOString().split('T')[0], parseFloat(row.upah_dibayar || 0));
@@ -1010,9 +1012,9 @@ export async function getCashflowMingguan(): Promise<{
         const chartData: CashflowData[] = (dataRows as any[]).map(row => {
             const tanggal = new Date(row.periode).toISOString().split('T')[0];
             const upah = upahMap.get(tanggal) || 0;
-            
+
             return {
-                periode: row.nama_hari, 
+                periode: namaHari[row.day_num - 1], 
                 pemasukan: parseFloat(row.pemasukan || 0),
                 pengeluaran: parseFloat(row.pengeluaran_manual || 0) + upah
             };
@@ -1062,7 +1064,7 @@ export async function getCashflowBulanan(): Promise<{
 
         const summaryData = (summaryRows as any)[0];
         const upahSummaryData = (upahSummaryRows as any)[0];
-        
+
         const total_pemasukan = parseFloat(summaryData.total_pemasukan || 0);
         const total_pengeluaran_manual = parseFloat(summaryData.total_pengeluaran_manual || 0);
         const total_upah_dibayar = parseFloat(upahSummaryData.total_upah_dibayar || 0);
@@ -1122,7 +1124,7 @@ export async function getCashflowBulanan(): Promise<{
         const chartData: CashflowData[] = allPeriods.map(period => {
             const data = dataMap.get(period);
             const upah = upahMap.get(period) || 0;
-            
+
             return {
                 periode: period,
                 pemasukan: data ? data.pemasukan : 0,
@@ -1172,7 +1174,7 @@ export async function getCashflowTahunan(): Promise<{
 
         const summaryData = (summaryRows as any)[0];
         const upahSummaryData = (upahSummaryRows as any)[0];
-        
+
         const total_pemasukan = parseFloat(summaryData.total_pemasukan || 0);
         const total_pengeluaran_manual = parseFloat(summaryData.total_pengeluaran_manual || 0);
         const total_upah_dibayar = parseFloat(upahSummaryData.total_upah_dibayar || 0);
@@ -1217,11 +1219,11 @@ export async function getCashflowTahunan(): Promise<{
 
         const namaBulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
         const chartData: CashflowData[] = [];
-        
+
         for (let i = 1; i <= 12; i++) {
             const data = dataMap.get(i);
             const upah = upahMap.get(i) || 0;
-            
+
             chartData.push({
                 periode: namaBulan[i - 1],
                 pemasukan: data ? data.pemasukan : 0,

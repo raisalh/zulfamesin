@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { toast } from 'sonner';
 import { IconChartBar, IconUsers, IconCash, IconFilter, IconRefresh, IconFileSpreadsheet, IconClock, IconTarget, IconTrendingUp, IconTrendingDown, IconWallet} from '@tabler/icons-react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -67,9 +66,6 @@ export default function LaporanPage() {
             }
         } catch (error: any) {
             console.error('Error loading data:', error);
-            toast.error('Gagal memuat data laporan', {
-                description: error?.response?.data?.message || 'Terjadi kesalahan saat memuat data'
-            });
         } finally {
             setLoading(false);
         }
@@ -205,7 +201,6 @@ export default function LaporanPage() {
             status: '',
             id_karyawan: ''
         });
-        toast.success('Filter direset');
     };
 
     const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];

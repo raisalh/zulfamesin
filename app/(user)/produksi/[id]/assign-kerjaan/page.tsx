@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { IconPlus, IconTrash, IconCheck, IconAlertTriangle, IconSearch, IconX } from "@tabler/icons-react";
-import { toast } from "sonner";
 import axios from "axios";
 import {
     Input,
@@ -13,6 +12,7 @@ import {
     Chip,
     Card,
     CardBody,
+    addToast
 } from "@heroui/react";
 
 interface Karyawan {
@@ -42,6 +42,8 @@ interface FormErrors {
     upah_per_unit?: string;
     karyawan_ids?: string;
     manual_assignments?: string;
+    upah_harian?: string;
+    upah?: string;
 }
 
 export default function WorkAssignmentPage() {
@@ -89,7 +91,6 @@ export default function WorkAssignmentPage() {
             }
         } catch (error) {
             console.error("Error fetching data:", error);
-            toast.error("Gagal memuat data");
         } finally {
             setLoadingData(false);
         }
@@ -112,7 +113,6 @@ export default function WorkAssignmentPage() {
 
     const handleRemovePekerjaan = (id: string) => {
         if (pekerjaanList.length === 1) {
-            toast.warning("Minimal harus ada 1 pekerjaan");
             return;
         }
         setPekerjaanList(pekerjaanList.filter((p) => p.id !== id));
@@ -302,27 +302,40 @@ export default function WorkAssignmentPage() {
 
             if (!p.nama_pekerjaan.trim()) {
                 fieldErrors.nama_pekerjaan = "Nama pekerjaan harus diisi";
-                toast.error("Nama pekerjaan harus diisi");
                 hasError = true;
             }
 
-            if (!p.upah_per_unit.trim()) {
-                fieldErrors.upah_per_unit = "Upah harus diisi";
-                toast.error("Upah harus diisi");
+            const hasAtLeastOneUpah =
+                (p.upah_per_unit && p.upah_per_unit.trim() !== "") ||
+                (p.upah_harian && p.upah_harian.trim() !== "");
+
+            if (!hasAtLeastOneUpah) {
+                fieldErrors.upah = "Isi salah satu: Upah per Pola atau Upah Harian";
                 hasError = true;
-            } else if (!/^[0-9]+$/.test(p.upah_per_unit)) {
-                fieldErrors.upah_per_unit = "Upah hanya boleh berisi angka";
-                toast.error("Upah hanya boleh berisi angka");
-                hasError = true;
-            } else if (parseFloat(p.upah_per_unit) <= 0) {
-                fieldErrors.upah_per_unit = "Upah harus lebih dari 0";
-                toast.error("Upah harus lebih dari 0");
-                hasError = true;
+            }
+
+            if (p.upah_per_unit && p.upah_per_unit.trim() !== "") {
+                if (!/^[0-9]+$/.test(p.upah_per_unit)) {
+                    fieldErrors.upah_per_unit = "Upah per pola harus angka";
+                    hasError = true;
+                } else if (parseFloat(p.upah_per_unit) <= 0) {
+                    fieldErrors.upah_per_unit = "Upah per pola harus lebih dari 0";
+                    hasError = true;
+                }
+            }
+
+            if (p.upah_harian && p.upah_harian.trim() !== "") {
+                if (!/^[0-9]+$/.test(p.upah_harian)) {
+                    fieldErrors.upah_harian = "Upah harian harus angka";
+                    hasError = true;
+                } else if (parseFloat(p.upah_harian) <= 0) {
+                    fieldErrors.upah_harian = "Upah harian harus lebih dari 0";
+                    hasError = true;
+                }
             }
 
             if (p.karyawan_ids.length === 0) {
                 fieldErrors.karyawan_ids = "Pilih minimal 1 karyawan";
-                toast.error("Pilih minimal 1 karyawan untuk setiap pekerjaan");
                 hasError = true;
             }
 
@@ -335,16 +348,12 @@ export default function WorkAssignmentPage() {
 
                 if (hasInvalidUnit) {
                     fieldErrors.manual_assignments = "Semua karyawan harus memiliki pola lebih dari 0";
-                    toast.error("Semua karyawan harus memiliki pola lebih dari 0");
                     hasError = true;
                 } else {
                     const status = getManualDistributionStatus(p);
                     if (status.status !== "valid") {
                         const diff = totalPola - totalAssigned;
                         fieldErrors.manual_assignments = `Total pola harus ${totalPola}`;
-                        toast.error(
-                            `Total pola untuk "${p.nama_pekerjaan}" harus ${totalPola}. Saat ini ${totalAssigned} (${diff > 0 ? 'kurang' : 'lebih'} ${Math.abs(diff)} pola)`
-                        );
                         hasError = true;
                     }
                 }
@@ -384,9 +393,11 @@ export default function WorkAssignmentPage() {
         );
 
         if (validPekerjaan.length === 0) {
-            toast.error(
-                "Harap lengkapi minimal 1 pekerjaan dengan nama, upah, dan karyawan"
-            );
+            addToast({
+                title: "Minimal harus ada 1",
+                description: `Harap lengkapi minimal 1 pekerjaan dengan nama, upah, dan karyawan`,
+                color: "danger",
+            }); 
             return;
         }
 
@@ -434,19 +445,28 @@ export default function WorkAssignmentPage() {
             const response = await axios.post("/api/work-assignment", payload);
 
             if (response.data.success) {
-                toast.success("Pekerjaan berhasil disimpan!");
                 router.push("/produksi");
             } else {
-                toast.error(response.data.message || "Gagal menyimpan pekerjaan");
+                addToast({
+                    title: "Gagal menyimpan pekerjaan",
+                    description: `Gagal menyimpan pekerjaan: ${response.data.message || ''}`,
+                    color: "danger",
+                }); 
             }
         } catch (error) {
             console.error("Error submitting:", error);
             if (axios.isAxiosError(error)) {
-                toast.error(
-                    error.response?.data?.message || "Terjadi kesalahan saat menyimpan"
-                );
+                addToast({
+                    title: "Gagal menyimpan pekerjaan",
+                    description: `Terjadi kesalahan saat menyimpan pekerjaan`,
+                    color: "danger",
+                }); 
             } else {
-                toast.error("Terjadi kesalahan saat menyimpan pekerjaan");
+                addToast({
+                    title: "Gagal menyimpan pekerjaan",
+                    description: `Terjadi kesalahan saat menyimpan pekerjaan`,
+                    color: "danger",
+                }); 
             }
         } finally {
             setLoading(false);
@@ -546,8 +566,8 @@ export default function WorkAssignmentPage() {
                                                         e.target.value
                                                     )
                                                 }
-                                                isInvalid={!!errors[pekerjaan.id]?.upah_per_unit}
-                                                errorMessage={errors[pekerjaan.id]?.upah_per_unit}
+                                                isInvalid={!!errors[pekerjaan.id]?.upah_harian}
+                                                errorMessage={errors[pekerjaan.id]?.upah_harian}
                                             />
                                         </div>
 

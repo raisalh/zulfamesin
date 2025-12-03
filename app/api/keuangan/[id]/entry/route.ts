@@ -54,7 +54,7 @@ export async function PUT(
             );
         }
 
-        if (!body.tipe || !body.keterangan || !body.amount || !body.tanggal) {
+        if (!body.tipe || !body.keterangan || !body.amount) {
             return NextResponse.json(
                 { success: false, message: 'Semua field wajib diisi' },
                 { status: 400 }
@@ -64,8 +64,7 @@ export async function PUT(
         const updateData = {
             tipe: body.tipe,
             keterangan: body.keterangan,
-            amount: body.amount,
-            tanggal: body.tanggal
+            amount: body.amount
         };
 
         await updateKeuangan(id_keuangan, updateData);

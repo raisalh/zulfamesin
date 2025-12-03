@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { IconPlus, IconAlertTriangle, IconLoader2, IconTrash } from '@tabler/icons-react';
-import { Button, Card, CardBody } from "@heroui/react";
-import { toast } from "sonner";
+import { Button, Card, CardBody, addToast } from "@heroui/react";
 import axios from "axios";
 
 interface KeuanganItem {
@@ -101,7 +100,7 @@ export default function TambahKeuanganPage() {
             ...keuanganList,
             {
                 id: Date.now().toString(),
-                tipe: "pemasukan",
+                tipe: "",
                 keterangan: "",
                 amount: "",
                 tanggal: new Date().toISOString().split('T')[0]
@@ -111,7 +110,11 @@ export default function TambahKeuanganPage() {
 
     const handleRemoveKeuangan = (id: string) => {
         if (keuanganList.length === 1) {
-            toast.warning("Minimal harus ada 1 catatan keuangan");
+            addToast({
+                title: "Minimal harus ada 1 ",
+                description: `Minimal harus ada 1 catatan keuangan`,
+                color: "danger",
+            });
             return;
         }
         setKeuanganList(keuanganList.filter((p) => p.id !== id));
@@ -132,7 +135,6 @@ export default function TambahKeuanganPage() {
         e.preventDefault();
 
         if (!validateForm()) {
-            toast.error("Mohon lengkapi semua field yang wajib diisi");
             return;
         }
 
@@ -152,14 +154,16 @@ export default function TambahKeuanganPage() {
             });
 
             if (response.data.success) {
-                toast.success('Keuangan berhasil disimpan');
-                router.push(`/produksi/${idProduk}/keuangan}`);
+                router.push(`/produksi/${idProduk}/keuangan`);
             } else {
-                toast.error(response.data.message || 'Gagal menyimpan keuangan');
+                addToast({
+                    title: "Gagal",
+                    description: `Gagal menyimpan keuangan`,
+                    color: "danger",
+                });
             }
         } catch (error) {
             console.error('Error saving keuangan:', error);
-            toast.error('Terjadi kesalahan saat menyimpan keuangan');
         } finally {
             setLoading(false);
         }

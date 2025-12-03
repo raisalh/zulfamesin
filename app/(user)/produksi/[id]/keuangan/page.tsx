@@ -28,9 +28,9 @@ import {
     ModalHeader,
     ModalBody,
     ModalFooter,
-    Chip
+    Chip,
+    addToast
 } from "@heroui/react";
-import { toast } from "sonner";
 import axios from "axios";
 
 interface KeuanganSummary {
@@ -105,7 +105,6 @@ export default function KeuanganPage() {
             }
         } catch (error) {
             console.error('Error fetching data:', error);
-            toast.error('Gagal mengambil data keuangan');
         } finally {
             setLoading(false);
         }
@@ -113,7 +112,6 @@ export default function KeuanganPage() {
 
     const handleEdit = (item: KeuanganItem) => {
         if (item.source === 'upah') {
-            toast.warning('Data upah tidak dapat diedit. Silakan ubah dari menu Upah Karyawan.');
             return;
         }
 
@@ -121,7 +119,7 @@ export default function KeuanganPage() {
         setEditForm({
             tipe: item.tipe,
             keterangan: item.keterangan,
-            amount: item.amount.toString(),
+            amount: String(Number(item.amount)),
             tanggal: new Date(item.tanggal).toISOString().split('T')[0]
         });
         setEditErrors({});
@@ -130,7 +128,6 @@ export default function KeuanganPage() {
 
     const handleDelete = (item: KeuanganItem) => {
         if (item.source === 'upah') {
-            toast.warning('Data upah tidak dapat dihapus. Silakan ubah dari menu Upah Karyawan.');
             return;
         }
 
@@ -180,13 +177,16 @@ export default function KeuanganPage() {
             });
 
             if (response.data.success) {
-                toast.success('Keuangan berhasil diperbarui');
                 setIsEditModalOpen(false);
                 fetchData();
             }
         } catch (error) {
             console.error('Error updating:', error);
-            toast.error('Gagal memperbarui keuangan');
+            addToast({
+                title: "Gagal memperbarui keuangan",
+                description: `Gagal memperbarui keuangan. Silakan coba lagi.`,
+                color: "danger",
+            }); 
         } finally {
             setIsSaving(false);
         }
@@ -201,13 +201,16 @@ export default function KeuanganPage() {
             const response = await axios.delete(`/api/keuangan/${deletingItem.id}/entry`);
 
             if (response.data.success) {
-                toast.success('Keuangan berhasil dihapus');
                 setIsDeleteModalOpen(false);
                 fetchData();
             }
         } catch (error) {
             console.error('Error deleting:', error);
-            toast.error('Gagal menghapus keuangan');
+            addToast({
+                title: "Gagal menghapus keuangan",
+                description: `Gagal menghapus keuangan. Silakan coba lagi.`,
+                color: "danger",
+            }); 
         } finally {
             setIsDeleting(false);
         }
@@ -246,7 +249,7 @@ export default function KeuanganPage() {
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <button
-                            onClick={() => router.back()}
+                            onClick={() => router.push(`/produksi`)}
                             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                         >
                             <IconArrowLeft size={20} />

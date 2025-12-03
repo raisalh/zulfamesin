@@ -163,7 +163,7 @@ export default function AbsensiPage() {
                         <div>
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={() => router.back()}
+                                    onClick={() => router.push(`/dashboard`)}
                                     className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
                                 >
                                     <IconArrowLeft size={24} />

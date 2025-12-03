@@ -6,8 +6,6 @@ import { IconShirt, IconCurrencyDollar, IconAlertCircle, IconUsers, IconCalendar
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input } from "@heroui/react";
 import axios from 'axios';
-import { toast } from 'sonner';
-
 interface DashboardData {
     stats: {
         produkBulanIni: number;
@@ -116,7 +114,6 @@ export default function BerandaPage() {
             setData(response.data);
         } catch (error) {
             console.error('Error fetching dashboard:', error);
-            toast.error('Gagal memuat data dashboard');
         } finally {
             setLoading(false);
         }
@@ -174,7 +171,6 @@ export default function BerandaPage() {
 
     const handleSubmit = async () => {
         if (!validateForm()) {
-            toast.error('Mohon periksa kembali form Anda');
             return;
         }
 
@@ -182,10 +178,8 @@ export default function BerandaPage() {
             setIsSubmitting(true);
             await fetchDashboardData(distribusiConfig);
             setIsModalOpen(false);
-            toast.success('Distribusi upah berhasil diperbarui');
         } catch (error) {
             console.error('Error updating distribution:', error);
-            toast.error('Gagal memperbarui distribusi upah');
         } finally {
             setIsSubmitting(false);
         }
