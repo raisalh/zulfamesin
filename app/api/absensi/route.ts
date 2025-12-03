@@ -35,21 +35,19 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // Query 1: Ringkasan absensi per tanggal
         const [summaryRows] = await pool.query(
             `SELECT 
         DATE(pp.tanggal_update) as tanggal,
         COUNT(DISTINCT pk.id_karyawan) as jumlah_hadir
-      FROM progress_pekerjaan pp
-      INNER JOIN pekerjaan_karyawan pk ON pp.id_pekerjaan_karyawan = pk.id_pekerjaan_karyawan
-      WHERE MONTH(pp.tanggal_update) = ? 
-        AND YEAR(pp.tanggal_update) = ?
-      GROUP BY DATE(pp.tanggal_update)
-      ORDER BY tanggal`,
+        FROM progress_pekerjaan pp
+        INNER JOIN pekerjaan_karyawan pk ON pp.id_pekerjaan_karyawan = pk.id_pekerjaan_karyawan
+        WHERE MONTH(pp.tanggal_update) = ? 
+            AND YEAR(pp.tanggal_update) = ?
+        GROUP BY DATE(pp.tanggal_update)
+        ORDER BY tanggal`,
             [monthNum, yearNum]
         );
 
-        // Query 2: Detail pekerja per tanggal dengan pekerjaan
         const [detailRows] = await pool.query(
             `SELECT 
         DATE(pp.tanggal_update) as tanggal,
@@ -61,20 +59,19 @@ export async function GET(request: NextRequest) {
         jp.nama_pekerjaan,
         SUM(pp.unit_progress) as total_unit,
         COUNT(DISTINCT pp.id_progress) as jumlah_progress
-      FROM progress_pekerjaan pp
-      INNER JOIN pekerjaan_karyawan pk ON pp.id_pekerjaan_karyawan = pk.id_pekerjaan_karyawan
-      INNER JOIN karyawan k ON pk.id_karyawan = k.id_karyawan
-      INNER JOIN produksi p ON pk.id_produk = p.id_produk
-      INNER JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
-      WHERE MONTH(pp.tanggal_update) = ? 
-        AND YEAR(pp.tanggal_update) = ?
-      GROUP BY DATE(pp.tanggal_update), k.id_karyawan, k.nama_karyawan, 
-               k.jenis_kelamin, p.nama_produk, p.warna, jp.nama_pekerjaan
-      ORDER BY tanggal, k.nama_karyawan`,
+        FROM progress_pekerjaan pp
+        INNER JOIN pekerjaan_karyawan pk ON pp.id_pekerjaan_karyawan = pk.id_pekerjaan_karyawan
+        INNER JOIN karyawan k ON pk.id_karyawan = k.id_karyawan
+        INNER JOIN produksi p ON pk.id_produk = p.id_produk
+        INNER JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
+        WHERE MONTH(pp.tanggal_update) = ? 
+            AND YEAR(pp.tanggal_update) = ?
+        GROUP BY DATE(pp.tanggal_update), k.id_karyawan, k.nama_karyawan, 
+                k.jenis_kelamin, p.nama_produk, p.warna, jp.nama_pekerjaan
+        ORDER BY tanggal, k.nama_karyawan`,
             [monthNum, yearNum]
         );
 
-        // Query 3: Total karyawan unik dalam bulan ini
         const [totalKaryawanRows] = await pool.query(
             `SELECT COUNT(DISTINCT pk.id_karyawan) as total
       FROM progress_pekerjaan pp
@@ -84,14 +81,12 @@ export async function GET(request: NextRequest) {
             [monthNum, yearNum]
         );
 
-        // Format data ringkasan
         const summary: { [key: string]: number } = {};
         (summaryRows as any[]).forEach((row) => {
             const tanggal = new Date(row.tanggal).toISOString().split("T")[0];
             summary[tanggal] = Number(row.jumlah_hadir);
         });
 
-        // Format data detail - group by tanggal
         const details: {
             [key: string]: Array<{
                 id_karyawan: number;

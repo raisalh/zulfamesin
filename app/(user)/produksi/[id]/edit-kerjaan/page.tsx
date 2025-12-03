@@ -778,7 +778,6 @@ export default function EditWorkAssignmentPage() {
                                             />
                                         </div>
 
-                                        {/* Mode Distribusi */}
                                         <div className="mb-4">
                                             <RadioGroup
                                                 label="Mode Distribusi Target"
@@ -793,7 +792,6 @@ export default function EditWorkAssignmentPage() {
                                             </RadioGroup>
                                         </div>
 
-                                        {/* Status Distribusi */}
                                         {distributionStatus && (
                                             <div
                                                 className="mb-4 flex items-center justify-between p-4 rounded-lg border-2"
@@ -861,7 +859,6 @@ export default function EditWorkAssignmentPage() {
                                             </div>
                                         )}
 
-                                        {/* Karyawan Terpilih */}
                                         <div className="mb-4">
                                             <label className="text-sm font-medium text-gray-700 mb-2 block">Karyawan Terpilih</label>
 
@@ -869,7 +866,6 @@ export default function EditWorkAssignmentPage() {
                                                 <p className="text-sm text-gray-500 italic">Belum ada karyawan terpilih</p>
                                             ) : (
                                                 <>
-                                                    {/* Warning jika ada karyawan yang keluar */}
                                                     {pekerjaan.assignments.some(a => a.is_deleted) && (
                                                         <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
                                                             <IconAlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -961,7 +957,6 @@ export default function EditWorkAssignmentPage() {
                                             )}
                                         </div>
 
-                                        {/* Tambah Karyawan */}
                                         <div className="mb-4">
                                             <label className="text-sm font-medium text-gray-700 mb-2 block">Tambah Karyawan</label>
 
@@ -992,7 +987,6 @@ export default function EditWorkAssignmentPage() {
                                                 className="mb-3"
                                             />
 
-                                            {/* Karyawan Upah Pola */}
                                             <div className="mb-4">
                                                 <p className="text-xs font-semibold text-gray-600 mb-2 uppercase">
                                                     Karyawan Upah Per Pola
@@ -1016,7 +1010,6 @@ export default function EditWorkAssignmentPage() {
                                                 </div>
                                             </div>
 
-                                            {/* Karyawan Upah Harian */}
                                             <div className="mb-2">
                                                 <p className="text-xs font-semibold text-gray-600 mb-2 uppercase">
                                                     Karyawan Upah Harian

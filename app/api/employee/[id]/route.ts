@@ -96,7 +96,6 @@ export async function PUT(
   }
 }
 
-// SOFT DELETE - Hanya update deleted_at, tidak menghapus data
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -121,7 +120,6 @@ export async function DELETE(
       );
     }
 
-    // Cek apakah sudah dihapus sebelumnya
     if (existing.deleted_at !== null) {
       return NextResponse.json(
         { success: false, message: "Karyawan sudah dihapus sebelumnya" },
@@ -129,7 +127,6 @@ export async function DELETE(
       );
     }
 
-    // Soft delete - hanya update deleted_at
     await deleteKaryawan(id);
 
     return NextResponse.json({

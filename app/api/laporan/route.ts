@@ -14,7 +14,10 @@ import {
     getTingkatKehadiran,
     getWorkloadBalance,
     getUpahBelumDibayar,
-    getPerbandinganUpahBulanan
+    getPerbandinganUpahBulanan,
+    getCashflowMingguan,
+    getCashflowBulanan,
+    getCashflowTahunan
 } from '@/lib/laporan';
 
 export async function GET(request: NextRequest) {
@@ -170,6 +173,37 @@ export async function GET(request: NextRequest) {
                 }
                 const data = await getPerbandinganUpahBulanan({ tahun, bulan });
                 console.log('Perbandingan bulanan:', data);
+                return NextResponse.json({ success: true, data });
+            }
+        }
+
+        if (category === 'cashflow') {
+            const periode = searchParams.get('periode') || 'mingguan';
+        
+            if (periode === 'mingguan') {
+                const data = await getCashflowMingguan();
+                return NextResponse.json({ success: true, data });
+            }
+        
+            if (periode === 'bulanan') {
+                if (!tahun || !bulan) {
+                    return NextResponse.json(
+                        { success: false, message: 'Tahun dan bulan harus diisi untuk periode bulanan' },
+                        { status: 400 }
+                    );
+                }
+                const data = await getCashflowBulanan();
+                return NextResponse.json({ success: true, data });
+            }
+        
+            if (periode === 'tahunan') {
+                if (!tahun) {
+                    return NextResponse.json(
+                        { success: false, message: 'Tahun harus diisi untuk periode tahunan' },
+                        { status: 400 }
+                    );
+                }
+                const data = await getCashflowTahunan();
                 return NextResponse.json({ success: true, data });
             }
         }

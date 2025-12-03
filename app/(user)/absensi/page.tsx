@@ -220,7 +220,6 @@ export default function AbsensiPage() {
                     </div>
                 </div>
 
-                {/* Statistik */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                     <Card>
                         <CardBody className="p-4">

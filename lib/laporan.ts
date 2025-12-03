@@ -149,6 +149,19 @@ export interface PerbandinganUpahBulanan {
     };
 }
 
+
+export interface CashflowSummary {
+    total_pemasukan: number;
+    total_pengeluaran: number;
+    saldo: number;
+}
+
+export interface CashflowData {
+    periode: string; 
+    pemasukan: number;
+    pengeluaran: number;
+}
+
 export async function getLaporanProduksiPerBulan(params: {
     tahun?: number;
     bulan?: number;
@@ -936,6 +949,296 @@ export async function getPerbandinganUpahBulanan(params: {
         };
     } catch (error) {
         console.error('Error getting perbandingan upah bulanan:', error);
+        throw error;
+    }
+}
+
+export async function getCashflowMingguan(): Promise<{
+    summary: CashflowSummary;
+    data: CashflowData[];
+}> {
+    try {
+        const [summaryRows] = await pool.query(`
+            SELECT 
+                COALESCE(SUM(CASE WHEN k.tipe = 'pemasukan' THEN k.amount ELSE 0 END), 0) as total_pemasukan_manual,
+                COALESCE(SUM(CASE WHEN k.tipe = 'pengeluaran' THEN k.amount ELSE 0 END), 0) as total_pengeluaran_manual,
+                COALESCE(SUM(uk.total_upah), 0) as total_upah_dibayar
+            FROM keuangan k
+            LEFT JOIN produksi p ON k.id_produk = p.id_produk
+            LEFT JOIN upah_karyawan uk ON k.id_produk = uk.id_produk AND uk.status_pembayaran = 'dibayar'
+            WHERE YEARWEEK(k.tanggal, 1) = YEARWEEK(CURDATE(), 1)
+            AND p.deleted_at IS NULL
+        `);
+
+        const summaryData = (summaryRows as any)[0];
+        const total_pemasukan = parseFloat(summaryData.total_pemasukan_manual || 0);
+        const total_pengeluaran = parseFloat(summaryData.total_pengeluaran_manual || 0) + parseFloat(summaryData.total_upah_dibayar || 0);
+
+        const [dataRows] = await pool.query(`
+            SELECT 
+                DATE(k.tanggal) as periode,
+                DAYNAME(k.tanggal) as nama_hari,
+                COALESCE(SUM(CASE WHEN k.tipe = 'pemasukan' THEN k.amount ELSE 0 END), 0) as pemasukan,
+                COALESCE(SUM(CASE WHEN k.tipe = 'pengeluaran' THEN k.amount ELSE 0 END), 0) as pengeluaran_manual
+            FROM keuangan k
+            LEFT JOIN produksi p ON k.id_produk = p.id_produk
+            WHERE k.tanggal >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+            AND k.tanggal <= CURDATE()
+            AND p.deleted_at IS NULL
+            GROUP BY DATE(k.tanggal), DAYNAME(k.tanggal)
+            ORDER BY periode ASC
+        `);
+
+        const [upahRows] = await pool.query(`
+            SELECT 
+                DATE(uk.tanggal_pembayaran) as periode,
+                COALESCE(SUM(uk.total_upah), 0) as upah_dibayar
+            FROM upah_karyawan uk
+            LEFT JOIN produksi p ON uk.id_produk = p.id_produk
+            WHERE uk.tanggal_pembayaran >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+            AND uk.tanggal_pembayaran <= CURDATE()
+            AND uk.status_pembayaran = 'dibayar'
+            AND p.deleted_at IS NULL
+            GROUP BY DATE(uk.tanggal_pembayaran)
+        `);
+
+        const upahMap = new Map();
+        (upahRows as any[]).forEach(row => {
+            upahMap.set(row.periode.toISOString().split('T')[0], parseFloat(row.upah_dibayar || 0));
+        });
+
+        const chartData: CashflowData[] = (dataRows as any[]).map(row => {
+            const tanggal = new Date(row.periode).toISOString().split('T')[0];
+            const upah = upahMap.get(tanggal) || 0;
+            
+            return {
+                periode: row.nama_hari, 
+                pemasukan: parseFloat(row.pemasukan || 0),
+                pengeluaran: parseFloat(row.pengeluaran_manual || 0) + upah
+            };
+        });
+
+        return {
+            summary: {
+                total_pemasukan,
+                total_pengeluaran,
+                saldo: total_pemasukan - total_pengeluaran
+            },
+            data: chartData
+        };
+    } catch (error) {
+        console.error('Error getting cashflow mingguan:', error);
+        throw error;
+    }
+}
+
+export async function getCashflowBulanan(): Promise<{
+    summary: CashflowSummary;
+    data: CashflowData[];
+}> {
+    try {
+        const tahun = new Date().getFullYear();
+        const bulan = new Date().getMonth() + 1;
+
+        const [summaryRows] = await pool.query(`
+            SELECT 
+                COALESCE(SUM(CASE WHEN k.tipe = 'pemasukan' THEN k.amount ELSE 0 END), 0) as total_pemasukan,
+                COALESCE(SUM(CASE WHEN k.tipe = 'pengeluaran' THEN k.amount ELSE 0 END), 0) as total_pengeluaran_manual
+            FROM keuangan k
+            INNER JOIN produksi p ON k.id_produk = p.id_produk
+            WHERE YEAR(k.tanggal) = ? AND MONTH(k.tanggal) = ?
+            AND p.deleted_at IS NULL
+        `, [tahun, bulan]);
+
+        const [upahSummaryRows] = await pool.query(`
+            SELECT COALESCE(SUM(uk.total_upah), 0) as total_upah_dibayar
+            FROM upah_karyawan uk
+            INNER JOIN produksi p ON uk.id_produk = p.id_produk
+            WHERE YEAR(uk.tanggal_pembayaran) = ? 
+            AND MONTH(uk.tanggal_pembayaran) = ?
+            AND uk.status_pembayaran = 'dibayar'
+            AND p.deleted_at IS NULL
+        `, [tahun, bulan]);
+
+        const summaryData = (summaryRows as any)[0];
+        const upahSummaryData = (upahSummaryRows as any)[0];
+        
+        const total_pemasukan = parseFloat(summaryData.total_pemasukan || 0);
+        const total_pengeluaran_manual = parseFloat(summaryData.total_pengeluaran_manual || 0);
+        const total_upah_dibayar = parseFloat(upahSummaryData.total_upah_dibayar || 0);
+        const total_pengeluaran = total_pengeluaran_manual + total_upah_dibayar;
+
+        const [dataRows] = await pool.query(`
+            SELECT 
+                CASE 
+                    WHEN DAY(k.tanggal) BETWEEN 1 AND 7 THEN '1-7'
+                    WHEN DAY(k.tanggal) BETWEEN 8 AND 14 THEN '8-14'
+                    WHEN DAY(k.tanggal) BETWEEN 15 AND 21 THEN '15-21'
+                    WHEN DAY(k.tanggal) BETWEEN 22 AND 28 THEN '22-28'
+                    ELSE '29-30'
+                END as periode,
+                COALESCE(SUM(CASE WHEN k.tipe = 'pemasukan' THEN k.amount ELSE 0 END), 0) as pemasukan,
+                COALESCE(SUM(CASE WHEN k.tipe = 'pengeluaran' THEN k.amount ELSE 0 END), 0) as pengeluaran_manual
+            FROM keuangan k
+            INNER JOIN produksi p ON k.id_produk = p.id_produk
+            WHERE YEAR(k.tanggal) = ? AND MONTH(k.tanggal) = ?
+            AND p.deleted_at IS NULL
+            GROUP BY periode
+        `, [tahun, bulan]);
+
+        const [upahRows] = await pool.query(`
+            SELECT 
+                CASE 
+                    WHEN DAY(uk.tanggal_pembayaran) BETWEEN 1 AND 7 THEN '1-7'
+                    WHEN DAY(uk.tanggal_pembayaran) BETWEEN 8 AND 14 THEN '8-14'
+                    WHEN DAY(uk.tanggal_pembayaran) BETWEEN 15 AND 21 THEN '15-21'
+                    WHEN DAY(uk.tanggal_pembayaran) BETWEEN 22 AND 28 THEN '22-28'
+                    ELSE '29-30'
+                END as periode,
+                COALESCE(SUM(uk.total_upah), 0) as upah_dibayar
+            FROM upah_karyawan uk
+            INNER JOIN produksi p ON uk.id_produk = p.id_produk
+            WHERE YEAR(uk.tanggal_pembayaran) = ? 
+            AND MONTH(uk.tanggal_pembayaran) = ?
+            AND uk.status_pembayaran = 'dibayar'
+            AND p.deleted_at IS NULL
+            GROUP BY periode
+        `, [tahun, bulan]);
+
+        const dataMap = new Map();
+        (dataRows as any[]).forEach(row => {
+            dataMap.set(row.periode, {
+                pemasukan: parseFloat(row.pemasukan || 0),
+                pengeluaran_manual: parseFloat(row.pengeluaran_manual || 0)
+            });
+        });
+
+        const upahMap = new Map();
+        (upahRows as any[]).forEach(row => {
+            upahMap.set(row.periode, parseFloat(row.upah_dibayar || 0));
+        });
+
+        const allPeriods = ['1-7', '8-14', '15-21', '22-28', '29-30'];
+        const chartData: CashflowData[] = allPeriods.map(period => {
+            const data = dataMap.get(period);
+            const upah = upahMap.get(period) || 0;
+            
+            return {
+                periode: period,
+                pemasukan: data ? data.pemasukan : 0,
+                pengeluaran: data ? data.pengeluaran_manual + upah : upah
+            };
+        });
+
+        return {
+            summary: {
+                total_pemasukan,
+                total_pengeluaran,
+                saldo: total_pemasukan - total_pengeluaran
+            },
+            data: chartData
+        };
+    } catch (error) {
+        console.error('Error getting cashflow bulanan:', error);
+        throw error;
+    }
+}
+
+export async function getCashflowTahunan(): Promise<{
+    summary: CashflowSummary;
+    data: CashflowData[];
+}> {
+    try {
+        const tahun = new Date().getFullYear();
+
+        const [summaryRows] = await pool.query(`
+            SELECT 
+                COALESCE(SUM(CASE WHEN k.tipe = 'pemasukan' THEN k.amount ELSE 0 END), 0) as total_pemasukan,
+                COALESCE(SUM(CASE WHEN k.tipe = 'pengeluaran' THEN k.amount ELSE 0 END), 0) as total_pengeluaran_manual
+            FROM keuangan k
+            INNER JOIN produksi p ON k.id_produk = p.id_produk
+            WHERE YEAR(k.tanggal) = ?
+            AND p.deleted_at IS NULL
+        `, [tahun]);
+
+        const [upahSummaryRows] = await pool.query(`
+            SELECT COALESCE(SUM(uk.total_upah), 0) as total_upah_dibayar
+            FROM upah_karyawan uk
+            INNER JOIN produksi p ON uk.id_produk = p.id_produk
+            WHERE YEAR(uk.tanggal_pembayaran) = ?
+            AND uk.status_pembayaran = 'dibayar'
+            AND p.deleted_at IS NULL
+        `, [tahun]);
+
+        const summaryData = (summaryRows as any)[0];
+        const upahSummaryData = (upahSummaryRows as any)[0];
+        
+        const total_pemasukan = parseFloat(summaryData.total_pemasukan || 0);
+        const total_pengeluaran_manual = parseFloat(summaryData.total_pengeluaran_manual || 0);
+        const total_upah_dibayar = parseFloat(upahSummaryData.total_upah_dibayar || 0);
+        const total_pengeluaran = total_pengeluaran_manual + total_upah_dibayar;
+
+        const [dataRows] = await pool.query(`
+            SELECT 
+                MONTH(k.tanggal) as bulan_num,
+                COALESCE(SUM(CASE WHEN k.tipe = 'pemasukan' THEN k.amount ELSE 0 END), 0) as pemasukan,
+                COALESCE(SUM(CASE WHEN k.tipe = 'pengeluaran' THEN k.amount ELSE 0 END), 0) as pengeluaran_manual
+            FROM keuangan k
+            INNER JOIN produksi p ON k.id_produk = p.id_produk
+            WHERE YEAR(k.tanggal) = ?
+            AND p.deleted_at IS NULL
+            GROUP BY MONTH(k.tanggal)
+        `, [tahun]);
+
+        const [upahRows] = await pool.query(`
+            SELECT 
+                MONTH(uk.tanggal_pembayaran) as bulan_num,
+                COALESCE(SUM(uk.total_upah), 0) as upah_dibayar
+            FROM upah_karyawan uk
+            INNER JOIN produksi p ON uk.id_produk = p.id_produk
+            WHERE YEAR(uk.tanggal_pembayaran) = ?
+            AND uk.status_pembayaran = 'dibayar'
+            AND p.deleted_at IS NULL
+            GROUP BY MONTH(uk.tanggal_pembayaran)
+        `, [tahun]);
+
+        const dataMap = new Map();
+        (dataRows as any[]).forEach(row => {
+            dataMap.set(row.bulan_num, {
+                pemasukan: parseFloat(row.pemasukan || 0),
+                pengeluaran_manual: parseFloat(row.pengeluaran_manual || 0)
+            });
+        });
+
+        const upahMap = new Map();
+        (upahRows as any[]).forEach(row => {
+            upahMap.set(row.bulan_num, parseFloat(row.upah_dibayar || 0));
+        });
+
+        const namaBulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+        const chartData: CashflowData[] = [];
+        
+        for (let i = 1; i <= 12; i++) {
+            const data = dataMap.get(i);
+            const upah = upahMap.get(i) || 0;
+            
+            chartData.push({
+                periode: namaBulan[i - 1],
+                pemasukan: data ? data.pemasukan : 0,
+                pengeluaran: data ? data.pengeluaran_manual + upah : upah
+            });
+        }
+
+        return {
+            summary: {
+                total_pemasukan,
+                total_pengeluaran,
+                saldo: total_pemasukan - total_pengeluaran
+            },
+            data: chartData
+        };
+    } catch (error) {
+        console.error('Error getting cashflow tahunan:', error);
         throw error;
     }
 }

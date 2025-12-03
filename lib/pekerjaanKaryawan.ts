@@ -80,7 +80,6 @@ export async function getPekerjaanByKaryawan(id_karyawan: number) {
 
 export async function createPekerjaanKaryawan(data: Omit<PekerjaanKaryawan, 'id_pekerjaan_karyawan'>) {
     try {
-        // Validasi: Cek apakah karyawan sudah dihapus
         const [karyawanCheck] = await pool.query(
             'SELECT deleted_at FROM karyawan WHERE id_karyawan = ?',
             [data.id_karyawan]
@@ -123,7 +122,6 @@ export async function createMultiplePekerjaanKaryawan(pekerjaanList: Omit<Pekerj
     try {
         await connection.beginTransaction();
 
-        // Validasi semua karyawan belum dihapus
         const karyawanIds = Array.from(new Set(pekerjaanList.map(p => p.id_karyawan)));
         const [karyawanCheck] = await connection.query(
             `SELECT id_karyawan, deleted_at FROM karyawan WHERE id_karyawan IN (?)`,

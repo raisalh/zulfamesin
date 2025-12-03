@@ -629,7 +629,6 @@ export default function WorkAssignmentPage() {
                                                     className="mb-3"
                                                 />
 
-                                                {/* Karyawan Upah Pola */}
                                                 <div className="mb-4">
                                                     <p className="text-xs font-semibold text-gray-600 mb-2 uppercase">
                                                         Karyawan Upah Per Pola
@@ -666,7 +665,6 @@ export default function WorkAssignmentPage() {
                                                     </div>
                                                 </div>
 
-                                                {/* Karyawan Upah Harian */}
                                                 <div className="mb-2">
                                                     <p className="text-xs font-semibold text-gray-600 mb-2 uppercase">
                                                         Karyawan Upah Harian

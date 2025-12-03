@@ -68,7 +68,6 @@ export default function EditKaryawanPage() {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    // Validasi Nama Karyawan
     if (!namaKaryawan.trim()) {
       newErrors.namaKaryawan = "Nama karyawan harus diisi";
     } else if (namaKaryawan.trim().length < 3) {
@@ -77,12 +76,10 @@ export default function EditKaryawanPage() {
       newErrors.namaKaryawan = "Nama karyawan hanya boleh berisi huruf";
     }
 
-    // Validasi Jenis Kelamin
     if (!jenisKelamin) {
       newErrors.jenisKelamin = "Jenis kelamin harus dipilih";
     }
 
-    // Validasi Nomor Telepon
     if (noTelp.trim() !== "") {
       if (!/^[0-9]+$/.test(noTelp)) {
         newErrors.noTelp = "Nomor telepon hanya boleh berisi angka";
@@ -91,7 +88,6 @@ export default function EditKaryawanPage() {
       }
     }
 
-    // Validasi Email
     if (email.trim() !== "") {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         newErrors.email = "Format email tidak valid";
@@ -100,7 +96,6 @@ export default function EditKaryawanPage() {
       }
     }
 
-    // Validasi Alamat
     if (alamat.trim() !== "") {
       if (alamat.trim().split(/\s+/).length < 5) {
         newErrors.alamat = "Alamat harus minimal 5 kata";

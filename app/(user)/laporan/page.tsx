@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { IconChartBar, IconUsers, IconCash, IconFilter, IconRefresh, IconFileSpreadsheet, IconClock, IconTarget, IconTrendingUp} from '@tabler/icons-react';
-import {BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { IconChartBar, IconUsers, IconCash, IconFilter, IconRefresh, IconFileSpreadsheet, IconClock, IconTarget, IconTrendingUp, IconTrendingDown, IconWallet} from '@tabler/icons-react';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-type TabType = 'produksi' | 'karyawan' | 'upah';
+type TabType = 'produksi' | 'karyawan' | 'upah' | 'cashflow';
 
 interface FilterState {
     tahun: string;
@@ -39,16 +39,19 @@ export default function LaporanPage() {
     const [workloadBalance, setWorkloadBalance] = useState<any[]>([]);
     const [upahBelumDibayar, setUpahBelumDibayar] = useState<any[]>([]);
     const [perbandinganBulanan, setPerbandinganBulanan] = useState<any>(null);
+    const [cashflowData, setCashflowData] = useState<any>(null);
+    const [cashflowPeriode, setCashflowPeriode] = useState<'mingguan' | 'bulanan' | 'tahunan'>('mingguan');
 
     const tabs = [
         { id: 'produksi' as TabType, label: 'Laporan Produksi', icon: IconChartBar },
         { id: 'karyawan' as TabType, label: 'Laporan Karyawan', icon: IconUsers },
-        { id: 'upah' as TabType, label: 'Laporan Upah', icon: IconCash }
+        { id: 'upah' as TabType, label: 'Laporan Upah', icon: IconCash },
+        { id: 'cashflow' as TabType, label: 'Cashflow', icon: IconTrendingUp }
     ];
 
     useEffect(() => {
         loadData();
-    }, [activeTab, filters]);
+    }, activeTab === 'cashflow' ? [activeTab, cashflowPeriode] : [activeTab, filters]);
 
     const loadData = async () => {
         setLoading(true);
@@ -59,6 +62,8 @@ export default function LaporanPage() {
                 await loadLaporanKaryawan();
             } else if (activeTab === 'upah') {
                 await loadLaporanUpah();
+            } else if (activeTab === 'cashflow') {
+                await loadLaporanCashflow();
             }
         } catch (error: any) {
             console.error('Error loading data:', error);
@@ -168,6 +173,27 @@ export default function LaporanPage() {
         }
     };
 
+    const loadLaporanCashflow = async () => {
+        try {
+            const params: any = {
+                category: 'cashflow',
+                periode: cashflowPeriode
+            };
+    
+            if (cashflowPeriode === 'bulanan') {
+                params.tahun = new Date().getFullYear();
+                params.bulan = new Date().getMonth() + 1;
+            } else if (cashflowPeriode === 'tahunan') {
+                params.tahun = new Date().getFullYear();
+            }
+    
+            const response = await axios.get('/api/laporan', { params });
+            setCashflowData(response.data.data);
+        } catch (error) {
+            throw error;
+        }
+    };
+
     const handleFilterChange = (key: keyof FilterState, value: string) => {
         setFilters(prev => ({ ...prev, [key]: value }));
     };
@@ -193,6 +219,7 @@ export default function LaporanPage() {
                             <h1 className="text-2xl font-bold text-gray-900">Laporan</h1>
                             <p className="text-sm text-gray-600 mt-1">Visualisasi data dan analitik produksi</p>
                         </div>
+                        {activeTab !== 'cashflow' && (
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setShowFilter(!showFilter)}
@@ -205,12 +232,13 @@ export default function LaporanPage() {
                             <button
                                 onClick={loadData}
                                 disabled={loading}
-                                className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex items-center gap-2 px-4 py-2 text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <IconRefresh size={20} className={loading ? 'animate-spin' : ''} />
                                 Refresh
                             </button>
                         </div>
+                        )}
                     </div>
 
                     <div className="flex gap-2 border-b border-gray-200 overflow-x-auto whitespace-nowrap scrollbar-hide">
@@ -221,7 +249,7 @@ export default function LaporanPage() {
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
-                                        ? "border-blue-600 text-blue-600"
+                                        ? "border-teal-600 text-teal-600"
                                         : "border-transparent text-gray-600 hover:text-gray-900"
                                         }`}
                                 >
@@ -234,7 +262,7 @@ export default function LaporanPage() {
                 </div>
             </div>
 
-            {showFilter && (
+            {showFilter && activeTab !== 'cashflow' && (
                 <div className="bg-white border-b border-gray-200 shadow-sm">
                     <div className="max-w-7xl mx-auto px-4 py-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -340,6 +368,15 @@ export default function LaporanPage() {
                                 data={laporanUpah}
                                 upahBelumDibayar={upahBelumDibayar}
                                 perbandinganBulanan={perbandinganBulanan}
+                                filters={filters}
+                                colors={COLORS}
+                            />
+                        )}
+                        {activeTab === 'cashflow' && (
+                            <LaporanCashflowContent
+                                data={cashflowData}
+                                periode={cashflowPeriode}
+                                setPeriode={setCashflowPeriode}
                                 filters={filters}
                                 colors={COLORS}
                             />
@@ -844,7 +881,7 @@ function LaporanKaryawanContent({
                                 { name: '26-50%', value: progressRanges['26-50%'], color: '#f59e0b' },
                                 { name: '51-75%', value: progressRanges['51-75%'], color: '#3b82f6' },
                                 { name: '76-100%', value: progressRanges['76-100%'], color: '#10b981' }
-                            ].filter(item => item.value > 0); 
+                            ].filter(item => item.value > 0);
 
                             return (
                                 <div>
@@ -923,13 +960,13 @@ function LaporanUpahContent({
     data,
     upahBelumDibayar,
     perbandinganBulanan,
-    filters,  
+    filters,
     colors
 }: {
     data: any[];
     upahBelumDibayar: any[];
     perbandinganBulanan: any;
-    filters: FilterState; 
+    filters: FilterState;
     colors: string[]
 }) {
     const formatRupiah = (amount: number) => {
@@ -1279,6 +1316,181 @@ function LaporanUpahContent({
                         </div>
                     </>
                 )}
+            </div>
+        </div>
+    );
+}
+
+function LaporanCashflowContent({
+    data,
+    periode,
+    setPeriode,
+    filters,
+    colors
+}: {
+    data: any;
+    periode: 'mingguan' | 'bulanan' | 'tahunan';
+    setPeriode: (p: 'mingguan' | 'bulanan' | 'tahunan') => void;
+    filters: FilterState;
+    colors: string[];
+}) {
+    const formatRupiah = (amount: number) => {
+        return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0
+        }).format(amount);
+    };
+
+    if (!data) {
+        return (
+            <div className="flex items-center justify-center h-96">
+                <p className="text-gray-500">Memuat data cashflow...</p>
+            </div>
+        );
+    }
+
+    const { summary, data: chartData } = data;
+
+    return (
+        <div className="space-y-6">
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-700">Periode:</span>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setPeriode('mingguan')}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                                periode === 'mingguan'
+                                    ? 'bg-teal-600 text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                        >
+                            Mingguan
+                        </button>
+                        <button
+                            onClick={() => setPeriode('bulanan')}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                                periode === 'bulanan'
+                                    ? 'bg-teal-600 text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                        >
+                            Bulanan
+                        </button>
+                        <button
+                            onClick={() => setPeriode('tahunan')}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                                periode === 'tahunan'
+                                    ? 'bg-teal-600 text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                        >
+                            Tahunan
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-gray-600">Total Pemasukan</p>
+                            <p className="text-2xl font-bold text-green-600 mt-2">
+                                {formatRupiah(summary.total_pemasukan)}
+                            </p>
+                        </div>
+                        <div className="p-3 bg-green-100 rounded-lg">
+                            <IconTrendingUp size={24} className="text-green-600" />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-gray-600">Total Pengeluaran</p>
+                            <p className="text-2xl font-bold text-red-600 mt-2">
+                                {formatRupiah(summary.total_pengeluaran)}
+                            </p>
+                        </div>
+                        <div className="p-3 bg-red-100 rounded-lg">
+                            <IconTrendingDown size={24} className="text-red-600" />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-gray-600">Saldo</p>
+                            <p className={`text-2xl font-bold mt-2 ${
+                                summary.saldo >= 0 ? 'text-blue-600' : 'text-red-600'
+                            }`}>
+                                {formatRupiah(summary.saldo)}
+                            </p>
+                        </div>
+                        <div className="p-3 bg-blue-100 rounded-lg">
+                            <IconWallet size={24} className="text-blue-600" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    Mutasi Cashflow
+                </h3>
+                {chartData.length === 0 ? (
+                    <div className="flex items-center justify-center h-96 text-gray-500">
+                        Tidak ada data untuk periode ini
+                    </div>
+                ) : (
+                    <ResponsiveContainer width="100%" height={400}>
+                        <BarChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis 
+                                dataKey="periode" 
+                                angle={periode === 'mingguan' ? -45 : 0}
+                                textAnchor={periode === 'mingguan' ? 'end' : 'middle'}
+                                height={periode === 'mingguan' ? 80 : 40}
+                                tick={{ fontSize: 11 }}
+                            />
+                            <YAxis />
+                            <Tooltip 
+                                formatter={(value) => formatRupiah(Number(value))}
+                                contentStyle={{
+                                    backgroundColor: 'white',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px'
+                                }}
+                            />
+                            <Legend />
+                            <Bar dataKey="pemasukan" fill="#10b981" name="Pemasukan" />
+                            <Bar dataKey="pengeluaran" fill="#ef4444" name="Pengeluaran" />
+                        </BarChart>
+                    </ResponsiveContainer>
+                )}
+            </div>
+
+            <div className={`p-4 rounded-lg border-l-4 ${
+                summary.saldo >= 0 
+                    ? 'bg-blue-50 border-blue-500' 
+                    : 'bg-red-50 border-red-500'
+            }`}>
+                <p className="text-sm font-medium text-gray-700">
+                    💡 <span className="font-semibold">Insight:</span>
+                    {summary.saldo >= 0 ? (
+                        <> Cashflow periode ini <span className="text-blue-600 font-semibold">positif</span> dengan saldo {formatRupiah(summary.saldo)}.</>
+                    ) : (
+                        <> Cashflow periode ini <span className="text-red-600 font-semibold">negatif</span> dengan defisit {formatRupiah(Math.abs(summary.saldo))}.</>
+                    )}
+                    {' '}Rasio pengeluaran terhadap pemasukan: {summary.total_pemasukan > 0 
+                        ? `${((summary.total_pengeluaran / summary.total_pemasukan) * 100).toFixed(1)}%`
+                        : 'N/A'
+                    }
+                </p>
             </div>
         </div>
     );

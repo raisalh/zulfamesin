@@ -496,7 +496,6 @@ export default function BerandaPage() {
                 </div>
             )}
 
-            {/* Progress Products */}
             <div className="bg-white rounded-lg shadow-md p-6">
                 <div className="flex items-center space-x-2 mb-4">
                     <IconTrendingUp className="w-6 h-6 text-blue-600" />

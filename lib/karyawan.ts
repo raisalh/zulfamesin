@@ -89,7 +89,6 @@ export async function updateKaryawan(
   }
 }
 
-// SOFT DELETE - Hanya update deleted_at
 export async function deleteKaryawan(id: number) {
   try {
     const [result] = await pool.query(
@@ -104,7 +103,6 @@ export async function deleteKaryawan(id: number) {
   }
 }
 
-// RESTORE - Untuk mengembalikan karyawan yang sudah dihapus (optional)
 export async function restoreKaryawan(id: number) {
   try {
     const [result] = await pool.query(
@@ -119,7 +117,6 @@ export async function restoreKaryawan(id: number) {
   }
 }
 
-// HARD DELETE - Untuk benar-benar menghapus dari database (hanya untuk admin/maintenance)
 export async function hardDeleteKaryawan(id: number) {
   try {
     const [result] = await pool.query(
