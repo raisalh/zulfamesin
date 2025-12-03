@@ -2,29 +2,30 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
 import { getProduksiById } from "@/lib/produk";
 import { getTotalPolaByProduk } from "@/lib/gulungan";
-import { 
-    createJenisPekerjaan, 
-    updateJenisPekerjaan 
+import {
+    createJenisPekerjaan,
+    updateJenisPekerjaan
 } from "@/lib/jenisPekerjaan";
 
 interface EditAssignment {
-    id_pekerjaan_karyawan?: number; 
+    id_pekerjaan_karyawan?: number;
     id_karyawan: number;
     target_unit: number;
-    unit_dikerjakan?: number; 
+    unit_dikerjakan?: number;
 }
 
 interface EditPekerjaan {
-    id_jenis_pekerjaan?: number; 
+    id_jenis_pekerjaan?: number;
     nama_pekerjaan: string;
     upah_per_unit: number;
     tipe: 'sistem' | 'manual';
     assignments: EditAssignment[];
+    upah_harian: number;
 }
 
 export async function PUT(request: NextRequest) {
     const connection = await pool.getConnection();
-    
+
     try {
         await connection.beginTransaction();
 
@@ -52,18 +53,18 @@ export async function PUT(request: NextRequest) {
 
             if (!id_jenis_pekerjaan) {
                 const result = await connection.query(
-                    `INSERT INTO jenis_pekerjaan (nama_pekerjaan, upah_per_unit, tipe) 
-                        VALUES (?, ?, ?)`,
-                    [pekerjaan.nama_pekerjaan, pekerjaan.upah_per_unit, pekerjaan.tipe]
+                    `INSERT INTO jenis_pekerjaan (nama_pekerjaan, upah_per_unit, tipe, upah_harian) 
+                        VALUES (?, ?, ?, ?)`,
+                    [pekerjaan.nama_pekerjaan, pekerjaan.upah_per_unit, pekerjaan.tipe, pekerjaan.upah_harian]
                 );
                 id_jenis_pekerjaan = (result as any)[0].insertId;
                 console.log('Created new jenis_pekerjaan:', id_jenis_pekerjaan);
             } else {
                 await connection.query(
                     `UPDATE jenis_pekerjaan 
-                        SET nama_pekerjaan = ?, upah_per_unit = ?, tipe = ?
+                        SET nama_pekerjaan = ?, upah_per_unit = ?, tipe = ?, upah_harian = ?
                         WHERE id_jenis_pekerjaan = ?`,
-                    [pekerjaan.nama_pekerjaan, pekerjaan.upah_per_unit, pekerjaan.tipe, id_jenis_pekerjaan]
+                    [pekerjaan.nama_pekerjaan, pekerjaan.upah_per_unit, pekerjaan.tipe, pekerjaan.upah_harian, id_jenis_pekerjaan]
                 );
                 console.log('Updated jenis_pekerjaan:', id_jenis_pekerjaan);
             }
@@ -105,8 +106,8 @@ export async function PUT(request: NextRequest) {
                     if (assignment.target_unit < currentProgress) {
                         await connection.rollback();
                         return NextResponse.json(
-                            { 
-                                success: false, 
+                            {
+                                success: false,
                                 message: `Target untuk ${karyawan.nama_karyawan} tidak boleh lebih kecil dari progress yang sudah dikerjakan (${currentProgress} pola)${isDeleted ? '. Karyawan ini sudah tidak aktif.' : ''}`,
                                 karyawan: karyawan.nama_karyawan,
                                 current_progress: currentProgress,
@@ -143,9 +144,9 @@ export async function PUT(request: NextRequest) {
                     if ((existingCheck as any[]).length > 0) {
                         await connection.rollback();
                         return NextResponse.json(
-                            { 
-                                success: false, 
-                                message: `${karyawan.nama_karyawan} sudah memiliki assignment untuk pekerjaan ini` 
+                            {
+                                success: false,
+                                message: `${karyawan.nama_karyawan} sudah memiliki assignment untuk pekerjaan ini`
                             },
                             { status: 400 }
                         );
@@ -201,10 +202,10 @@ export async function PUT(request: NextRequest) {
         await connection.rollback();
         console.error("Error in PUT /api/work-assignment/edit:", error);
         return NextResponse.json(
-            { 
-                success: false, 
-                message: "Gagal memperbarui pekerjaan", 
-                error: (error as Error).message 
+            {
+                success: false,
+                message: "Gagal memperbarui pekerjaan",
+                error: (error as Error).message
             },
             { status: 500 }
         );

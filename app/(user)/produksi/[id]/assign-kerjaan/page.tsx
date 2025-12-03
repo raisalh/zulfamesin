@@ -359,6 +359,26 @@ export default function WorkAssignmentPage() {
                 }
             }
 
+            const karyawanPola = p.karyawan_ids.filter(kid => {
+                const karyawan = karyawanList.find(k => k.id_karyawan === kid);
+                return karyawan?.jenis_upah === "pola";
+            });
+
+            const karyawanHarian = p.karyawan_ids.filter(kid => {
+                const karyawan = karyawanList.find(k => k.id_karyawan === kid);
+                return karyawan?.jenis_upah === "harian";
+            });
+
+            if (karyawanPola.length > 0 && (!p.upah_per_unit || p.upah_per_unit.trim() === "")) {
+                fieldErrors.upah_per_unit = "Upah per pola wajib diisi karena ada karyawan dengan sistem upah pola";
+                hasError = true;
+            }
+
+            if (karyawanHarian.length > 0 && (!p.upah_harian || p.upah_harian.trim() === "")) {
+                fieldErrors.upah_harian = "Upah harian wajib diisi karena ada karyawan dengan sistem upah harian";
+                hasError = true;
+            }
+
             if (Object.keys(fieldErrors).length > 0) {
                 newErrors[p.id] = fieldErrors;
             }
@@ -388,7 +408,7 @@ export default function WorkAssignmentPage() {
         const validPekerjaan = pekerjaanList.filter(
             (p) =>
                 p.nama_pekerjaan.trim() !== "" &&
-                p.upah_per_unit &&
+                (p.upah_per_unit || p.upah_harian) &&
                 p.karyawan_ids.length > 0
         );
 
@@ -397,7 +417,7 @@ export default function WorkAssignmentPage() {
                 title: "Minimal harus ada 1",
                 description: `Harap lengkapi minimal 1 pekerjaan dengan nama, upah, dan karyawan`,
                 color: "danger",
-            }); 
+            });
             return;
         }
 
@@ -445,13 +465,14 @@ export default function WorkAssignmentPage() {
             const response = await axios.post("/api/work-assignment", payload);
 
             if (response.data.success) {
+                alert("Pekerjaan berhasil disimpan");
                 router.push("/produksi");
             } else {
                 addToast({
                     title: "Gagal menyimpan pekerjaan",
                     description: `Gagal menyimpan pekerjaan: ${response.data.message || ''}`,
                     color: "danger",
-                }); 
+                });
             }
         } catch (error) {
             console.error("Error submitting:", error);
@@ -460,13 +481,13 @@ export default function WorkAssignmentPage() {
                     title: "Gagal menyimpan pekerjaan",
                     description: `Terjadi kesalahan saat menyimpan pekerjaan`,
                     color: "danger",
-                }); 
+                });
             } else {
                 addToast({
                     title: "Gagal menyimpan pekerjaan",
                     description: `Terjadi kesalahan saat menyimpan pekerjaan`,
                     color: "danger",
-                }); 
+                });
             }
         } finally {
             setLoading(false);

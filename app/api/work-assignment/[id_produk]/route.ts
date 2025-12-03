@@ -53,8 +53,7 @@ export async function GET(
                 target_unit: item.target_unit,
                 unit_dikerjakan: item.unit_dikerjakan,
                 status: item.status,
-                tanggal_selesai: item.tanggal_selesai,
-                jenis_upah: item.upah_harian
+                tanggal_selesai: item.tanggal_selesai
             });
         });
 

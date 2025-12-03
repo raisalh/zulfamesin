@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
             console.log('Processing pekerjaan:', { nama_pekerjaan, upah_per_unit, karyawan_ids, karyawan_assignments });
 
-            if (!nama_pekerjaan || !upah_per_unit) {
+            if (!nama_pekerjaan || (!upah_per_unit && !upah_harian)) {  
                 console.log('Skipping invalid pekerjaan:', pekerjaan);
                 continue;
             }

@@ -93,8 +93,8 @@ export default function EditWorkAssignmentPage() {
                 const data = produksiResponse.data.data;
                 setProdukInfo({
                     nama_produk: data.nama_produk,
-                    total_gulungan: data.gulungan || 0,
-                    total_pola: data.jumlah_pola || 0,
+                    total_gulungan: Number(data.gulungan) || 0,
+                    total_pola: Number(data.jumlah_pola) || 0,
                 });
             }
 
@@ -107,8 +107,8 @@ export default function EditWorkAssignmentPage() {
                         id_pekerjaan_karyawan: k.id_pekerjaan_karyawan,
                         id_karyawan: k.id_karyawan,
                         nama_karyawan: k.nama_karyawan,
-                        target_unit: k.target_unit,
-                        unit_dikerjakan: k.unit_dikerjakan,
+                        target_unit: Number(k.target_unit) || 0,
+                        unit_dikerjakan: Number(k.unit_dikerjakan) || 0,
                         is_deleted: k.is_karyawan_deleted || false,
                     }));
 
@@ -119,7 +119,7 @@ export default function EditWorkAssignmentPage() {
                         upah_per_unit: pekerjaan.upah_per_unit ? pekerjaan.upah_per_unit.toString() : "0",
                         tipe: pekerjaan.tipe,
                         upah_harian: pekerjaan.upah_harian ? pekerjaan.upah_harian.toString() : "0",
-                        assignment_mode: "manual" as const,
+                        assignment_mode: pekerjaan.tipe === "sistem" ? "auto" : "manual",
                         assignments: assignments,
                     };
                 });
@@ -224,7 +224,8 @@ export default function EditWorkAssignmentPage() {
     const getTotalTargetPekerjaan = (pekerjaanId: string): number => {
         const pekerjaan = pekerjaanList.find((p) => p.id === pekerjaanId);
         if (!pekerjaan) return 0;
-        return pekerjaan.assignments.reduce((sum, a) => sum + a.target_unit, 0);
+
+        return pekerjaan.assignments.reduce((sum, a) => sum + Number(a.target_unit), 0);
     };
 
     const getDistributionStatusPekerjaan = (pekerjaanId: string) => {
@@ -626,6 +627,36 @@ export default function EditWorkAssignmentPage() {
             });
         });
 
+        pekerjaanList.forEach((p) => {
+            const karyawanPola = p.assignments.filter(a => {
+                const karyawan = karyawanList.find(k => k.id_karyawan === a.id_karyawan);
+                return karyawan?.jenis_upah === "pola";
+            });
+
+            const karyawanHarian = p.assignments.filter(a => {
+                const karyawan = karyawanList.find(k => k.id_karyawan === a.id_karyawan);
+                return karyawan?.jenis_upah === "harian";
+            });
+
+            if (karyawanPola.length > 0 && (!p.upah_per_unit || p.upah_per_unit.trim() === "")) {
+                addToast({
+                    title: "Upah Per Pola Wajib",
+                    description: `Pekerjaan "${p.nama_pekerjaan}" memiliki karyawan dengan sistem upah per pola. Upah per pola harus diisi.`,
+                    color: "danger",
+                });
+                hasError = true;
+            }
+
+            if (karyawanHarian.length > 0 && (!p.upah_harian || p.upah_harian.trim() === "")) {
+                addToast({
+                    title: "Upah Harian Wajib",
+                    description: `Pekerjaan "${p.nama_pekerjaan}" memiliki karyawan dengan sistem upah harian. Upah harian harus diisi.`,
+                    color: "danger",
+                });
+                hasError = true;
+            }
+        });
+
         return !hasError;
     };
 
@@ -638,33 +669,38 @@ export default function EditWorkAssignmentPage() {
 
         const payload = {
             id_produk: id,
-            pekerjaan_list: pekerjaanList.map((p) => ({
-                id_jenis_pekerjaan: p.id_jenis_pekerjaan,
-                nama_pekerjaan: p.nama_pekerjaan,
-                upah_per_unit: parseFloat(p.upah_per_unit),
-                tipe: p.tipe,
-                upah_harian: parseFloat(p.upah_harian),
-                assignments: p.assignments.map((a) => ({
-                    id_pekerjaan_karyawan: a.id_pekerjaan_karyawan,
-                    id_karyawan: a.id_karyawan,
-                    target_unit: a.target_unit,
-                    unit_dikerjakan: a.unit_dikerjakan,
-                })),
-            })),
+            pekerjaan_list: pekerjaanList.map((p) => {
+                const pekerjaanData: any = {
+                    nama_pekerjaan: p.nama_pekerjaan,
+                    upah_per_unit: p.upah_per_unit && p.upah_per_unit.trim() !== ""
+                        ? parseFloat(p.upah_per_unit)
+                        : 0,
+                    tipe: p.tipe,
+                    upah_harian: p.upah_harian && p.upah_harian.trim() !== ""
+                        ? parseFloat(p.upah_harian)
+                        : 0,
+                    assignments: p.assignments.map((a) => ({
+                        id_pekerjaan_karyawan: a.id_pekerjaan_karyawan,
+                        id_karyawan: a.id_karyawan,
+                        target_unit: a.target_unit,
+                        unit_dikerjakan: a.unit_dikerjakan,
+                    })),
+                };
+
+                if (p.id_jenis_pekerjaan) {
+                    pekerjaanData.id_jenis_pekerjaan = p.id_jenis_pekerjaan;
+                }
+
+                return pekerjaanData;
+            }),
         };
 
         try {
             const response = await axios.put("/api/work-assignment/edit", payload);
 
             if (response.data.success) {
-                addToast({
-                    title: "Berhasil!",
-                    description: "Pekerjaan berhasil diperbarui",
-                    color: "success",
-                });
-                setTimeout(() => {
-                    router.push(`/produksi/${id}/lihat-progress`);
-                }, 1000);
+                alert("Pekerjaan berhasil diubah!");
+                router.push(`/produksi/${id}/lihat-progress`);
             } else {
                 addToast({
                     title: "Gagal Menyimpan",
@@ -813,8 +849,20 @@ export default function EditWorkAssignmentPage() {
                                                     handleAssignmentModeChange(pekerjaan.id, value as "auto" | "manual")
                                                 }
                                             >
-                                                <Radio value="auto">Otomatis oleh Sistem</Radio>
-                                                <Radio value="manual">Atur Manual</Radio>
+                                                <Radio value="auto" classNames={{
+                                                    base: "focus:outline-none focus:ring-0 data-[focus-visible=true]:outline-none",
+                                                    wrapper:
+                                                        "border-gray-400 group-data-[selected=true]:border-gray-400",
+                                                    control:
+                                                        "group-data-[selected=true]:bg-teal-600 group-data-[selected=true]:border-teal-600",
+                                                }}> Otomatis oleh Sistem </Radio>
+                                                <Radio value="manual" classNames={{
+                                                    base: "focus:outline-none focus:ring-0 data-[focus-visible=true]:outline-none",
+                                                    wrapper:
+                                                        "border-gray-400 group-data-[selected=true]:border-gray-400",
+                                                    control:
+                                                        "group-data-[selected=true]:bg-teal-600 group-data-[selected=true]:border-teal-600",
+                                                }}> Atur Manual </Radio>
                                             </RadioGroup>
                                         </div>
 
