@@ -670,7 +670,7 @@ function LaporanProduksiContent({
                             <YAxis />
                             <Tooltip />
                             <Legend />
-                            <Bar dataKey="unit_selesai" fill="#10b981" name="Unit Selesai" />
+                            <Bar dataKey="unit_selesai" fill="#10b981" name="Pola Selesai" />
                             <Bar dataKey="total_target" fill="#9ca3af" name="Total Target" />
                         </BarChart>
                     </ResponsiveContainer>
@@ -754,8 +754,8 @@ function LaporanKaryawanContent({
                         <YAxis dataKey="nama" type="category" width={150} />
                         <Tooltip />
                         <Legend />
-                        <Bar dataKey="selesai" fill="#10b981" name="Unit Selesai" stackId="a" />
-                        <Bar dataKey="sisa" fill="#f59e0b" name="Unit Sisa" stackId="a" />
+                        <Bar dataKey="selesai" fill="#10b981" name="Pola Selesai" stackId="a" />
+                        <Bar dataKey="sisa" fill="#f59e0b" name="Pola Sisa" stackId="a" />
                     </BarChart>
                 </ResponsiveContainer>
             </div>
@@ -826,8 +826,8 @@ function LaporanKaryawanContent({
                                 <YAxis />
                                 <Tooltip />
                                 <Legend />
-                                <Bar dataKey="unit_selesai" fill="#10b981" name="Unit Selesai" stackId="a" />
-                                <Bar dataKey="unit_sisa" fill="#f59e0b" name="Unit Sisa" stackId="a" />
+                                <Bar dataKey="unit_selesai" fill="#10b981" name="Pola Selesai" stackId="a" />
+                                <Bar dataKey="unit_sisa" fill="#f59e0b" name="Pola Sisa" stackId="a" />
                             </BarChart>
                         </ResponsiveContainer>
                     )}

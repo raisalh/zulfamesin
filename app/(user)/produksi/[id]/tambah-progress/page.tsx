@@ -422,10 +422,10 @@ export default function TambahProgressPage() {
                                 PERINGATAN
                             </h3>
                             <p className="text-gray-600 mb-2">
-                                Anda yakin ingin membatalkan perubahan?
+                                Anda yakin ingin membatalkan penambahan progress?
                             </p>
                             <p className="text-gray-500 text-sm mb-8">
-                                Perubahan yang Anda buat akan hilang!
+                                Penambahan yang Anda buat akan hilang!
                             </p>
 
                             <div className="flex gap-3 justify-center">

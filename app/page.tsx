@@ -221,17 +221,21 @@ export default function ZulfaMesinLanding() {
             </p>
             <div className="flex gap-3 sm:gap-4 flex-wrap">
               <Button
+                as="a"
                 className="bg-[#111827] text-white shadow-lg hover:bg-[#1f2937] text-sm sm:text-base"
                 radius="none"
                 size="lg"
+                href="#galeri"
               >
                 Lihat Produk Kami
               </Button>
               <Button
+                as="a"
                 className="text-sm sm:text-base"
                 radius="none"
                 size="lg"
                 variant="bordered"
+                href="#kontak"
               >
                 Hubungi Kami
               </Button>
