@@ -66,29 +66,16 @@ export default function EditProdukPage() {
         setJumlahGulungan(String(data.gulungan || 1));
 
         if (data.tanggal_mulai) {
-          const date = new Date(data.tanggal_mulai);
-          
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0'); 
-          const day = String(date.getDate()).padStart(2, '0');
-          
-          const formattedDate = `${year}-${month}-${day}`;
-          
-          setTanggalMulai(formattedDate);
+          setTanggalMulai(data.tanggal_mulai.split('T')[0]);
         }
 
-        
+        if (data.tanggal_selesai) {
+          setEstimasiSelesai(data.tanggal_selesai.split('T')[0]);
+        }
+
         if (data.deadline) {
-          const date = new Date(data.deadline);
-          
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0'); 
-          const day = String(date.getDate()).padStart(2, '0');
-          
-          const formattedDate = `${year}-${month}-${day}`;
-          
-          setDeadline(formattedDate);
-        }        
+          setDeadline(data.deadline.split('T')[0]);
+        }
 
         if (data.gulungan_data && Array.isArray(data.gulungan_data)) {
           const newPola = data.gulungan_data.map((g: any) => ({
@@ -124,7 +111,7 @@ export default function EditProdukPage() {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    const onlyLetters = /^[A-Za-z\s]+$/; 
+    const onlyLetters = /^[A-Za-z\s]+$/;
 
     if (!namaProduk.trim()) {
       newErrors.namaProduk = "Nama produk harus diisi";
@@ -151,7 +138,7 @@ export default function EditProdukPage() {
     } else if (parseInt(jumlahGulungan) < 1) {
       newErrors.jumlahGulungan = "Jumlah gulungan minimal 1";
     }
-    
+
 
     if (tanggalMulai && estimasiSelesai) {
       const mulai = new Date(tanggalMulai);
@@ -163,12 +150,8 @@ export default function EditProdukPage() {
       }
     }
 
-    if (tanggalMulai == ""){
+    if (tanggalMulai == "") {
       newErrors.tanggalMulai = "Tanggal mulai harus diisi";
-    } 
-
-    if (estimasiSelesai == ""){
-      newErrors.estimasiSelesai = "Tanggal selesai harus diisi";
     }
 
     if (tanggalMulai && deadline) {
@@ -196,6 +179,18 @@ export default function EditProdukPage() {
     }
 
     setErrors(newErrors);
+
+    console.log("Validation Errors:", newErrors);
+    console.log("Form Values:", {
+      namaProduk,
+      warna,
+      ukuran,
+      jumlahGulungan,
+      tanggalMulai,
+      estimasiSelesai,
+      deadline,
+      polaGulungan
+    });
 
     return Object.keys(newErrors).length === 0;
   };
@@ -250,6 +245,15 @@ export default function EditProdukPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Form submitted!"); // TAMBAH INI
+
+  if (!validateForm()) {
+    console.log("Validation failed!"); // TAMBAH INI
+    return;
+  }
+
+  console.log("Validation passed!"); // TAMBAH INI
+  setLoading(true);
 
     if (!validateForm()) {
       return;
@@ -479,7 +483,7 @@ export default function EditProdukPage() {
 
                     if (/^\d*$/.test(val)) {
                       setJumlahGulungan(val);
-                
+
                       const num = parseInt(val || "0");
                       if (num > 0) handleJumlahGulunganChange(num);
                     }
@@ -516,8 +520,8 @@ export default function EditProdukPage() {
                     </label>
                     <input
                       className={`w-full px-4 py-3 border ${errors.polaGulungan && errors.polaGulungan[index]
-                          ? "border-red-500"
-                          : "border-gray-300"
+                        ? "border-red-500"
+                        : "border-gray-300"
                         } rounded-lg focus:ring-2 focus:ring-[#001F3F] focus:border-transparent outline-none`}
                       id={`pola-gulungan-${index}`}
                       placeholder={`Masukkan pola untuk gulungan ${item.gulungan}`}
@@ -525,8 +529,8 @@ export default function EditProdukPage() {
                       value={item.pola}
                       onChange={(e) => {
                         const val = e.target.value;
-                    
-                        if (/^\d*$/.test(val)) {   
+
+                        if (/^\d*$/.test(val)) {
                           handlePolaChange(index, val);
                         }
                       }}
