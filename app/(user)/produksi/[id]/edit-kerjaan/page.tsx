@@ -116,12 +116,18 @@ export default function EditWorkAssignmentPage() {
                         id: Date.now().toString() + Math.random(),
                         id_jenis_pekerjaan: pekerjaan.id_jenis_pekerjaan,
                         nama_pekerjaan: pekerjaan.nama_pekerjaan,
-                        upah_per_unit: pekerjaan.upah_per_unit ? pekerjaan.upah_per_unit.toString() : "0",
+                    
+                        upah_per_unit: pekerjaan.upah_per_unit && pekerjaan.upah_per_unit > 0
+                            ? String(pekerjaan.upah_per_unit)
+                            : "",
                         tipe: pekerjaan.tipe,
-                        upah_harian: pekerjaan.upah_harian ? pekerjaan.upah_harian.toString() : "0",
+                        upah_harian: pekerjaan.upah_harian && pekerjaan.upah_harian > 0
+                            ? String(pekerjaan.upah_harian)
+                            : "",
                         assignment_mode: pekerjaan.tipe === "sistem" ? "auto" : "manual",
                         assignments: assignments,
                     };
+                    
                 });
 
                 setPekerjaanList(transformedPekerjaan);
@@ -277,19 +283,19 @@ export default function EditWorkAssignmentPage() {
     };
 
     const handleAddPekerjaan = () => {
-        setPekerjaanList([
-            ...pekerjaanList,
-            {
-                id: Date.now().toString(),
+        const newItem: PekerjaanItem = {
+            id: Date.now().toString(),
                 nama_pekerjaan: "",
                 upah_per_unit: "",
                 tipe: "manual",
                 upah_harian: "",
                 assignment_mode: "auto",
                 assignments: [],
-            },
-        ]);
+        };
+    
+        setPekerjaanList([newItem, ...pekerjaanList]);
     };
+    
 
     const handleRemovePekerjaan = (id: string) => {
         const pekerjaan = pekerjaanList.find((p) => p.id === id);

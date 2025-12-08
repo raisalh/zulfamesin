@@ -97,19 +97,19 @@ export default function WorkAssignmentPage() {
     };
 
     const handleAddPekerjaan = () => {
-        setPekerjaanList([
-            ...pekerjaanList,
-            {
-                id: Date.now().toString(),
-                nama_pekerjaan: "",
-                upah_per_unit: "",
-                assignment_type: "sistem",
-                upah_harian: "",
-                karyawan_ids: [],
-                manual_assignments: [],
-            },
-        ]);
+        const newItem: PekerjaanItem = {
+            id: Date.now().toString(),
+            nama_pekerjaan: "",
+            upah_per_unit: "",
+            assignment_type: "sistem",
+            upah_harian: "",
+            karyawan_ids: [],
+            manual_assignments: [],
+        };
+    
+        setPekerjaanList([newItem, ...pekerjaanList]);
     };
+    
 
     const handleRemovePekerjaan = (id: string) => {
         if (pekerjaanList.length === 1) {
