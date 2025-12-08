@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { 
-    createMultiplePekerjaanKaryawan, 
+import {
+    createMultiplePekerjaanKaryawan,
     deletePekerjaanByProduk,
     getPekerjaanByProduk
 } from "@/lib/pekerjaanKaryawan";
-import { 
-    createJenisPekerjaan, 
+import {
+    createJenisPekerjaan,
     updateJenisPekerjaan,
-    deleteJenisPekerjaan 
+    deleteJenisPekerjaan
 } from "@/lib/jenisPekerjaan";
 import { getProduksiById } from "@/lib/produk";
 import { getTotalPolaByProduk } from "@/lib/gulungan";
@@ -56,21 +56,25 @@ export async function POST(request: NextRequest) {
         const allPekerjaanData: any[] = [];
 
         for (const pekerjaan of pekerjaan_list) {
-            const { 
-                nama_pekerjaan, 
-                upah_per_unit, 
+            const {
+                nama_pekerjaan,
+                upah_per_unit,
                 tipe,
                 upah_harian,
                 karyawan_ids,
-                karyawan_assignments 
+                karyawan_assignments
             } = pekerjaan;
 
             console.log('Processing pekerjaan:', { nama_pekerjaan, upah_per_unit, karyawan_ids, karyawan_assignments });
 
-            if (!nama_pekerjaan || (!upah_per_unit && !upah_harian)) {  
+            const upahPerUnitValid = upah_per_unit !== undefined && upah_per_unit !== null && upah_per_unit !== "";
+            const upahHarianValid = upah_harian !== undefined && upah_harian !== null && upah_harian !== "";
+
+            if (!nama_pekerjaan || (!upahPerUnitValid && !upahHarianValid)) {
                 console.log('Skipping invalid pekerjaan:', pekerjaan);
                 continue;
             }
+
 
             if (karyawan_assignments && Array.isArray(karyawan_assignments) && karyawan_assignments.length > 0) {
                 let id_jenis_pekerjaan: number;
@@ -78,9 +82,9 @@ export async function POST(request: NextRequest) {
                 try {
                     const result = await createJenisPekerjaan({
                         nama_pekerjaan: nama_pekerjaan.trim(),
-                        upah_per_unit: parseFloat(upah_per_unit.toString()),
+                        upah_per_unit: upah_per_unit ? parseFloat(upah_per_unit) : 0,
                         tipe: tipe.trim() || 'sistem',
-                        upah_harian: parseFloat(upah_harian.toString()),
+                        upah_harian: upah_harian ? parseFloat(upah_harian) : 0,
                     });
 
                     id_jenis_pekerjaan = (result as any).insertId;
@@ -101,16 +105,16 @@ export async function POST(request: NextRequest) {
                         status: 'dikerjakan' as const
                     });
                 });
-            } 
+            }
             else if (karyawan_ids && Array.isArray(karyawan_ids) && karyawan_ids.length > 0) {
                 let id_jenis_pekerjaan: number;
 
                 try {
                     const result = await createJenisPekerjaan({
                         nama_pekerjaan: nama_pekerjaan.trim(),
-                        upah_per_unit: parseFloat(upah_per_unit.toString()),
+                        upah_per_unit: upah_per_unit ? parseFloat(upah_per_unit) : 0,
                         tipe: tipe.trim() || 'sistem',
-                        upah_harian: parseFloat(upah_harian.toString())
+                        upah_harian: upah_harian ? parseFloat(upah_harian) : 0,
                     });
 
                     id_jenis_pekerjaan = (result as any).insertId;
@@ -127,8 +131,8 @@ export async function POST(request: NextRequest) {
                 console.log('Distribution:', { totalPola, totalKaryawan, baseUnit, remainder });
 
                 karyawan_ids.forEach((id_karyawan: number, index: number) => {
-                    const targetUnit = index === totalKaryawan - 1 
-                        ? baseUnit + remainder 
+                    const targetUnit = index === totalKaryawan - 1
+                        ? baseUnit + remainder
                         : baseUnit;
 
                     allPekerjaanData.push({
@@ -241,13 +245,13 @@ export async function PUT(request: NextRequest) {
         try {
             const pekerjaanResult = await deletePekerjaanByProduk(id_produk);
             const pekerjaanDeleted = (pekerjaanResult as any).affectedRows || 0;
-            
+
             if (pekerjaanDeleted === 0) {
                 console.warn('WARNING: No pekerjaan_karyawan rows were deleted!');
             }
         } catch (error) {
             console.error('CRITICAL ERROR deleting pekerjaan_karyawan:', error);
-            throw error; 
+            throw error;
         }
 
         let jenisDeleted = 0;
@@ -263,13 +267,13 @@ export async function PUT(request: NextRequest) {
 
         const allPekerjaanData: any[] = [];
         for (const pekerjaan of pekerjaan_list) {
-            const { 
-                nama_pekerjaan, 
-                upah_per_unit, 
+            const {
+                nama_pekerjaan,
+                upah_per_unit,
                 tipe,
                 upah_harian,
                 karyawan_ids,
-                karyawan_assignments 
+                karyawan_assignments
             } = pekerjaan;
 
 
@@ -277,9 +281,9 @@ export async function PUT(request: NextRequest) {
             try {
                 const result = await createJenisPekerjaan({
                     nama_pekerjaan: nama_pekerjaan.trim(),
-                    upah_per_unit: parseFloat(upah_per_unit.toString()),
+                    upah_per_unit: upah_per_unit ? parseFloat(upah_per_unit) : 0,
                     tipe: tipe.trim() || 'sistem',
-                    upah_harian: parseFloat(upah_harian.toString())
+                    upah_harian: upah_harian ? parseFloat(upah_harian) : 0,
                 });
 
                 id_jenis_pekerjaan = (result as any).insertId;
@@ -301,15 +305,15 @@ export async function PUT(request: NextRequest) {
                         status: 'dikerjakan' as const
                     });
                 });
-            } 
+            }
             else if (karyawan_ids && Array.isArray(karyawan_ids) && karyawan_ids.length > 0) {
                 const totalKaryawan = karyawan_ids.length;
                 const baseUnit = Math.floor(totalPola / totalKaryawan);
                 const remainder = totalPola % totalKaryawan;
 
                 karyawan_ids.forEach((id_karyawan: number, index: number) => {
-                    const targetUnit = index === totalKaryawan - 1 
-                        ? baseUnit + remainder 
+                    const targetUnit = index === totalKaryawan - 1
+                        ? baseUnit + remainder
                         : baseUnit;
 
                     allPekerjaanData.push({
@@ -351,10 +355,10 @@ export async function PUT(request: NextRequest) {
     } catch (error) {
         console.error("Error in PUT /api/work-assignment:", error);
         return NextResponse.json(
-            { 
-                success: false, 
-                message: "Gagal memperbarui pekerjaan", 
-                error: (error as Error).message 
+            {
+                success: false,
+                message: "Gagal memperbarui pekerjaan",
+                error: (error as Error).message
             },
             { status: 500 }
         );
