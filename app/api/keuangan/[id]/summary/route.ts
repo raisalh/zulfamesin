@@ -16,6 +16,7 @@ export async function GET(
             );
         }
 
+        console.log('Fetching keuangan data...');
         const [keuanganRows] = await pool.query(`
             SELECT 
                 COALESCE(SUM(CASE WHEN tipe = 'pemasukan' THEN amount ELSE 0 END), 0) as total_pemasukan,
@@ -23,31 +24,31 @@ export async function GET(
             FROM keuangan
             WHERE id_produk = ?
         `, [id_produk]);
+        console.log('Keuangan data:', keuanganRows);
 
+        console.log('Fetching upah dibayar...');
         const [upahDibayarRows] = await pool.query(`
             SELECT COALESCE(SUM(total_upah), 0) as upah_dibayar
             FROM upah_karyawan
             WHERE id_produk = ? AND status_pembayaran = 'dibayar'
         `, [id_produk]);
+        console.log('Upah dibayar:', upahDibayarRows);
 
+        console.log('Fetching upah pola belum...');
         const [upahPolaBelumRows] = await pool.query(`
-            SELECT COALESCE(SUM(pk.unit_dikerjakan * jp.upah_per_unit), 0) as upah_pola_belum
-            FROM pekerjaan_karyawan pk
-            INNER JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
-            INNER JOIN karyawan k ON pk.id_karyawan = k.id_karyawan
-            WHERE pk.id_produk = ? 
+            SELECT COALESCE(SUM(uk.total_upah), 0) as upah_pola_belum
+            FROM upah_karyawan uk
+            INNER JOIN karyawan k ON uk.id_karyawan = k.id_karyawan
+            WHERE uk.id_produk = ? 
             AND k.jenis_upah = 'pola'
-            AND NOT EXISTS (
-                SELECT 1 FROM upah_karyawan uk 
-                WHERE uk.id_karyawan = k.id_karyawan 
-                AND uk.id_produk = pk.id_produk 
-                AND uk.status_pembayaran = 'dibayar'
-            )
+            AND uk.status_pembayaran = 'belum_dibayar'
         `, [id_produk]);
+        console.log('Upah pola belum:', upahPolaBelumRows);
 
+        console.log('Fetching upah harian pending...');
         const [upahHarianBelumRows] = await pool.query(`
             SELECT 
-                COUNT(DISTINCT k.id_karyawan) as jumlah_karyawan,
+                COUNT(DISTINCT pk.id_karyawan) as jumlah_karyawan,
                 GROUP_CONCAT(DISTINCT k.nama_karyawan SEPARATOR ', ') as nama_karyawan,
                 COALESCE(AVG(jp.upah_harian), 0) as avg_upah_harian
             FROM pekerjaan_karyawan pk
@@ -55,13 +56,15 @@ export async function GET(
             INNER JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
             WHERE pk.id_produk = ? 
             AND k.jenis_upah = 'harian'
+            AND pk.status IN ('diproses', 'selesai')
             AND NOT EXISTS (
                 SELECT 1 FROM upah_karyawan uk 
-                WHERE uk.id_karyawan = k.id_karyawan 
-                AND uk.id_produk = pk.id_produk 
+                WHERE uk.id_karyawan = pk.id_karyawan
+                AND uk.id_produk = pk.id_produk
                 AND uk.status_pembayaran = 'dibayar'
             )
         `, [id_produk]);
+        console.log('Upah harian pending:', upahHarianBelumRows);
 
         const keuanganData = (keuanganRows as any)[0];
         const upahDibayarData = (upahDibayarRows as any)[0];
@@ -92,8 +95,14 @@ export async function GET(
                 saldo: saldo
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching keuangan summary:', error);
+        console.error('Error details:', {
+            message: error.message,
+            code: error.code,
+            errno: error.errno,
+            sql: error.sql
+        });
         return NextResponse.json(
             { success: false, message: 'Gagal mengambil ringkasan keuangan' },
             { status: 500 }
