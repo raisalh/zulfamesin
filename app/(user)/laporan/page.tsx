@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { IconChartBar, IconUsers, IconCash, IconFilter, IconRefresh, IconFileSpreadsheet, IconClock, IconTarget, IconTrendingUp, IconTrendingDown, IconWallet} from '@tabler/icons-react';
+import { IconChartBar, IconUsers, IconCash, IconFilter, IconRefresh, IconFileSpreadsheet, IconClock, IconTarget, IconTrendingUp, IconTrendingDown, IconWallet } from '@tabler/icons-react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 type TabType = 'produksi' | 'karyawan' | 'upah' | 'cashflow';
@@ -175,14 +175,14 @@ export default function LaporanPage() {
                 category: 'cashflow',
                 periode: cashflowPeriode
             };
-    
+
             if (cashflowPeriode === 'bulanan') {
                 params.tahun = new Date().getFullYear();
                 params.bulan = new Date().getMonth() + 1;
             } else if (cashflowPeriode === 'tahunan') {
                 params.tahun = new Date().getFullYear();
             }
-    
+
             const response = await axios.get('/api/laporan', { params });
             setCashflowData(response.data.data);
         } catch (error) {
@@ -215,24 +215,24 @@ export default function LaporanPage() {
                             <p className="text-sm text-gray-600 mt-1">Visualisasi data dan analitik produksi</p>
                         </div>
                         {activeTab !== 'cashflow' && (
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => setShowFilter(!showFilter)}
-                                className={`flex items-center gap-2 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors ${showFilter ? 'bg-gray-50' : 'bg-white'
-                                    }`}
-                            >
-                                <IconFilter size={20} />
-                                Filter
-                            </button>
-                            <button
-                                onClick={loadData}
-                                disabled={loading}
-                                className="flex items-center gap-2 px-4 py-2 text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <IconRefresh size={20} className={loading ? 'animate-spin' : ''} />
-                                Refresh
-                            </button>
-                        </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowFilter(!showFilter)}
+                                    className={`flex items-center gap-2 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors ${showFilter ? 'bg-gray-50' : 'bg-white'
+                                        }`}
+                                >
+                                    <IconFilter size={20} />
+                                    Filter
+                                </button>
+                                <button
+                                    onClick={loadData}
+                                    disabled={loading}
+                                    className="flex items-center gap-2 px-4 py-2 text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <IconRefresh size={20} className={loading ? 'animate-spin' : ''} />
+                                    Refresh
+                                </button>
+                            </div>
                         )}
                     </div>
 
@@ -632,9 +632,11 @@ function LaporanProduksiContent({
                             />
                             <YAxis label={{ value: 'Hari', angle: -90, position: 'insideLeft' }} />
                             <Tooltip
-                                formatter={(value: any, name: string) => {
-                                    if (name === 'rata_rata_hari') return [`${value} hari`, 'Rata-rata'];
-                                    return [value, name];
+                                formatter={(value: any, name: string | number | undefined) => {
+                                    if (name === 'rata_rata_hari') {
+                                        return [`${value} hari`, 'Rata-rata'];
+                                    }
+                                    return [value, name ?? 'N/A'];
                                 }}
                             />
                             <Bar
@@ -1215,7 +1217,9 @@ function LaporanUpahContent({
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="nama" angle={-45} textAnchor="end" height={100} tick={{ fontSize: 11 }} />
                         <YAxis />
-                        <Tooltip formatter={(value) => formatRupiah(Number(value))} />
+                        <Tooltip
+                            formatter={(value: any) => formatRupiah(Number(value))}
+                        />
                         <Bar dataKey="upah" fill="#3b82f6" name="Total Upah" />
                     </BarChart>
                 </ResponsiveContainer>
@@ -1355,31 +1359,28 @@ function LaporanCashflowContent({
                     <div className="flex gap-2">
                         <button
                             onClick={() => setPeriode('mingguan')}
-                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                                periode === 'mingguan'
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${periode === 'mingguan'
                                     ? 'bg-teal-600 text-white'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                                }`}
                         >
                             Mingguan
                         </button>
                         <button
                             onClick={() => setPeriode('bulanan')}
-                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                                periode === 'bulanan'
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${periode === 'bulanan'
                                     ? 'bg-teal-600 text-white'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                                }`}
                         >
                             Bulanan
                         </button>
                         <button
                             onClick={() => setPeriode('tahunan')}
-                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                                periode === 'tahunan'
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${periode === 'tahunan'
                                     ? 'bg-teal-600 text-white'
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                                }`}
                         >
                             Tahunan
                         </button>
@@ -1420,9 +1421,8 @@ function LaporanCashflowContent({
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-sm font-medium text-gray-600">Saldo</p>
-                            <p className={`text-2xl font-bold mt-2 ${
-                                summary.saldo >= 0 ? 'text-blue-600' : 'text-red-600'
-                            }`}>
+                            <p className={`text-2xl font-bold mt-2 ${summary.saldo >= 0 ? 'text-blue-600' : 'text-red-600'
+                                }`}>
                                 {formatRupiah(summary.saldo)}
                             </p>
                         </div>
@@ -1445,15 +1445,15 @@ function LaporanCashflowContent({
                     <ResponsiveContainer width="100%" height={400}>
                         <BarChart data={chartData}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis 
-                                dataKey="periode" 
+                            <XAxis
+                                dataKey="periode"
                                 angle={periode === 'mingguan' ? -45 : 0}
                                 textAnchor={periode === 'mingguan' ? 'end' : 'middle'}
                                 height={periode === 'mingguan' ? 80 : 40}
                                 tick={{ fontSize: 11 }}
                             />
                             <YAxis />
-                            <Tooltip 
+                            <Tooltip
                                 formatter={(value) => formatRupiah(Number(value))}
                                 contentStyle={{
                                     backgroundColor: 'white',
@@ -1469,11 +1469,10 @@ function LaporanCashflowContent({
                 )}
             </div>
 
-            <div className={`p-4 rounded-lg border-l-4 ${
-                summary.saldo >= 0 
-                    ? 'bg-blue-50 border-blue-500' 
+            <div className={`p-4 rounded-lg border-l-4 ${summary.saldo >= 0
+                    ? 'bg-blue-50 border-blue-500'
                     : 'bg-red-50 border-red-500'
-            }`}>
+                }`}>
                 <p className="text-sm font-medium text-gray-700">
                     💡 <span className="font-semibold">Insight:</span>
                     {summary.saldo >= 0 ? (
@@ -1481,7 +1480,7 @@ function LaporanCashflowContent({
                     ) : (
                         <> Cashflow periode ini <span className="text-red-600 font-semibold">negatif</span> dengan defisit {formatRupiah(Math.abs(summary.saldo))}.</>
                     )}
-                    {' '}Rasio pengeluaran terhadap pemasukan: {summary.total_pemasukan > 0 
+                    {' '}Rasio pengeluaran terhadap pemasukan: {summary.total_pemasukan > 0
                         ? `${((summary.total_pengeluaran / summary.total_pemasukan) * 100).toFixed(1)}%`
                         : 'N/A'
                     }
