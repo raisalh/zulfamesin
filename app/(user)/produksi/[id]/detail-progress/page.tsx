@@ -18,7 +18,11 @@ interface ProgressDetail {
 interface PekerjaanProgress {
     id_jenis_pekerjaan: number;
     nama_pekerjaan: string;
-    progress_list: ProgressDetail[];
+    progress_list: GroupedProgress[];
+}
+
+interface GroupedProgress extends ProgressDetail {
+    total_progress_sampai_tanggal_ini: number;
 }
 
 export default function DetailProgressPage() {
@@ -36,42 +40,50 @@ export default function DetailProgressPage() {
     }, [idProduk]);
 
     const groupProgress = (progressList: ProgressDetail[]) => {
-        const grouped = new Map();
-    
+        const grouped = new Map<string, GroupedProgress>();
+        const totalProgressPerKaryawan = new Map<string, number>();
+
         for (const p of progressList) {
             const key = `${p.nama_karyawan}-${p.tanggal_update.split("T")[0]}`;
-    
+            const karyawanKey = p.nama_karyawan;
+
+            const currentTotal = (totalProgressPerKaryawan.get(karyawanKey) || 0) + p.unit_progress;
+            totalProgressPerKaryawan.set(karyawanKey, currentTotal);
+
             if (!grouped.has(key)) {
                 grouped.set(key, {
                     ...p,
-                    unit_progress: p.unit_progress
+                    unit_progress: p.unit_progress,
+                    total_progress_sampai_tanggal_ini: currentTotal
                 });
             } else {
-                grouped.get(key).unit_progress += p.unit_progress;
+                const existing = grouped.get(key)!;
+                existing.unit_progress += p.unit_progress;
+                existing.total_progress_sampai_tanggal_ini = currentTotal;
             }
         }
-    
+
         return Array.from(grouped.values());
     };
-    
+
     const fetchProgressDetail = async () => {
         try {
             setLoading(true);
-
+    
             const response = await fetch(`/api/work-assignment/${idProduk}`);
             const result = await response.json();
-
+    
             if (result.success) {
                 const pekerjaanWithProgress = await Promise.all(
                     result.data.pekerjaan_list.map(async (pekerjaan: any) => {
                         const progressList: ProgressDetail[] = [];
-
+    
                         for (const karyawan of pekerjaan.karyawan) {
                             const progressResponse = await fetch(
                                 `/api/progress/${karyawan.id_pekerjaan_karyawan}`
                             );
                             const progressResult = await progressResponse.json();
-
+    
                             if (progressResult.success && progressResult.data.length > 0) {
                                 progressResult.data.forEach((progress: any) => {
                                     progressList.push({
@@ -84,19 +96,25 @@ export default function DetailProgressPage() {
                                 });
                             }
                         }
-
-                        progressList.sort((a, b) => 
+    
+                        progressList.sort((a, b) =>
+                            new Date(a.tanggal_update).getTime() - new Date(b.tanggal_update).getTime()
+                        );
+    
+                        const grouped = groupProgress(progressList);
+    
+                        grouped.sort((a, b) =>
                             new Date(b.tanggal_update).getTime() - new Date(a.tanggal_update).getTime()
                         );
-
+    
                         return {
                             id_jenis_pekerjaan: pekerjaan.id_jenis_pekerjaan,
                             nama_pekerjaan: pekerjaan.nama_pekerjaan,
-                            progress_list: groupProgress(progressList)
+                            progress_list: grouped
                         };
                     })
                 );
-
+    
                 setPekerjaanProgressList(pekerjaanWithProgress);
             }
         } catch (error) {
@@ -109,15 +127,15 @@ export default function DetailProgressPage() {
     const formatDate = (dateString: string) => {
         if (!dateString) return '';
         const date = new Date(dateString);
-        return date.toLocaleDateString('id-ID', { 
+        return date.toLocaleDateString('id-ID', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric'
         });
     };
 
-    const getStatusBadge = (unitDikerjakan: number, target: number) => {
-        if (unitDikerjakan >= target) {
+    const getStatusBadge = (totalProgressSampaiTanggalIni: number, target: number) => {
+        if (totalProgressSampaiTanggalIni >= target) {
             return (
                 <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
                     Selesai
@@ -140,7 +158,7 @@ export default function DetailProgressPage() {
             </div>
         );
     }
-    
+
     return (
         <div className="min-h-screen bg-gray-50 p-6">
             <div className="max-w-7xl mx-auto">
@@ -212,7 +230,7 @@ export default function DetailProgressPage() {
                                                             {progress.target_unit}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                            {getStatusBadge(progress.unit_dikerjakan, progress.target_unit)}
+                                                            {getStatusBadge(progress.total_progress_sampai_tanggal_ini, progress.target_unit)}
                                                         </td>
                                                     </tr>
                                                 ))}
