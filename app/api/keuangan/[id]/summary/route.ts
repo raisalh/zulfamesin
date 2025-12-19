@@ -42,7 +42,6 @@ export async function GET(
             INNER JOIN jenis_pekerjaan jp ON pk.id_jenis_pekerjaan = jp.id_jenis_pekerjaan
             WHERE pk.id_produk = ? 
             AND k.jenis_upah = 'pola'
-            AND pk.is_deleted = 0
         `, [id_produk]);
 
         console.log('Fetching upah harian pending...');
@@ -74,7 +73,7 @@ export async function GET(
         const totalPemasukan = parseFloat(keuanganData.total_pemasukan || 0);
         const totalPengeluaranManual = parseFloat(keuanganData.total_pengeluaran || 0);
         const totalUpahDibayar = parseFloat(upahDibayarData.upah_dibayar || 0);
-        const totalUpahPolaBelum = parseFloat(upahPolaData.upah_pola_belum || 0);
+        const totalUpahPolaBelum = parseFloat(upahPolaData.upah_pola_estimasi || 0);
 
         const totalPengeluaran = totalPengeluaranManual + totalUpahDibayar;
         const saldo = totalPemasukan - totalPengeluaran;
