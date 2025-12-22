@@ -87,7 +87,7 @@ export default function EditWorkAssignmentPage() {
             if (karyawanResponse.data.success) {
                 setKaryawanList(karyawanResponse.data.data);
             }
-
+    
             const produksiResponse = await axios.get(`/api/production/${id}`);
             if (produksiResponse.data.success && produksiResponse.data.data) {
                 const data = produksiResponse.data.data;
@@ -97,26 +97,39 @@ export default function EditWorkAssignmentPage() {
                     total_pola: Number(data.jumlah_pola) || 0,
                 });
             }
-
+    
             const pekerjaanResponse = await axios.get(`/api/work-assignment/${id}`);
             if (pekerjaanResponse.data.success) {
                 const existingData = pekerjaanResponse.data.data.pekerjaan_list;
-
+    
+                console.log('=== RAW API RESPONSE ===');
+                console.log('Full data:', existingData);
+                if (existingData && existingData[0]) {
+                    console.log('First pekerjaan:', existingData[0]);
+                    console.log('First karyawan:', existingData[0].karyawan?.[0]);
+                }
+                console.log('======================');
+    
                 const transformedPekerjaan = existingData.map((pekerjaan: any) => {
-                    const assignments = pekerjaan.karyawan.map((k: any) => ({
-                        id_pekerjaan_karyawan: k.id_pekerjaan_karyawan,
-                        id_karyawan: k.id_karyawan,
-                        nama_karyawan: k.nama_karyawan,
-                        target_unit: Number(k.target_unit) || 0,
-                        unit_dikerjakan: Number(k.unit_dikerjakan) || 0,
-                        is_deleted: k.is_karyawan_deleted || false,
-                    }));
-
+                    const assignments = pekerjaan.karyawan.map((k: any) => {
+                        const isDeleted = k.deleted_at !== null && k.deleted_at !== undefined;
+                        
+                        console.log(`Karyawan: ${k.nama_karyawan}, deleted_at: ${k.deleted_at}, is_deleted: ${isDeleted}`);
+    
+                        return {
+                            id_pekerjaan_karyawan: k.id_pekerjaan_karyawan,
+                            id_karyawan: k.id_karyawan,
+                            nama_karyawan: k.nama_karyawan,
+                            target_unit: Number(k.target_unit) || 0,
+                            unit_dikerjakan: Number(k.unit_dikerjakan) || 0,
+                            is_deleted: isDeleted, 
+                        };
+                    });
+    
                     return {
                         id: Date.now().toString() + Math.random(),
                         id_jenis_pekerjaan: pekerjaan.id_jenis_pekerjaan,
                         nama_pekerjaan: pekerjaan.nama_pekerjaan,
-                    
                         upah_per_unit: pekerjaan.upah_per_unit && pekerjaan.upah_per_unit > 0
                             ? String(pekerjaan.upah_per_unit)
                             : "",
@@ -127,9 +140,15 @@ export default function EditWorkAssignmentPage() {
                         assignment_mode: pekerjaan.tipe === "sistem" ? "auto" : "manual",
                         assignments: assignments,
                     };
-                    
                 });
-
+    
+                console.log('=== TRANSFORMED DATA ===');
+                console.log('Transformed:', transformedPekerjaan);
+                if (transformedPekerjaan && transformedPekerjaan[0]) {
+                    console.log('First assignment:', transformedPekerjaan[0].assignments?.[0]);
+                }
+                console.log('========================');
+    
                 setPekerjaanList(transformedPekerjaan);
             }
         } catch (error) {
@@ -521,7 +540,7 @@ export default function EditWorkAssignmentPage() {
 
     const validateForm = (): boolean => {
         let hasError = false;
-
+    
         pekerjaanList.forEach((p) => {
             if (!p.nama_pekerjaan.trim()) {
                 addToast({
@@ -531,11 +550,11 @@ export default function EditWorkAssignmentPage() {
                 });
                 hasError = true;
             }
-
+    
             const hasAtLeastOneUpah =
                 (p.upah_per_unit && p.upah_per_unit.trim() !== "") ||
                 (p.upah_harian && p.upah_harian.trim() !== "");
-
+    
             if (!hasAtLeastOneUpah) {
                 addToast({
                     title: "Upah Belum Diisi",
@@ -544,7 +563,7 @@ export default function EditWorkAssignmentPage() {
                 });
                 hasError = true;
             }
-
+    
             if (p.upah_per_unit && p.upah_per_unit.trim() !== "") {
                 if (!/^[0-9]+(\.[0-9]+)?$/.test(p.upah_per_unit)) {
                     addToast({
@@ -562,7 +581,7 @@ export default function EditWorkAssignmentPage() {
                     hasError = true;
                 }
             }
-
+    
             if (p.upah_harian && p.upah_harian.trim() !== "") {
                 if (!/^[0-9]+(\.[0-9]+)?$/.test(p.upah_harian)) {
                     addToast({
@@ -580,7 +599,7 @@ export default function EditWorkAssignmentPage() {
                     hasError = true;
                 }
             }
-
+    
             if (p.assignments.length === 0) {
                 addToast({
                     title: "Karyawan Belum Dipilih",
@@ -589,7 +608,7 @@ export default function EditWorkAssignmentPage() {
                 });
                 hasError = true;
             }
-
+    
             if (produkInfo) {
                 const totalTarget = getTotalTargetPekerjaan(p.id);
                 if (totalTarget !== produkInfo.total_pola) {
@@ -602,8 +621,12 @@ export default function EditWorkAssignmentPage() {
                     hasError = true;
                 }
             }
-
+    
             p.assignments.forEach((a) => {
+                if (a.is_deleted) {
+                    return; 
+                }
+    
                 if (a.target_unit <= 0) {
                     addToast({
                         title: "Target Belum Diisi",
@@ -612,7 +635,7 @@ export default function EditWorkAssignmentPage() {
                     });
                     hasError = true;
                 }
-
+    
                 if (a.target_unit < a.unit_dikerjakan) {
                     addToast({
                         title: "Target Tidak Valid",
@@ -621,48 +644,43 @@ export default function EditWorkAssignmentPage() {
                     });
                     hasError = true;
                 }
-
-                if (a.is_deleted && a.target_unit !== a.unit_dikerjakan) {
-                    addToast({
-                        title: "Peringatan",
-                        description: `${a.nama_karyawan} sudah keluar. Target harus sama dengan progress terakhir (${a.unit_dikerjakan} pola)`,
-                        color: "warning",
-                    });
-                    hasError = true;
-                }
             });
         });
-
+    
         pekerjaanList.forEach((p) => {
             const karyawanPola = p.assignments.filter(a => {
+                if (a.is_deleted) return false;
+                
                 const karyawan = karyawanList.find(k => k.id_karyawan === a.id_karyawan);
                 return karyawan?.jenis_upah === "pola";
             });
-
+    
             const karyawanHarian = p.assignments.filter(a => {
+                if (a.is_deleted) return false;
+                
                 const karyawan = karyawanList.find(k => k.id_karyawan === a.id_karyawan);
                 return karyawan?.jenis_upah === "harian";
             });
-
+    
             if (karyawanPola.length > 0 && (!p.upah_per_unit || p.upah_per_unit.trim() === "")) {
                 addToast({
                     title: "Upah Per Pola Wajib",
-                    description: `Pekerjaan "${p.nama_pekerjaan}" memiliki karyawan dengan sistem upah per pola. Upah per pola harus diisi.`,
+                    description: `Pekerjaan "${p.nama_pekerjaan}" memiliki karyawan aktif dengan sistem upah per pola. Upah per pola harus diisi.`,
                     color: "danger",
                 });
                 hasError = true;
             }
-
+    
             if (karyawanHarian.length > 0 && (!p.upah_harian || p.upah_harian.trim() === "")) {
                 addToast({
                     title: "Upah Harian Wajib",
-                    description: `Pekerjaan "${p.nama_pekerjaan}" memiliki karyawan dengan sistem upah harian. Upah harian harus diisi.`,
+                    description: `Pekerjaan "${p.nama_pekerjaan}" memiliki karyawan aktif dengan sistem upah harian. Upah harian harus diisi.`,
                     color: "danger",
                 });
                 hasError = true;
             }
         });
-
+    
         return !hasError;
     };
 

@@ -9,6 +9,7 @@ import {
   IconPlus,
   IconTrash,
 } from "@tabler/icons-react";
+import { addToast } from "@heroui/react"; 
 
 interface Karyawan {
   id_karyawan: number;
@@ -57,13 +58,18 @@ export default function KaryawanPage() {
       }
     } catch (error) {
       console.error("Error fetching data:", error);
+      addToast({
+        title: "Gagal Memuat Data",
+        description: "Terjadi kesalahan saat mengambil data karyawan",
+        color: "danger",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus produk ini?")) return;
+    if (!confirm("Apakah Anda yakin ingin menghapus karyawan ini?")) return;
 
     try {
       const res = await fetch(`/api/employee/${id}`, {
@@ -72,14 +78,46 @@ export default function KaryawanPage() {
       const data = await res.json();
 
       if (data.success) {
-        alert("Karyawan berhasil dihapus");
+        addToast({
+          title: "Berhasil Dihapus",
+          description: "Karyawan berhasil dihapus dari sistem",
+          color: "success",
+        });
         fetchData();
       } else {
-        alert("Gagal menghapus karyawan");
+        addToast({
+          title: "Tidak Dapat Menghapus Karyawan",
+          description: data.message || "Gagal menghapus karyawan",
+          color: "danger",
+        });
+
+        if (data.unpaid_count) {
+          setTimeout(() => {
+            addToast({
+              title: "Informasi",
+              description: `Karyawan memiliki ${data.unpaid_count} upah yang belum dibayar`,
+              color: "warning",
+            });
+          }, 500);
+        }
+
+        if (data.active_task_count) {
+          setTimeout(() => {
+            addToast({
+              title: "Informasi",
+              description: `Karyawan masih memiliki ${data.active_task_count} pekerjaan yang aktif`,
+              color: "warning",
+            });
+          }, 1000);
+        }
       }
     } catch (error) {
       console.error("Error deleting:", error);
-      alert("Terjadi kesalahan");
+      addToast({
+        title: "Terjadi Kesalahan",
+        description: "Gagal menghapus karyawan. Silakan coba lagi",
+        color: "danger",
+      });
     }
     setOpenDropdown(null);
   };
@@ -137,7 +175,7 @@ export default function KaryawanPage() {
                   <tr>
                     <td
                       className="px-6 py-8 text-center text-gray-500"
-                      colSpan={9}
+                      colSpan={7}
                     >
                       Tidak ada karyawan
                     </td>
@@ -177,7 +215,7 @@ export default function KaryawanPage() {
                                 Edit Karyawan
                               </button>
                               <button
-                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 rounded-b-lg"
+                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                                 onClick={() => {
                                   router.push(
                                     `/karyawan/${karyawan.id_karyawan}/upah`,

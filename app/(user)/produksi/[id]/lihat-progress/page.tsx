@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { IconArrowLeft, IconPlus } from '@tabler/icons-react';
+import { IconArrowLeft, IconPlus, IconUserX } from '@tabler/icons-react';
 
 interface Karyawan {
     id_pekerjaan_karyawan: number;
@@ -11,6 +11,7 @@ interface Karyawan {
     target_unit: number;
     unit_dikerjakan: number;
     status: string;
+    deleted_at?: string | null; 
 }
 
 interface Pekerjaan {
@@ -107,6 +108,10 @@ export default function InformasiPengerjaanPage() {
         });
     };
 
+    const isKaryawanDeleted = (karyawan: Karyawan) => {
+        return karyawan.deleted_at !== null && karyawan.deleted_at !== undefined;
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 p-6">
@@ -123,7 +128,6 @@ export default function InformasiPengerjaanPage() {
         <div className="min-h-screen bg-gray-50 p-6">
             <div className="max-w-6xl mx-auto">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => router.push(`/produksi`)}
@@ -217,23 +221,42 @@ export default function InformasiPengerjaanPage() {
                                             karyawan.target_unit
                                         );
                                         const progressColor = getProgressColor(progress);
+                                        const isDeleted = isKaryawanDeleted(karyawan);
 
                                         return (
-                                            <div key={karyawan.id_pekerjaan_karyawan}>
+                                            <div 
+                                                key={karyawan.id_pekerjaan_karyawan}
+                                                className={`p-3 rounded-lg ${isDeleted ? 'bg-red-50 border border-red-200' : ''}`}
+                                            >
                                                 <div className="flex justify-between items-center mb-2">
-                                                    <span className="font-medium text-gray-900">
-                                                        {karyawan.nama_karyawan}
-                                                    </span>
-                                                    <span className="text-sm text-gray-600">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`font-medium ${isDeleted ? 'text-red-600' : 'text-gray-900'}`}>
+                                                            {karyawan.nama_karyawan}
+                                                        </span>
+                                                        {isDeleted && (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-500 text-white text-xs font-semibold rounded-full">
+                                                                <IconUserX size={12} />
+                                                                KELUAR
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className={`text-sm ${isDeleted ? 'text-red-700 font-medium' : 'text-gray-600'}`}>
                                                         {karyawan.unit_dikerjakan}/{karyawan.target_unit} pola
                                                     </span>
                                                 </div>
                                                 <div className="w-full bg-gray-200 rounded-full h-2.5">
                                                     <div
-                                                        className={`h-2.5 rounded-full transition-all duration-300 ${progressColor}`}
+                                                        className={`h-2.5 rounded-full transition-all duration-300 ${
+                                                            isDeleted ? 'bg-red-400' : progressColor
+                                                        }`}
                                                         style={{ width: `${progress}%` }}
                                                     />
                                                 </div>
+                                                {isDeleted && (
+                                                    <p className="text-xs text-red-600 mt-1 italic">
+                                                        Karyawan ini sudah tidak aktif
+                                                    </p>
+                                                )}
                                             </div>
                                         );
                                     })}

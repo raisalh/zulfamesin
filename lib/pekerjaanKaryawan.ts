@@ -19,7 +19,7 @@ export interface PekerjaanKaryawanWithDetails extends PekerjaanKaryawan {
     tipe?: 'sistem' | 'manual';
     upah_harian?: number;
     tanggal_mulai?: Date | null; 
-    is_karyawan_deleted?: boolean; 
+    deleted_at?: Date | null; 
 }
 
 export async function getPekerjaanByProduk(id_produk: number) {
@@ -28,7 +28,7 @@ export async function getPekerjaanByProduk(id_produk: number) {
             `SELECT 
                 pk.*,
                 k.nama_karyawan,
-                k.deleted_at IS NOT NULL as is_karyawan_deleted,
+                k.deleted_at,
                 jp.nama_pekerjaan,
                 jp.upah_per_unit,
                 jp.tipe,

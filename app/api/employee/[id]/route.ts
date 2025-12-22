@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getKaryawanById, deleteKaryawan, updateKaryawan } from "@/lib/karyawan";
+import pool from "@/lib/db";
 
 export async function GET(
   request: NextRequest,
@@ -125,6 +126,52 @@ export async function DELETE(
         { success: false, message: "Karyawan sudah dihapus sebelumnya" },
         { status: 400 },
       );
+    }
+
+    const connection = await pool.getConnection();
+    try {
+      const [unpaidWages] = await connection.query(
+        `SELECT COUNT(*) as total 
+          FROM upah_karyawan 
+          WHERE id_karyawan = ? AND status_pembayaran = 'belum'`,
+        [id]
+      );
+
+      const unpaidCount = (unpaidWages as any)[0].total;
+
+      if (unpaidCount > 0) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: `Masih ada ${unpaidCount} upah yang belum dibayar. Silakan bayar upah terlebih dahulu.`,
+            unpaid_count: unpaidCount
+          },
+          { status: 400 },
+        );
+      }
+
+      const [activeTasks] = await connection.query(
+        `SELECT COUNT(*) as total 
+          FROM pekerjaan_karyawan 
+          WHERE id_karyawan = ? AND status = 'dikerjakan'`,
+        [id]
+      );
+
+      const activeTaskCount = (activeTasks as any)[0].total;
+
+      if (activeTaskCount > 0) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            message: `Masih ada ${activeTaskCount} pekerjaan yang belum selesai. Silakan selesaikan pekerjaan atau ubah assignment terlebih dahulu.`,
+            active_task_count: activeTaskCount
+          },
+          { status: 400 },
+        );
+      }
+
+    } finally {
+      connection.release();
     }
 
     await deleteKaryawan(id);

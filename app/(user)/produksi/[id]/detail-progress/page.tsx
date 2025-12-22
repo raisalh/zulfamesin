@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { IconArrowLeft } from '@tabler/icons-react';
+import { IconArrowLeft, IconUserX } from '@tabler/icons-react';
 
 interface ProgressDetail {
     id_progress: number;
@@ -13,6 +13,7 @@ interface ProgressDetail {
     target_unit: number;
     unit_dikerjakan: number;
     status: string;
+    deleted_at?: string | null; 
 }
 
 interface PekerjaanProgress {
@@ -91,7 +92,8 @@ export default function DetailProgressPage() {
                                         nama_karyawan: karyawan.nama_karyawan,
                                         target_unit: karyawan.target_unit,
                                         unit_dikerjakan: karyawan.unit_dikerjakan,
-                                        status: karyawan.status
+                                        status: karyawan.status,
+                                        deleted_at: karyawan.deleted_at 
                                     });
                                 });
                             }
@@ -147,6 +149,10 @@ export default function DetailProgressPage() {
                 Diproses
             </span>
         );
+    };
+
+    const isKaryawanDeleted = (progress: ProgressDetail) => {
+        return progress.deleted_at !== null && progress.deleted_at !== undefined;
     };
 
     if (loading) {
@@ -215,25 +221,42 @@ export default function DetailProgressPage() {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-200">
-                                                {pekerjaan.progress_list.map((progress) => (
-                                                    <tr key={progress.id_progress} className="hover:bg-gray-50">
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                            {formatDate(progress.tanggal_update)}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                            {progress.nama_karyawan}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                                                            {progress.unit_progress}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                                                            {progress.target_unit}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                            {getStatusBadge(progress.total_progress_sampai_tanggal_ini, progress.target_unit)}
-                                                        </td>
-                                                    </tr>
-                                                ))}
+                                                {pekerjaan.progress_list.map((progress) => {
+                                                    const isDeleted = isKaryawanDeleted(progress);
+                                                    
+                                                    return (
+                                                        <tr 
+                                                            key={progress.id_progress} 
+                                                            className={`hover:bg-gray-50 ${isDeleted ? 'bg-red-50' : ''}`}
+                                                        >
+                                                            <td className={`px-6 py-4 whitespace-nowrap text-sm ${isDeleted ? 'text-red-700' : 'text-gray-900'}`}>
+                                                                {formatDate(progress.tanggal_update)}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className={isDeleted ? 'text-red-600 font-medium' : 'text-gray-900'}>
+                                                                        {progress.nama_karyawan}
+                                                                    </span>
+                                                                    {isDeleted && (
+                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-500 text-white text-xs font-semibold rounded-full">
+                                                                            <IconUserX size={12} />
+                                                                            KELUAR
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td className={`px-6 py-4 whitespace-nowrap text-sm text-center ${isDeleted ? 'text-red-700 font-medium' : 'text-gray-900'}`}>
+                                                                {progress.unit_progress}
+                                                            </td>
+                                                            <td className={`px-6 py-4 whitespace-nowrap text-sm text-center ${isDeleted ? 'text-red-700 font-medium' : 'text-gray-900'}`}>
+                                                                {progress.target_unit}
+                                                            </td>
+                                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                                {getStatusBadge(progress.total_progress_sampai_tanggal_ini, progress.target_unit)}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
                                             </tbody>
                                         </table>
                                     </div>

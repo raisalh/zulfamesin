@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { IconPlus, IconAlertTriangle } from '@tabler/icons-react';
+import { IconPlus, IconAlertTriangle, IconUserX } from '@tabler/icons-react';
 
 interface Karyawan {
     id_pekerjaan_karyawan: number;
@@ -11,6 +11,7 @@ interface Karyawan {
     target_unit: number;
     unit_dikerjakan: number;
     status: string;
+    deleted_at?: string | null; 
 }
 
 interface Pekerjaan {
@@ -74,6 +75,10 @@ export default function TambahProgressPage() {
         }
     };
 
+    const isKaryawanDeleted = (karyawan: Karyawan) => {
+        return karyawan.deleted_at !== null && karyawan.deleted_at !== undefined;
+    };
+
     const handleProgressChange = (idPekerjaanKaryawan: number, value: string) => {
         setProgressData(prev => ({
             ...prev,
@@ -113,7 +118,7 @@ export default function TambahProgressPage() {
         let hasAnyInput = false;
     
         selected.karyawan.forEach((k) => {
-            if (k.status === "selesai") return;
+            if (k.status === "selesai" || isKaryawanDeleted(k)) return;
     
             const rawValue = progressData[k.id_pekerjaan_karyawan];
     
@@ -239,8 +244,9 @@ export default function TambahProgressPage() {
         p => p.id_jenis_pekerjaan === selectedPekerjaan
     );
 
+    // ⭐ UPDATE: Cek juga karyawan yang deleted
     const allFinished = selectedPekerjaanData?.karyawan.every(
-        k => k.status === 'selesai'
+        k => k.status === 'selesai' || isKaryawanDeleted(k)
     ) ?? false;
 
     if (fetchingData) {
@@ -329,57 +335,88 @@ export default function TambahProgressPage() {
                                         Semua Pekerjaan Sudah Selesai
                                     </h3>
                                     <p className="text-gray-600">
-                                        Seluruh karyawan telah menyelesaikan target mereka untuk pekerjaan ini.
+                                        Seluruh karyawan telah menyelesaikan target mereka atau sudah tidak aktif untuk pekerjaan ini.
                                     </p>
                                 </div>
                             ) : (
                                 <>
                                     <div className="space-y-4">
-                                        {selectedPekerjaanData.karyawan.map((karyawan, index) => (
-                                            <div key={karyawan.id_pekerjaan_karyawan} className="flex items-start gap-4">
-                                                <div className="flex-shrink-0 w-8 h-8 bg-gray-900 text-white rounded-full flex items-center justify-center text-sm font-medium">
-                                                    {index + 1}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="font-medium text-gray-900 mb-1">
-                                                        {karyawan.nama_karyawan}
+                                        {selectedPekerjaanData.karyawan.map((karyawan, index) => {
+                                            const isDeleted = isKaryawanDeleted(karyawan);
+                                            const isDisabled = karyawan.status === 'selesai' || isDeleted;
+
+                                            return (
+                                                <div 
+                                                    key={karyawan.id_pekerjaan_karyawan} 
+                                                    className={`flex items-start gap-4 p-4 rounded-lg ${
+                                                        isDeleted ? 'bg-red-50 border border-red-200' : ''
+                                                    }`}
+                                                >
+                                                    <div className={`flex-shrink-0 w-8 h-8 ${
+                                                        isDeleted ? 'bg-red-500' : 'bg-gray-900'
+                                                    } text-white rounded-full flex items-center justify-center text-sm font-medium`}>
+                                                        {index + 1}
                                                     </div>
-                                                    <div className="text-sm text-gray-500 mb-2">
-                                                        Target: {karyawan.target_unit} pola |
-                                                        Dikerjakan: {karyawan.unit_dikerjakan} pola |
-                                                        Sisa: {karyawan.target_unit - karyawan.unit_dikerjakan} pola
-                                                    </div>
-                                                    {karyawan.status === 'selesai' ? (
-                                                        <div className="flex items-center gap-2 text-green-600">
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                                                            </svg>
-                                                            <span className="text-sm font-medium">Pekerjaan sudah selesai</span>
-                                                        </div>
-                                                    ) : (
-                                                        <>
-                                                            <input
-                                                                type="text"
-                                                                min="0"
-                                                                max={karyawan.target_unit - karyawan.unit_dikerjakan}
-                                                                value={progressData[karyawan.id_pekerjaan_karyawan] || ''}
-                                                                onChange={(e) => handleProgressChange(karyawan.id_pekerjaan_karyawan, e.target.value)}
-                                                                placeholder="Masukkan jumlah pola"
-                                                                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.progress_data?.[karyawan.id_pekerjaan_karyawan]
-                                                                        ? 'border-red-500'
-                                                                        : 'border-gray-300'
-                                                                    }`}
-                                                            />
-                                                            {errors.progress_data?.[karyawan.id_pekerjaan_karyawan] && (
-                                                                <p className="text-red-500 text-sm mt-1">
-                                                                    {errors.progress_data[karyawan.id_pekerjaan_karyawan]}
-                                                                </p>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className={`font-medium ${
+                                                                isDeleted ? 'text-red-600' : 'text-gray-900'
+                                                            }`}>
+                                                                {karyawan.nama_karyawan}
+                                                            </span>
+                                                            {isDeleted && (
+                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-500 text-white text-xs font-semibold rounded-full">
+                                                                    <IconUserX size={12} />
+                                                                    KELUAR
+                                                                </span>
                                                             )}
-                                                        </>
-                                                    )}
+                                                        </div>
+                                                        <div className={`text-sm mb-2 ${
+                                                            isDeleted ? 'text-red-700' : 'text-gray-500'
+                                                        }`}>
+                                                            Target: {karyawan.target_unit} pola |
+                                                            Dikerjakan: {karyawan.unit_dikerjakan} pola |
+                                                            Sisa: {karyawan.target_unit - karyawan.unit_dikerjakan} pola
+                                                        </div>
+                                                        {karyawan.status === 'selesai' ? (
+                                                            <div className="flex items-center gap-2 text-green-600">
+                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                                                                </svg>
+                                                                <span className="text-sm font-medium">Pekerjaan sudah selesai</span>
+                                                            </div>
+                                                        ) : isDeleted ? (
+                                                            <div className="flex items-center gap-2 text-red-600">
+                                                                <IconUserX size={18} />
+                                                                <span className="text-sm font-medium">Karyawan sudah tidak aktif</span>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <input
+                                                                    type="text"
+                                                                    min="0"
+                                                                    max={karyawan.target_unit - karyawan.unit_dikerjakan}
+                                                                    value={progressData[karyawan.id_pekerjaan_karyawan] || ''}
+                                                                    onChange={(e) => handleProgressChange(karyawan.id_pekerjaan_karyawan, e.target.value)}
+                                                                    placeholder="Masukkan jumlah pola"
+                                                                    disabled={isDisabled}
+                                                                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                                                                        errors.progress_data?.[karyawan.id_pekerjaan_karyawan]
+                                                                            ? 'border-red-500'
+                                                                            : 'border-gray-300'
+                                                                    } ${isDisabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                                                />
+                                                                {errors.progress_data?.[karyawan.id_pekerjaan_karyawan] && (
+                                                                    <p className="text-red-500 text-sm mt-1">
+                                                                        {errors.progress_data[karyawan.id_pekerjaan_karyawan]}
+                                                                    </p>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                     {errors.progress_data?.[0] && (
                                         <p className="text-red-500 text-sm mt-2 ml-12.5">
