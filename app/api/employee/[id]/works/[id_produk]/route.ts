@@ -69,14 +69,14 @@ export async function GET(
 
         const pekerjaanList = pekerjaan as any[];
         const totalKategori = pekerjaanList.length;
-        
+
         const totalUnit = pekerjaanList.reduce((sum, p) => {
             if (p.jenis_upah === 'harian') {
                 return sum + p.jumlah_hari;
             }
             return sum + p.unit_dikerjakan;
         }, 0);
-        
+
         const totalUpah = pekerjaanList.reduce(
             (sum, p) => sum + parseFloat(p.total_upah_pekerjaan || 0),
             0
@@ -95,7 +95,7 @@ export async function GET(
                 status_pembayaran: 'belum',
                 tanggal_pembayaran: null
             });
-            
+
             upahData = await getUpahByKaryawanAndProduk(id_karyawan, id_produk);
         } else {
             if (Math.abs(upahData.total_upah - totalUpah) > 0.01 || upahData.total_unit !== totalUnit) {
@@ -106,7 +106,7 @@ export async function GET(
                     WHERE id_karyawan = ? AND id_produk = ?`,
                     [totalKategori, totalUnit, totalUpah, id_karyawan, id_produk]
                 );
-                
+
                 upahData = await getUpahByKaryawanAndProduk(id_karyawan, id_produk);
             }
         }
@@ -159,13 +159,13 @@ export async function PUT(
         const body = await request.json();
         const { status_pembayaran } = body;
 
-        const produk = await getProduksiById(id_produk);
+        const produk = await getProduksiById(id_produk, true);
 
-        if (produk?.status !== "selesai") {
+        if (produk?.status !== "selesai" && produk?.deleted_at === null) {
             return NextResponse.json(
                 {
                     success: false,
-                    message: "Pembayaran hanya bisa diubah jika produk sudah selesai"
+                    message: "Pembayaran hanya bisa diubah jika produk sudah selesai atau sudah dihapus"
                 },
                 { status: 400 }
             );

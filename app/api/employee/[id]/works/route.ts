@@ -32,6 +32,7 @@ export async function GET(
                 p.warna,
                 p.ukuran,
                 p.status AS status_kerjaan,
+                p.deleted_at,
                 COALESCE(SUM(
                     CASE 
                         WHEN k.jenis_upah = 'harian' THEN 

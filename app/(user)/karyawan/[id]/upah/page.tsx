@@ -19,6 +19,7 @@ interface ProdukItem {
     status_pembayaran: "dibayar" | "belum" | null;
     status_kerjaan: "selesai" | "diproses" | null;
     tanggal_pembayaran: string;
+    deleted_at: Date | null;
 }
 
 export default function DetailUpahKaryawan() {
@@ -179,12 +180,18 @@ export default function DetailUpahKaryawan() {
                                             </td>
                                             <td className="px-3 py-2 md:px-6 md:py-4 text-xs md:text-sm min-w-[140px] text-center">
                                                 <span
-                                                    className={`inline-flex px-2 py-0.5 text-[10px] md:text-xs font-medium rounded-full ${item.status_kerjaan === "selesai"
-                                                        ? "bg-green-100 text-green-800"
-                                                        : "bg-yellow-100 text-yellow-800"
+                                                    className={`inline-flex px-2 py-0.5 text-[10px] md:text-xs font-medium rounded-full ${item.deleted_at !== null
+                                                            ? "bg-red-100 text-red-800"
+                                                            : item.status_kerjaan === "selesai"
+                                                                ? "bg-green-100 text-green-800"
+                                                                : "bg-yellow-100 text-yellow-800"
                                                         }`}
                                                 >
-                                                    {item.status_kerjaan === "selesai" ? "Selesai" : "Diproses"}
+                                                    {item.deleted_at !== null
+                                                        ? "Dihapus"
+                                                        : item.status_kerjaan === "selesai"
+                                                            ? "Selesai"
+                                                            : "Diproses"}
                                                 </span>
                                             </td>
                                             <td className="px-3 py-2 md:px-6 md:py-4 text-xs md:text-sm min-w-[140px] text-center">

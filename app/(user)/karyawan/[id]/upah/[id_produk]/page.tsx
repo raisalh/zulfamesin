@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { IconArrowLeft, IconUser, IconDownload } from "@tabler/icons-react";
-import { addToast} from "@heroui/react";
+import { addToast } from "@heroui/react";
 import axios from "axios";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -89,7 +89,7 @@ export default function DetailInformasiUpahKaryawan() {
                     color: "danger",
                 });
             }
-            
+
         } catch (error) {
             console.error("Error fetching data:", error);
             addToast({
@@ -302,7 +302,7 @@ export default function DetailInformasiUpahKaryawan() {
     };
 
     const handleStatusChange = async (newStatus: string) => {
-        if (produk?.status !== "selesai") {
+        if (produk?.status !== "selesai" && produk?.deleted_at === null) {
             return;
         }
 
@@ -314,7 +314,7 @@ export default function DetailInformasiUpahKaryawan() {
 
             if (response.data.success) {
                 setStatusPembayaran(newStatus);
-            
+
                 if (newStatus === "dibayar") {
                     const today = new Date().toLocaleDateString("id-ID", {
                         day: "numeric",
@@ -325,24 +325,26 @@ export default function DetailInformasiUpahKaryawan() {
                 } else {
                     setTanggalPembayaran("");
                 }
-            
+
                 addToast({
                     title: "Status berhasil diubah",
-                    description: `Status pembayaran telah diubah menjadi ${
-                        newStatus === "dibayar" ? "Sudah Dibayar" : "Belum Dibayar"
-                    }`,
+                    description: `Status pembayaran telah diubah menjadi ${newStatus === "dibayar" ? "Sudah Dibayar" : "Belum Dibayar"}`,
                     color: "success",
                 });
-            
             } else {
                 addToast({
                     title: "Gagal mengubah status",
                     description: response.data.message || "Terjadi kesalahan",
                     color: "danger",
                 });
-            }            
+            }
         } catch (error) {
             console.error("Error updating status:", error);
+            addToast({
+                title: "Gagal mengubah status",
+                description: "Terjadi kesalahan saat mengubah status pembayaran",
+                color: "danger",
+            });
         }
     };
 
@@ -519,8 +521,8 @@ export default function DetailInformasiUpahKaryawan() {
                                 <select
                                     value={statusPembayaran}
                                     onChange={(e) => handleStatusChange(e.target.value)}
-                                    disabled={produk?.status !== "selesai"}
-                                    className={`w-full px-3 py-2 md:px-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${produk?.status !== "selesai"
+                                    disabled={produk?.status !== "selesai" && produk?.deleted_at === null}
+                                    className={`w-full px-3 py-2 md:px-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${produk?.status !== "selesai" && produk?.deleted_at === null
                                         ? "bg-gray-100 cursor-not-allowed text-gray-500"
                                         : "bg-white"
                                         }`}
@@ -530,10 +532,17 @@ export default function DetailInformasiUpahKaryawan() {
                                 </select>
                             )}
 
-                            {produk?.status !== "selesai" && (
+                            {produk?.status !== "selesai" && produk?.deleted_at === null && (
                                 <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
                                     <span>⚠️</span>
                                     <span>Status pembayaran hanya dapat diubah setelah produk selesai</span>
+                                </p>
+                            )}
+
+                            {produk?.deleted_at !== null && statusPembayaran !== "dibayar" && (
+                                <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                                    <span>❗</span>
+                                    <span>Status pembayaran dapat diubah karena produk sudah dihapus</span>
                                 </p>
                             )}
 
