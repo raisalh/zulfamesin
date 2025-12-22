@@ -13,7 +13,6 @@ import { getProduksiById } from "@/lib/produk";
 import { getTotalPolaByProduk } from "@/lib/gulungan";
 import { calculateAndSaveUpahFromPekerjaan, deleteUpahByProduk } from "@/lib/upahKaryawan";
 import { deleteProgressByProduk } from "@/lib/progressPekerjaan";
-import { parse } from "path";
 
 export async function POST(request: NextRequest) {
     try {

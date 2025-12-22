@@ -103,7 +103,7 @@ export default function BerandaPage() {
         try {
             setLoading(true);
             const params = new URLSearchParams();
-            
+
             if (config) {
                 params.append('minUpahTinggi', config.batasAtas);
                 params.append('minUpahMenengah', config.batasBawah);
@@ -155,7 +155,7 @@ export default function BerandaPage() {
 
     const handleInputChange = (field: keyof DistribusiUpahConfig, value: string) => {
         const numericValue = value.replace(/[^0-9]/g, '');
-        
+
         setDistribusiConfig(prev => ({
             ...prev,
             [field]: numericValue
@@ -251,13 +251,13 @@ export default function BerandaPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-white rounded-lg shadow-md p-6">
                     <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1 min-w-0">
                             <p className="text-sm text-gray-600">Order Bulan Ini</p>
-                            <p className="text-3xl font-bold text-gray-800 mt-2">
+                            <p className="text-2xl md:text-3xl font-bold text-gray-800 mt-2 truncate">
                                 {data.stats.produkBulanIni}
                             </p>
                         </div>
-                        <div className="bg-blue-100 p-3 rounded-full">
+                        <div className="bg-blue-100 p-3 rounded-full flex-shrink-0">
                             <IconShirt className="w-8 h-8 text-blue-600" />
                         </div>
                     </div>
@@ -265,13 +265,13 @@ export default function BerandaPage() {
 
                 <div className="bg-white rounded-lg shadow-md p-6">
                     <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1 min-w-0">
                             <p className="text-sm text-gray-600">Upah Terbayar</p>
-                            <p className="text-2xl font-bold text-green-600 mt-2">
+                            <p className="text-xl md:text-2xl font-bold text-green-600 mt-2 truncate">
                                 {formatRupiah(data.stats.upahTerbayar)}
                             </p>
                         </div>
-                        <div className="bg-green-100 p-3 rounded-full">
+                        <div className="bg-green-100 p-3 rounded-full flex-shrink-0">
                             <IconCurrencyDollar className="w-8 h-8 text-green-600" />
                         </div>
                     </div>
@@ -279,13 +279,13 @@ export default function BerandaPage() {
 
                 <div className="bg-white rounded-lg shadow-md p-6">
                     <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1 min-w-0">
                             <p className="text-sm text-gray-600">Upah Belum Dibayar</p>
-                            <p className="text-2xl font-bold text-orange-600 mt-2">
+                            <p className="text-xl md:text-2xl font-bold text-orange-600 mt-2 truncate">
                                 {formatRupiah(data.stats.upahBelumDibayar)}
                             </p>
                         </div>
-                        <div className="bg-orange-100 p-3 rounded-full">
+                        <div className="bg-orange-100 p-3 rounded-full flex-shrink-0">
                             <IconCurrencyDollar className="w-8 h-8 text-orange-600" />
                         </div>
                     </div>
@@ -293,13 +293,13 @@ export default function BerandaPage() {
 
                 <div className="bg-white rounded-lg shadow-md p-6">
                     <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1 min-w-0">
                             <p className="text-sm text-gray-600">Total Karyawan</p>
-                            <p className="text-3xl font-bold text-gray-800 mt-2">
+                            <p className="text-2xl md:text-3xl font-bold text-gray-800 mt-2 truncate">
                                 {data.stats.totalKaryawan}
                             </p>
                         </div>
-                        <div className="bg-purple-100 p-3 rounded-full">
+                        <div className="bg-purple-100 p-3 rounded-full flex-shrink-0">
                             <IconUsers className="w-8 h-8 text-purple-600" />
                         </div>
                     </div>
@@ -523,9 +523,9 @@ export default function BerandaPage() {
                                     </span>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-3">
-                                    <div 
-                                        className={`h-3 rounded-full transition-all ${produk.progress === 100 ? 'bg-green-500' : 'bg-yellow-400'}`} 
-                                        style={{ width: `${produk.progress}%` }} 
+                                    <div
+                                        className={`h-3 rounded-full transition-all ${produk.progress === 100 ? 'bg-green-500' : 'bg-yellow-400'}`}
+                                        style={{ width: `${produk.progress}%` }}
                                     />
                                 </div>
                             </div>
@@ -606,8 +606,8 @@ export default function BerandaPage() {
                 </div>
             </div>
 
-            <Modal 
-                isOpen={isModalOpen} 
+            <Modal
+                isOpen={isModalOpen}
                 onClose={() => {
                     setIsModalOpen(false);
                     setFormErrors({});
@@ -626,7 +626,7 @@ export default function BerandaPage() {
                         <div className="space-y-4">
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                                 <p className="text-sm text-blue-800">
-                                    <strong>Cara Kerja:</strong> Masukkan 2 angka sebagai batas distribusi upah. 
+                                    <strong>Cara Kerja:</strong> Masukkan 2 angka sebagai batas distribusi upah.
                                     Angka pertama memisahkan upah rendah dan menengah, angka kedua memisahkan upah menengah dan tinggi.
                                 </p>
                             </div>
